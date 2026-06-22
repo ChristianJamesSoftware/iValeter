@@ -49,7 +49,6 @@ export const bookingsRouter = router({
           status: statusEnum.optional(),
           isPriority: z.boolean().optional(),
           assignedToId: z.string().optional(),
-          date: z.date().optional(),
           dateFrom: z.date().optional(),
           dateTo: z.date().optional(),
           search: z.string().optional(),
@@ -63,12 +62,7 @@ export const bookingsRouter = router({
       if (input?.status) where.status = input.status;
       if (input?.isPriority !== undefined) where.isPriority = input.isPriority;
       if (input?.assignedToId) where.assignedToId = input.assignedToId;
-      if (input?.date) {
-        const d = new Date(input.date);
-        const start = new Date(d); start.setHours(0, 0, 0, 0);
-        const end = new Date(d); end.setHours(23, 59, 59, 999);
-        where.readyByTime = { gte: start, lte: end };
-      } else if (input?.dateFrom || input?.dateTo) {
+      if (input?.dateFrom || input?.dateTo) {
         where.readyByTime = {};
         if (input.dateFrom) where.readyByTime.gte = input.dateFrom;
         if (input.dateTo) where.readyByTime.lte = input.dateTo;
