@@ -5,6 +5,11 @@ import { usersRouter } from "./routers/users";
 import { sitesRouter } from "./routers/sites";
 import { holidayRouter } from "./routers/holiday";
 import { analyticsRouter } from "./routers/analytics";
+import { platformRouter } from "./routers/platform";
+import { orgSettingsRouter } from "./routers/org-settings";
+import { xeroRouter } from "./routers/xero";
+import { invoicesRouter } from "./routers/invoices";
+import { organisationsRouter } from "./routers/organisations";
 
 export const appRouter = router({
   auth: authRouter,
@@ -13,6 +18,11 @@ export const appRouter = router({
   sites: sitesRouter,
   holiday: holidayRouter,
   analytics: analyticsRouter,
+  platform: platformRouter,
+  orgSettings: orgSettingsRouter,
+  xero: xeroRouter,
+  invoices: invoicesRouter,
+  organisations: organisationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

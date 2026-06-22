@@ -2,9 +2,52 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Sparkles, Droplets, Camera } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
+
+type PaintTier = "essential" | "standard" | "premium" | "ultimate";
+type PhotoPackage = "standard" | "premium" | "full";
+
+const PHOTO_PACKAGES: { key: PhotoPackage; name: string; count: number }[] = [
+  { key: "standard", name: "Standard", count: 10 },
+  { key: "premium", name: "Premium", count: 25 },
+  { key: "full", name: "Full", count: 40 },
+];
+
+const PAINT_TIERS: {
+  key: PaintTier;
+  name: string;
+  duration: string;
+  description: string;
+  popular?: boolean;
+}[] = [
+  {
+    key: "essential",
+    name: "Essential",
+    duration: "6 months",
+    description: "Entry-level gloss and hydrophobic protection",
+    popular: true,
+  },
+  {
+    key: "standard",
+    name: "Standard",
+    duration: "1 year",
+    description: "Durable sealant for everyday driving",
+  },
+  {
+    key: "premium",
+    name: "Premium",
+    duration: "5 years",
+    description: "Ceramic-grade protection and deep shine",
+  },
+  {
+    key: "ultimate",
+    name: "Ultimate",
+    duration: "10 years",
+    description: "Showroom finish with maximum longevity",
+  },
+];
 
 interface ServiceTypeOpt {
   id: string;
@@ -43,6 +86,14 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
   const [customerName, setCustomerName] = useState("");
   const [readyByTime, setReadyByTime] = useState(defaultReadyBy());
   const [isPriority, setIsPriority] = useState(false);
+  const [includeInspection, setIncludeInspection] = useState(false);
+  const [includeFreshScent, setIncludeFreshScent] = useState(false);
+  const [includePaintProtection, setIncludePaintProtection] = useState(false);
+  const [paintProtectionTier, setPaintProtectionTier] =
+    useState<PaintTier>("essential");
+  const [includePhotography, setIncludePhotography] = useState(false);
+  const [photographyPackage, setPhotographyPackage] =
+    useState<PhotoPackage>("standard");
 
   const site = useMemo(() => sites.find((s) => s.id === siteId), [sites, siteId]);
   const departments = site?.departments ?? [];
@@ -169,6 +220,241 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
           </span>
         </button>
 
+        {/* ---- Vehicle inspection ---- */}
+        <button
+          type="button"
+          onClick={() => setIncludeInspection((v) => !v)}
+          className={cn(
+            "w-full rounded-lg border-2 px-4 py-3 text-left transition",
+            includeInspection
+              ? "border-warning bg-warning/10"
+              : "border-line bg-white",
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              className={cn(
+                "flex items-center gap-2 font-semibold",
+                includeInspection ? "text-warning" : "text-slate",
+              )}
+            >
+              <ShieldCheck className="h-5 w-5" />
+              Include pre-valet vehicle inspection (+5 mins)
+            </span>
+            <span
+              className={cn(
+                "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition",
+                includeInspection ? "bg-warning" : "bg-line",
+              )}
+            >
+              <span
+                className={cn(
+                  "h-5 w-5 rounded-full bg-white transition",
+                  includeInspection && "translate-x-5",
+                )}
+              />
+            </span>
+          </div>
+          <p className="mt-1 pl-7 text-sm text-slate">
+            Photos taken before valeting protect against damage claims
+          </p>
+        </button>
+
+        {/* ---- Sensory add-ons ---- */}
+        <div className="rounded-xl border border-line bg-offwhite p-4">
+          <h3 className="font-heading text-lg font-bold text-navy">
+            CSI Sensory Standard Add-Ons
+          </h3>
+          <p className="mb-3 text-sm text-slate">
+            See it. Smell it. Feel it. Hear it.
+          </p>
+
+          <div className="space-y-3">
+            {/* Fresh scent */}
+            <button
+              type="button"
+              onClick={() => setIncludeFreshScent((v) => !v)}
+              className={cn(
+                "w-full rounded-lg border-2 px-4 py-3 text-left transition",
+                includeFreshScent
+                  ? "border-success bg-success/10"
+                  : "border-line bg-white",
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <span
+                  className={cn(
+                    "flex items-center gap-2 font-semibold",
+                    includeFreshScent ? "text-success" : "text-slate",
+                  )}
+                >
+                  <Sparkles className="h-5 w-5" />
+                  Fresh Scent (+2 mins)
+                </span>
+                <span
+                  className={cn(
+                    "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition",
+                    includeFreshScent ? "bg-success" : "bg-line",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-5 w-5 rounded-full bg-white transition",
+                      includeFreshScent && "translate-x-5",
+                    )}
+                  />
+                </span>
+              </div>
+              <p className="mt-1 pl-7 text-sm text-slate">
+                Premium cabin fragrance — improves customer CSI scores
+              </p>
+            </button>
+
+            {/* Paint protection */}
+            <button
+              type="button"
+              onClick={() => setIncludePaintProtection((v) => !v)}
+              className={cn(
+                "w-full rounded-lg border-2 px-4 py-3 text-left transition",
+                includePaintProtection
+                  ? "border-cyan bg-cyan/10"
+                  : "border-line bg-white",
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <span
+                  className={cn(
+                    "flex items-center gap-2 font-semibold",
+                    includePaintProtection ? "text-navy" : "text-slate",
+                  )}
+                >
+                  <Droplets className="h-5 w-5 text-cyan-600" />
+                  Paint Protection (+60 mins)
+                </span>
+                <span
+                  className={cn(
+                    "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition",
+                    includePaintProtection ? "bg-cyan" : "bg-line",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-5 w-5 rounded-full bg-white transition",
+                      includePaintProtection && "translate-x-5",
+                    )}
+                  />
+                </span>
+              </div>
+            </button>
+
+            {includePaintProtection && (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {PAINT_TIERS.map((tier) => {
+                  const selected = paintProtectionTier === tier.key;
+                  return (
+                    <button
+                      key={tier.key}
+                      type="button"
+                      onClick={() => setPaintProtectionTier(tier.key)}
+                      className={cn(
+                        "rounded-lg border-2 p-3 text-left transition",
+                        selected
+                          ? "border-cyan bg-cyan/10 ring-2 ring-cyan/30"
+                          : "border-line bg-white hover:border-cyan/50",
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-heading font-bold text-navy">
+                          {tier.name}
+                        </span>
+                        {tier.popular && (
+                          <span className="rounded-full bg-cyan px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy">
+                            Popular
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-cyan-600">
+                        {tier.duration}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate">
+                        {tier.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ---- Photography ---- */}
+        <div className="rounded-xl border border-line bg-offwhite p-4">
+          <button
+            type="button"
+            onClick={() => setIncludePhotography((v) => !v)}
+            className={cn(
+              "w-full rounded-lg border-2 px-4 py-3 text-left transition",
+              includePhotography ? "border-cyan bg-cyan/10" : "border-line bg-white",
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className={cn(
+                  "flex items-center gap-2 font-semibold",
+                  includePhotography ? "text-navy" : "text-slate",
+                )}
+              >
+                <Camera className="h-5 w-5 text-cyan-600" />
+                Vehicle Photography
+              </span>
+              <span
+                className={cn(
+                  "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition",
+                  includePhotography ? "bg-cyan" : "bg-line",
+                )}
+              >
+                <span
+                  className={cn(
+                    "h-5 w-5 rounded-full bg-white transition",
+                    includePhotography && "translate-x-5",
+                  )}
+                />
+              </span>
+            </div>
+            <p className="mt-1 pl-7 text-sm text-slate">
+              Professional photo set shared with the dealership for listings
+            </p>
+          </button>
+
+          {includePhotography && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {PHOTO_PACKAGES.map((p) => {
+                const selected = photographyPackage === p.key;
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setPhotographyPackage(p.key)}
+                    className={cn(
+                      "rounded-lg border-2 p-3 text-center transition",
+                      selected
+                        ? "border-cyan bg-cyan/10 ring-2 ring-cyan/30"
+                        : "border-line bg-white hover:border-cyan/50",
+                    )}
+                  >
+                    <span className="block font-heading font-bold text-navy">
+                      {p.name}
+                    </span>
+                    <span className="block text-sm text-cyan-600">
+                      {p.count} photos
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {create.error && (
           <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
             {create.error.message}
@@ -186,6 +472,12 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
               customerName: customerName.trim(),
               readyByTime: new Date(readyByTime),
               isPriority,
+              includeInspection,
+              includeFreshScent,
+              paintProtectionTier: includePaintProtection
+                ? paintProtectionTier
+                : null,
+              photographyPackage: includePhotography ? photographyPackage : null,
             })
           }
           className="h-14 w-full rounded-lg bg-cyan font-heading text-lg font-bold text-navy transition hover:bg-cyan-600 disabled:opacity-60"

@@ -12,10 +12,29 @@ const SITE_NAMES = [
 const DEPARTMENT_NAMES = ["New Car Sales", "Used Car Sales", "Service"];
 
 const SERVICE_TYPES = [
-  { name: "Full Valet", durationMins: 90 },
-  { name: "Mini Valet", durationMins: 45 },
-  { name: "Showroom Prep", durationMins: 30 },
-  { name: "Handover Detail", durationMins: 60 },
+  { name: "Full Valet", durationMins: 90, nominalCode: "4000" },
+  { name: "Mini Valet", durationMins: 45, nominalCode: "4000" },
+  { name: "Showroom Prep", durationMins: 30, nominalCode: "4010" },
+  { name: "Handover Detail", durationMins: 60, nominalCode: "4010" },
+  { name: "Paint Protection — Essential (6 months)", durationMins: 60, nominalCode: "4020" },
+  { name: "Paint Protection — Standard (1 year)", durationMins: 60, nominalCode: "4020" },
+  { name: "Paint Protection — Premium (5 years)", durationMins: 60, nominalCode: "4020" },
+  { name: "Paint Protection — Ultimate (10 years)", durationMins: 60, nominalCode: "4020" },
+  { name: "Vehicle Photography", durationMins: 30, nominalCode: "4030" },
+];
+
+const PLATFORM_CONFIG: Array<{ key: string; value: string; isSecret: boolean }> = [
+  { key: "XERO_CLIENT_ID", value: "", isSecret: true },
+  { key: "XERO_CLIENT_SECRET", value: "", isSecret: true },
+  { key: "XERO_REDIRECT_URI", value: "", isSecret: false },
+  { key: "PLATFORM_NAME", value: "iValeter", isSecret: false },
+  { key: "SUPPORT_EMAIL", value: "support@ivaleter.co.uk", isSecret: false },
+  { key: "DEFAULT_LEAVE_DAYS", value: "28", isSecret: false },
+  { key: "FLAG_VEHICLE_INSPECTION", value: "true", isSecret: false },
+  { key: "FLAG_PHOTOGRAPHY", value: "true", isSecret: false },
+  { key: "FLAG_PAINT_PROTECTION", value: "true", isSecret: false },
+  { key: "FLAG_FRESH_SCENT", value: "true", isSecret: false },
+  { key: "FLAG_XERO", value: "true", isSecret: false },
 ];
 
 const VALETER_NAMES: Array<[string, string]> = [
@@ -61,17 +80,38 @@ async function main() {
   await prisma.holidayRequest.deleteMany();
   await prisma.leaveAllowance.deleteMany();
   await prisma.invoice.deleteMany();
+  await prisma.xeroNominalMapping.deleteMany();
+  await prisma.xeroConnection.deleteMany();
   await prisma.serviceType.deleteMany();
   await prisma.department.deleteMany();
   await prisma.user.deleteMany();
   await prisma.site.deleteMany();
   await prisma.organisation.deleteMany();
+  await prisma.platformConfig.deleteMany();
+
+  console.log("Seeding platform config...");
+  for (const cfg of PLATFORM_CONFIG) {
+    await prisma.platformConfig.create({ data: cfg });
+  }
 
   const passwordHash = (pw: string) => bcrypt.hashSync(pw, 10);
 
   console.log("Creating organisation...");
   const org = await prisma.organisation.create({
-    data: { name: "Total Valeting", slug: "totalvaleting", plan: "enterprise" },
+    data: {
+      name: "Total Valeting",
+      slug: "totalvaleting",
+      plan: "enterprise",
+      contactEmail: "hello@totalvaleting.co.uk",
+      contactPhone: "01908 000000",
+      billingAddress: "1 Valet Way, Milton Keynes, MK1 1AA",
+      vatNumber: "GB123456789",
+      featureInspection: true,
+      featurePhotography: true,
+      featureFreshScent: true,
+      featurePaintProtection: true,
+      featureXero: true,
+    },
   });
 
   console.log("Creating sites, departments, service types...");
@@ -95,6 +135,7 @@ async function main() {
             departmentId: dept.id,
             name: st.name,
             durationMins: st.durationMins,
+            nominalCode: st.nominalCode,
           },
         });
       }
@@ -198,10 +239,19 @@ async function main() {
     const status = statuses[i]!;
     const siteEntry = sites[i % sites.length]!;
     const dept = siteEntry.departments[i % siteEntry.departments.length]!;
-    const serviceType = await prisma.serviceType.findFirst({
-      where: { departmentId: dept.id },
-      orderBy: { durationMins: i % 2 === 0 ? "desc" : "asc" },
-    });
+    const isPhotographyJob = i % 7 === 3;
+    const serviceType = isPhotographyJob
+      ? await prisma.serviceType.findFirst({
+          where: { departmentId: dept.id, name: "Vehicle Photography" },
+        })
+      : await prisma.serviceType.findFirst({
+          where: { departmentId: dept.id, name: { not: "Vehicle Photography" } },
+          orderBy: { durationMins: i % 2 === 0 ? "desc" : "asc" },
+        });
+    const PHOTO_PACKAGES = ["standard", "premium", "full"];
+    const photographyPackage = isPhotographyJob
+      ? (PHOTO_PACKAGES[i % PHOTO_PACKAGES.length] ?? "standard")
+      : null;
     const dealershipUser = dealershipUsers[i % sites.length]!;
     const isPriority = i % 4 === 0; // 5 priority jobs
 
@@ -220,6 +270,19 @@ async function main() {
     const readyByTime =
       status === BookingStatus.COMPLETED ? hoursFromNow(-(i % 3)) : hoursFromNow(1 + (i % 6));
 
+    // Sprinkle add-ons across bookings so the new features are visible on login.
+    const includeInspection = i % 4 === 1;
+    const inspectionComplete =
+      includeInspection &&
+      status !== BookingStatus.ASSIGNED &&
+      status !== BookingStatus.PENDING;
+    const includeFreshScent = i % 3 === 0;
+    const PAINT_TIERS = ["essential", "standard", "premium", "ultimate"];
+    const paintProtectionTier =
+      i % 5 === 2
+        ? (PAINT_TIERS[Math.floor(i / 5) % PAINT_TIERS.length] ?? "premium")
+        : null;
+
     const booking = await prisma.booking.create({
       data: {
         organisationId: org.id,
@@ -234,6 +297,15 @@ async function main() {
         status,
         isPriority,
         readyByTime,
+        includeInspection,
+        inspectionComplete,
+        includeFreshScent,
+        paintProtectionTier,
+        photographyPackage,
+        freshScentConfirmed:
+          includeFreshScent && status === BookingStatus.COMPLETED,
+        paintProtectionApplied:
+          paintProtectionTier != null && status === BookingStatus.COMPLETED,
         assignedToId: assignedTo?.id ?? null,
         createdById: dealershipUser.id,
         completedAt,
@@ -287,6 +359,35 @@ async function main() {
       adminNote: "Approved — enjoy!",
     },
   });
+
+  console.log("Creating invoices...");
+  const now = new Date();
+  const periodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const periodEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  for (let i = 0; i < sites.length; i++) {
+    const s = sites[i]!;
+    const lineItems = [
+      { description: "Full Valet x12", quantity: 12, unitAmount: 45, nominalCode: "4000" },
+      { description: "Mini Valet x8", quantity: 8, unitAmount: 25, nominalCode: "4000" },
+      { description: "Paint Protection x3", quantity: 3, unitAmount: 120, nominalCode: "4020" },
+    ];
+    const totalAmount = lineItems.reduce(
+      (acc, li) => acc + li.quantity * li.unitAmount,
+      0,
+    );
+    await prisma.invoice.create({
+      data: {
+        organisationId: org.id,
+        siteId: s.site.id,
+        periodStart,
+        periodEnd,
+        status: i === 0 ? "SENT" : "DRAFT",
+        lineItems,
+        totalAmount,
+        issuedAt: i === 0 ? periodEnd : null,
+      },
+    });
+  }
 
   console.log("\nSeed complete.");
   console.log("Login credentials:");

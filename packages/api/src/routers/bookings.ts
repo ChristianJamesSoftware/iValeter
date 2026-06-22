@@ -130,6 +130,12 @@ export const bookingsRouter = router({
         customerName: z.string().min(1),
         readyByTime: z.date(),
         isPriority: z.boolean().default(false),
+        includeInspection: z.boolean().default(false),
+        includeFreshScent: z.boolean().default(false),
+        paintProtectionTier: z
+          .enum(["essential", "standard", "premium", "ultimate"])
+          .nullish(),
+        photographyPackage: z.enum(["standard", "premium", "full"]).nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -164,6 +170,10 @@ export const bookingsRouter = router({
           customerName: input.customerName.trim(),
           readyByTime: input.readyByTime,
           isPriority: input.isPriority,
+          includeInspection: input.includeInspection,
+          includeFreshScent: input.includeFreshScent,
+          paintProtectionTier: input.paintProtectionTier ?? null,
+          photographyPackage: input.photographyPackage ?? null,
           createdById: ctx.session.userId,
           status: BookingStatus.PENDING,
         },
@@ -247,6 +257,18 @@ export const bookingsRouter = router({
         }
       }
 
+      // A required pre-valet inspection must be completed before work starts.
+      if (
+        input.toStatus === BookingStatus.IN_PROGRESS &&
+        booking.includeInspection &&
+        !booking.inspectionComplete
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Complete the vehicle inspection before starting this job",
+        });
+      }
+
       const completedAt =
         input.toStatus === BookingStatus.COMPLETED ? new Date() : booking.completedAt;
 
@@ -266,5 +288,109 @@ export const bookingsRouter = router({
       });
 
       return updated;
+    }),
+
+  /**
+   * Photos for a booking. Dealership users only ever see photography-stage
+   * photos — inspection photos are internal to the valeting company.
+   */
+  getPhotos: protectedProcedure
+    .input(z.object({ bookingId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id: input.bookingId, ...scopeFor(ctx.session) },
+      });
+      if (!booking) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+      }
+      return ctx.prisma.jobPhoto.findMany({
+        where: {
+          bookingId: booking.id,
+          ...(ctx.session.role === "dealership_user"
+            ? { stage: "photography" }
+            : {}),
+        },
+        orderBy: { createdAt: "asc" },
+      });
+    }),
+
+  /** Store a single inspection/job photo against a booking. */
+  uploadPhoto: protectedProcedure
+    .input(
+      z.object({
+        bookingId: z.string(),
+        photoData: z.string().min(1),
+        type: z.string().min(1),
+        stage: z.enum(["pre_valet", "post_valet", "photography"]).default("pre_valet"),
+        label: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id: input.bookingId, ...scopeFor(ctx.session) },
+      });
+      if (!booking) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+      }
+
+      // MVP storage: keep the base64 payload inline as a data URL.
+      const url = input.photoData.startsWith("data:")
+        ? input.photoData
+        : `data:image/jpeg;base64,${input.photoData}`;
+
+      return ctx.prisma.jobPhoto.create({
+        data: {
+          bookingId: booking.id,
+          url,
+          type: input.type,
+          stage: input.stage,
+          label: input.label,
+        },
+      });
+    }),
+
+  /** Mark the pre-valet inspection as complete. */
+  completeInspection: protectedProcedure
+    .input(z.object({ bookingId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id: input.bookingId, ...scopeFor(ctx.session) },
+      });
+      if (!booking) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+      }
+
+      return ctx.prisma.booking.update({
+        where: { id: booking.id },
+        data: { inspectionComplete: true },
+      });
+    }),
+
+  /** Confirm sensory add-ons were applied during job completion. */
+  confirmAddOns: protectedProcedure
+    .input(
+      z.object({
+        bookingId: z.string(),
+        freshScentConfirmed: z.boolean().optional(),
+        paintProtectionApplied: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id: input.bookingId, ...scopeFor(ctx.session) },
+      });
+      if (!booking) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+      }
+
+      return ctx.prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          freshScentConfirmed:
+            input.freshScentConfirmed ?? booking.freshScentConfirmed,
+          paintProtectionApplied:
+            input.paintProtectionApplied ?? booking.paintProtectionApplied,
+        },
+      });
     }),
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { BookingStatus } from "@ivaleter/db";
 import { trpc } from "@/lib/trpc/react";
 import { formatDateTime, formatTime, cn } from "@/lib/utils";
@@ -80,8 +81,13 @@ export function BookingHistory() {
             ) : (
               query.data.map((b) => (
                 <tr key={b.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-heading font-bold text-navy">
-                    {b.vehicleReg}
+                  <td className="px-4 py-3 font-heading font-bold">
+                    <Link
+                      href={`/dealership/bookings/${b.id}`}
+                      className="text-navy underline-offset-2 hover:text-cyan-600 hover:underline"
+                    >
+                      {b.vehicleReg}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-slate">{b.customerName}</td>
                   <td className="px-4 py-3 text-slate">{b.serviceType.name}</td>

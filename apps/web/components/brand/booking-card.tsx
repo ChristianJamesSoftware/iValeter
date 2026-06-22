@@ -15,6 +15,10 @@ export interface BookingCardData {
   serviceType: { name: string };
   site?: { name: string } | null;
   department?: { name: string } | null;
+  includeInspection?: boolean;
+  inspectionComplete?: boolean;
+  includeFreshScent?: boolean;
+  paintProtectionTier?: string | null;
 }
 
 export function BookingCard({
@@ -24,6 +28,8 @@ export function BookingCard({
   booking: BookingCardData;
   href: string;
 }) {
+  const inspectionDue =
+    !!booking.includeInspection && !booking.inspectionComplete;
   return (
     <Link
       href={href}
@@ -48,6 +54,26 @@ export function BookingCard({
         </div>
         <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate" />
       </div>
+
+      {(inspectionDue || booking.includeFreshScent || booking.paintProtectionTier) && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {inspectionDue && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-warning px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white animate-priority-pulse">
+              Inspection
+            </span>
+          )}
+          {booking.includeFreshScent && (
+            <span className="rounded-full bg-success px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+              Fresh Scent
+            </span>
+          )}
+          {booking.paintProtectionTier && (
+            <span className="rounded-full bg-cyan px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy">
+              Paint Protection
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <div className="min-w-0 text-sm text-slate">

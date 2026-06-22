@@ -54,4 +54,43 @@ export const sitesRouter = router({
         include: { departments: true },
       });
     }),
+
+  update: orgAdminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).optional(),
+        address: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.id, organisationId: ctx.session.organisationId },
+      });
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+      return ctx.prisma.site.update({
+        where: { id: site.id },
+        data: {
+          name: input.name?.trim() ?? site.name,
+          address: input.address ?? site.address,
+        },
+      });
+    }),
+
+  setActive: orgAdminProcedure
+    .input(z.object({ id: z.string(), isActive: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.id, organisationId: ctx.session.organisationId },
+      });
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+      return ctx.prisma.site.update({
+        where: { id: site.id },
+        data: { isActive: input.isActive },
+      });
+    }),
 });

@@ -21,6 +21,10 @@ export default async function ValeterHomePage() {
     serviceType: { name: b.serviceType.name },
     department: b.department ? { name: b.department.name } : null,
     site: b.site ? { name: b.site.name } : null,
+    includeInspection: b.includeInspection,
+    inspectionComplete: b.inspectionComplete,
+    includeFreshScent: b.includeFreshScent,
+    paintProtectionTier: b.paintProtectionTier,
   }));
 
   return (

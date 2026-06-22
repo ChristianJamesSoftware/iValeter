@@ -5,6 +5,8 @@ import {
   Users,
   CalendarDays,
   Building2,
+  Settings,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 
@@ -14,7 +16,9 @@ export type NavIconName =
   | "new"
   | "team"
   | "holiday"
-  | "building";
+  | "building"
+  | "settings"
+  | "billing";
 
 export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -23,4 +27,6 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   team: Users,
   holiday: CalendarDays,
   building: Building2,
+  settings: Settings,
+  billing: Receipt,
 };
