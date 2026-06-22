@@ -13,3 +13,7 @@ export {
   getPlatformConfigMany,
   setPlatformConfig,
 } from "./lib/platform-config";
+export {
+  buildXeroAuthUrl,
+  handleXeroCallback,
+} from "./lib/xero";
