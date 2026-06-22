@@ -7,6 +7,7 @@ import { Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import type { NavItem } from "./app-sidebar";
+import { NAV_ICONS } from "./nav-icons";
 import { logoutAction } from "@/app/(auth)/login/actions";
 
 export function MobileNav({
@@ -39,7 +40,7 @@ export function MobileNav({
               const active =
                 pathname === item.href ||
                 (item.href !== "/" && pathname.startsWith(`${item.href}/`));
-              const Icon = item.icon;
+              const Icon = NAV_ICONS[item.icon];
               return (
                 <Link
                   key={item.href}

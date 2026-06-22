@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
 import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { logoutAction } from "@/app/(auth)/login/actions";
+import { NAV_ICONS, type NavIconName } from "./nav-icons";
 
 export interface NavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: NavIconName;
 }
 
 export function AppSidebar({
@@ -36,7 +36,7 @@ export function AppSidebar({
           const active =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(`${item.href}/`));
-          const Icon = item.icon;
+          const Icon = NAV_ICONS[item.icon];
           return (
             <Link
               key={item.href}
