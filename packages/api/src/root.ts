@@ -6,6 +6,7 @@ import { sitesRouter } from "./routers/sites";
 import { holidayRouter } from "./routers/holiday";
 import { analyticsRouter } from "./routers/analytics";
 import { platformRouter } from "./routers/platform";
+import { orgSettingsRouter } from "./routers/org-settings";
 
 export const appRouter = router({
   auth: authRouter,
@@ -15,6 +16,7 @@ export const appRouter = router({
   holiday: holidayRouter,
   analytics: analyticsRouter,
   platform: platformRouter,
+  orgSettings: orgSettingsRouter,
 });
 
 export type AppRouter = typeof appRouter;

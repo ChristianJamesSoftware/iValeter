@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./trpc": "./src/trpc.ts",
-    "./auth": "./src/auth.ts"
+    "./auth": "./src/auth.ts",
+    "./plans": "./src/lib/plans.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
