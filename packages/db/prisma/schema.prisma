@@ -12,11 +12,27 @@ model Organisation {
   name      String
   slug      String   @unique
   plan      String   @default("starter")
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  sites    Site[]
-  users    User[]
-  invoices Invoice[]
+  // Profile
+  logoUrl        String?
+  billingAddress String?
+  vatNumber      String?
+  contactEmail   String?
+  contactPhone   String?
+
+  // Feature flags (defaults seeded from platform-level flags)
+  featureInspection      Boolean @default(true)
+  featurePhotography     Boolean @default(false)
+  featureFreshScent      Boolean @default(true)
+  featurePaintProtection Boolean @default(true)
+  featureXero            Boolean @default(false)
+
+  sites          Site[]
+  users          User[]
+  invoices       Invoice[]
+  xeroConnection XeroConnection?
 }
 
 model Site {
@@ -25,6 +41,7 @@ model Site {
   organisation   Organisation @relation(fields: [organisationId], references: [id])
   name           String
   address        String?
+  isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
 
   departments Department[]
@@ -86,6 +103,7 @@ model ServiceType {
   name         String
   durationMins Int
   isActive     Boolean    @default(true)
+  nominalCode  String? // Xero nominal/account code for invoicing
 
   bookings Booking[]
 
@@ -118,6 +136,7 @@ model Booking {
   paintProtectionTier    String? // null | "essential" | "standard" | "premium" | "ultimate"
   freshScentConfirmed    Boolean @default(false)
   paintProtectionApplied Boolean @default(false)
+  photographyPackage     String? // null | "standard" | "premium" | "full"
 
   assignedToId String?
   assignedTo   User?   @relation("AssignedValeter", fields: [assignedToId], references: [id])
@@ -219,6 +238,11 @@ model Invoice {
   paidAt         DateTime?
   createdAt      DateTime      @default(now())
 
+  xeroInvoiceId     String?
+  xeroInvoiceNumber String?
+  xeroStatus        String? // "DRAFT" | "SUBMITTED" | "AUTHORISED" | "PAID"
+  pushedToXeroAt    DateTime?
+
   @@index([organisationId])
 }
 
@@ -227,4 +251,45 @@ enum InvoiceStatus {
   SENT
   PAID
   OVERDUE
+}
+
+model PlatformConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  isSecret  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+model XeroConnection {
+  id             String       @id @default(cuid())
+  organisationId String       @unique
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  tenantId       String
+  tenantName     String
+  accessToken    String // encrypted
+  refreshToken   String // encrypted
+  tokenExpiresAt DateTime
+  isActive       Boolean      @default(true)
+  lastSyncAt     DateTime?
+  invoicePrefix  String       @default("IV-")
+  paymentTerms   Int          @default(30)
+  taxType        String       @default("OUTPUT2")
+  autoPush       String       @default("manual") // "generated" | "approved" | "manual"
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model XeroNominalMapping {
+  id              String   @id @default(cuid())
+  organisationId  String
+  serviceTypeId   String
+  xeroAccountCode String
+  xeroAccountId   String?
+  xeroAccountName String?
+  taxType         String   @default("OUTPUT2")
+  createdAt       DateTime @default(now())
+
+  @@unique([organisationId, serviceTypeId])
 }

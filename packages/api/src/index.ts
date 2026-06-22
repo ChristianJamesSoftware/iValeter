@@ -8,3 +8,8 @@ export {
   roleHomePath,
   type SessionPayload,
 } from "./auth";
+export {
+  getPlatformConfig,
+  getPlatformConfigMany,
+  setPlatformConfig,
+} from "./lib/platform-config";
