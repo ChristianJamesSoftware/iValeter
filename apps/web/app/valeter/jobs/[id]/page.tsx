@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, MapPin, Car, User } from "lucide-react";
+import {
+  ChevronLeft,
+  MapPin,
+  Car,
+  User,
+  CheckCircle2,
+  Sparkles,
+  Droplets,
+} from "lucide-react";
 import { TRPCError } from "@trpc/server";
 import { getServerApi } from "@/lib/trpc/server";
 import { formatTime, minutesToHuman } from "@/lib/utils";
@@ -11,12 +19,22 @@ import { JobStatusAction } from "@/components/valeter/job-status-action";
 
 export const dynamic = "force-dynamic";
 
+const TIER_NAMES: Record<string, string> = {
+  essential: "Essential",
+  standard: "Standard",
+  premium: "Premium",
+  ultimate: "Ultimate",
+};
+
 export default async function ValeterJobDetail({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ inspected?: string }>;
 }) {
   const { id } = await params;
+  const { inspected } = await searchParams;
   const api = await getServerApi();
 
   let booking;
@@ -60,9 +78,33 @@ export default async function ValeterJobDetail({
             />
           )}
         </div>
+        {(booking.includeFreshScent || booking.paintProtectionTier) && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {booking.includeFreshScent && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-success px-2.5 py-1 text-xs font-bold text-white">
+                <Sparkles className="h-3.5 w-3.5" /> Fresh Scent
+              </span>
+            )}
+            {booking.paintProtectionTier && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-cyan px-2.5 py-1 text-xs font-bold text-navy">
+                <Droplets className="h-3.5 w-3.5" /> Paint Protection —{" "}
+                {TIER_NAMES[booking.paintProtectionTier] ??
+                  booking.paintProtectionTier}
+              </span>
+            )}
+          </div>
+        )}
       </header>
 
       <div className="space-y-4 p-4">
+        {inspected && (
+          <div className="flex items-center gap-2 rounded-xl border border-success bg-success/10 p-4 text-success">
+            <CheckCircle2 className="h-5 w-5" />
+            <span className="font-semibold">
+              Inspection complete — you can now start the job.
+            </span>
+          </div>
+        )}
         <section className="rounded-xl border border-line bg-white p-4">
           <Row icon={User} label="Customer" value={booking.customerName} />
           <Row
@@ -105,7 +147,16 @@ export default async function ValeterJobDetail({
           )}
         </section>
 
-        <JobStatusAction bookingId={booking.id} status={booking.status} />
+        <JobStatusAction
+          booking={{
+            id: booking.id,
+            status: booking.status,
+            includeInspection: booking.includeInspection,
+            inspectionComplete: booking.inspectionComplete,
+            includeFreshScent: booking.includeFreshScent,
+            paintProtectionTier: booking.paintProtectionTier,
+          }}
+        />
       </div>
     </div>
   );
