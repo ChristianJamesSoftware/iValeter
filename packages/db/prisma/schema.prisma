@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organisation {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("starter")
+  createdAt DateTime @default(now())
+
+  sites    Site[]
+  users    User[]
+  invoices Invoice[]
+}
+
+model Site {
+  id             String       @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  name           String
+  address        String?
+  createdAt      DateTime     @default(now())
+
+  departments Department[]
+  bookings    Booking[]
+  users       User[]
+
+  @@index([organisationId])
+}
+
+model Department {
+  id     String @id @default(cuid())
+  siteId String
+  site   Site   @relation(fields: [siteId], references: [id])
+  name   String
+
+  bookings     Booking[]
+  serviceTypes ServiceType[]
+
+  @@index([siteId])
+}
+
+model User {
+  id             String       @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  siteId         String?
+  site           Site?        @relation(fields: [siteId], references: [id])
+  email          String       @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  role           Role
+  skills         String[]
+  avatarUrl      String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  assignedBookings Booking[]          @relation("AssignedValeter")
+  createdBookings  Booking[]          @relation("CreatedBy")
+  statusHistory    JobStatusHistory[]
+  holidayRequests  HolidayRequest[]
+  leaveAllowance   LeaveAllowance?
+
+  @@index([organisationId])
+  @@index([siteId])
+}
+
+enum Role {
+  super_admin
+  org_admin
+  dealership_user
+  valeter
+}
+
+model ServiceType {
+  id           String     @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  name         String
+  durationMins Int
+  isActive     Boolean    @default(true)
+
+  bookings Booking[]
+
+  @@index([departmentId])
+}
+
+model Booking {
+  id             String      @id @default(cuid())
+  organisationId String
+  siteId         String
+  site           Site        @relation(fields: [siteId], references: [id])
+  departmentId   String
+  department     Department  @relation(fields: [departmentId], references: [id])
+  serviceTypeId  String
+  serviceType    ServiceType @relation(fields: [serviceTypeId], references: [id])
+
+  vehicleReg    String
+  vehicleMake   String?
+  vehicleModel  String?
+  vehicleColour String?
+  customerName  String
+
+  status      BookingStatus @default(PENDING)
+  isPriority  Boolean       @default(false)
+  readyByTime DateTime
+
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedValeter", fields: [assignedToId], references: [id])
+  createdById  String
+  createdBy    User    @relation("CreatedBy", fields: [createdById], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  statusHistory JobStatusHistory[]
+  photos        JobPhoto[]
+
+  @@index([organisationId])
+  @@index([siteId])
+  @@index([departmentId])
+  @@index([assignedToId])
+  @@index([status])
+}
+
+enum BookingStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  QC_CHECK
+  COMPLETED
+  CANCELLED
+}
+
+model JobStatusHistory {
+  id         String        @id @default(cuid())
+  bookingId  String
+  booking    Booking       @relation(fields: [bookingId], references: [id])
+  userId     String
+  user       User          @relation(fields: [userId], references: [id])
+  fromStatus BookingStatus?
+  toStatus   BookingStatus
+  note       String?
+  createdAt  DateTime      @default(now())
+
+  @@index([bookingId])
+}
+
+model JobPhoto {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  url       String
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
+}
+
+model HolidayRequest {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  status    HolidayStatus @default(PENDING)
+  adminNote String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([userId])
+}
+
+enum HolidayStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LeaveAllowance {
+  id        String @id @default(cuid())
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id])
+  year      Int
+  totalDays Int    @default(28)
+  usedDays  Float  @default(0)
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  organisationId String
+  organisation   Organisation  @relation(fields: [organisationId], references: [id])
+  siteId         String?
+  periodStart    DateTime
+  periodEnd      DateTime
+  status         InvoiceStatus @default(DRAFT)
+  lineItems      Json
+  totalAmount    Float
+  currency       String        @default("GBP")
+  issuedAt       DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@index([organisationId])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+}
