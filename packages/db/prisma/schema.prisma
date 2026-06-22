@@ -7,6 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ORGANISATION
+// ─────────────────────────────────────────────────────────────────────────────
+
 model Organisation {
   id        String   @id @default(cuid())
   name      String
@@ -22,18 +26,42 @@ model Organisation {
   contactEmail   String?
   contactPhone   String?
 
+<<<<<<< HEAD
+  // Feature flags
+=======
   // Feature flags (defaults seeded from platform-level flags)
+>>>>>>> origin/main
   featureInspection      Boolean @default(true)
   featurePhotography     Boolean @default(false)
   featureFreshScent      Boolean @default(true)
   featurePaintProtection Boolean @default(true)
   featureXero            Boolean @default(false)
+<<<<<<< HEAD
+  // Phase 1 feature flags
+  featureGeofencing      Boolean @default(false)
+  featureTimesheets      Boolean @default(false)
+  featurePayroll         Boolean @default(false)
+  featureCustomerPortal  Boolean @default(false)
+
+  sites            Site[]
+  users            User[]
+  invoices         Invoice[]
+  customerInvoices CustomerInvoice[]
+  payRuns          PayRun[]
+  xeroConnection   XeroConnection?
+=======
 
   sites          Site[]
   users          User[]
   invoices       Invoice[]
   xeroConnection XeroConnection?
+>>>>>>> origin/main
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SITE
+// Extended: geofence, billing terms, account manager, customer contact
+// ─────────────────────────────────────────────────────────────────────────────
 
 model Site {
   id             String       @id @default(cuid())
@@ -44,12 +72,50 @@ model Site {
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
 
-  departments Department[]
-  bookings    Booking[]
-  users       User[]
+  // Geofencing
+  geofenceLat          Float?
+  geofenceLng          Float?
+  geofenceRadiusMetres Int?   @default(100)
+
+  // Customer billing config
+  billingCycle  BillingCycle @default(WEEKLY)
+  paymentTerms  PaymentTerms @default(NET14)
+  xeroContactId String?
+
+  // Customer contact (receives timesheet approval + weekly review emails)
+  customerContactName  String?
+  customerContactEmail String?
+
+  // Account manager from Total Valeting assigned to this site
+  accountManagerUserId String?
+  accountManager       User?   @relation("AccountManagerSites", fields: [accountManagerUserId], references: [id])
+
+  departments      Department[]
+  bookings         Booking[]
+  users            User[]
+  clockEvents      ClockEvent[]
+  timesheets       Timesheet[]
+  customerInvoices CustomerInvoice[]
+  audits           Audit[]
+  weeklyReviews    WeeklyReview[]
 
   @@index([organisationId])
 }
+
+enum BillingCycle {
+  WEEKLY
+  MONTHLY
+}
+
+enum PaymentTerms {
+  NET14
+  MONTH_END
+  MONTH_END_PLUS1
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEPARTMENT
+// ─────────────────────────────────────────────────────────────────────────────
 
 model Department {
   id     String @id @default(cuid())
@@ -63,6 +129,11 @@ model Department {
   @@index([siteId])
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// USER
+// Extended: staffType (SITE/SSS), phone, NatWest Bankline fields
+// ─────────────────────────────────────────────────────────────────────────────
+
 model User {
   id             String       @id @default(cuid())
   organisationId String
@@ -74,16 +145,34 @@ model User {
   firstName      String
   lastName       String
   role           Role
+  staffType      StaffType    @default(SITE)
   skills         String[]
   avatarUrl      String?
+  phone          String?
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
 
-  assignedBookings Booking[]          @relation("AssignedValeter")
-  createdBookings  Booking[]          @relation("CreatedBy")
-  statusHistory    JobStatusHistory[]
-  holidayRequests  HolidayRequest[]
-  leaveAllowance   LeaveAllowance?
+  // NatWest Bankline payroll fields
+  bankSortCode      String?
+  bankAccountNumber String?
+  bankAccountName   String?
+  bankReference     String?
+
+  assignedBookings     Booking[]          @relation("AssignedValeter")
+  createdBookings      Booking[]          @relation("CreatedBy")
+  statusHistory        JobStatusHistory[]
+  holidayRequests      HolidayRequest[]
+  leaveAllowance       LeaveAllowance?
+  clockEvents          ClockEvent[]
+  timesheets           Timesheet[]
+  payRunLines          PayRunLine[]
+  contractorRates      ContractorRate[]
+  auditsConducted      Audit[]
+  complaintsRaised     Complaint[]        @relation("RaisedBy")
+  complaintsRectified  Complaint[]        @relation("RectifiedBy")
+  accountManagerSites  Site[]             @relation("AccountManagerSites")
+  sentMessages         AccountManagerMessage[] @relation("MessageFrom")
+  receivedMessages     AccountManagerMessage[] @relation("MessageTo")
 
   @@index([organisationId])
   @@index([siteId])
@@ -96,19 +185,49 @@ enum Role {
   valeter
 }
 
+enum StaffType {
+  SITE // Fixed to one site
+  SSS  // Site Support Staff — mobile, covers any site
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SERVICE TYPE
+// Extended: description, category, chargeRate
+// ─────────────────────────────────────────────────────────────────────────────
+
 model ServiceType {
-  id           String     @id @default(cuid())
+  id           String          @id @default(cuid())
   departmentId String
-  department   Department @relation(fields: [departmentId], references: [id])
+  department   Department      @relation(fields: [departmentId], references: [id])
   name         String
+  description  String?
+  category     ServiceCategory @default(VALET)
   durationMins Int
+<<<<<<< HEAD
+  chargeRate   Float?
+  isActive     Boolean         @default(true)
+  nominalCode  String?
+=======
   isActive     Boolean    @default(true)
   nominalCode  String? // Xero nominal/account code for invoicing
+>>>>>>> origin/main
 
   bookings Booking[]
 
   @@index([departmentId])
 }
+
+enum ServiceCategory {
+  VALET    // Service Wash, Full Valet, New Car Prep, Paint Protection
+  PAINT    // Machine Polish, Special Polish
+  CLEANING // Showroom Clean, Office Clean, Toilet Clean
+  OTHER
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BOOKING
+// Extended: priorityLevel, keyNumber, vehicleLocation, notification fields
+// ─────────────────────────────────────────────────────────────────────────────
 
 model Booking {
   id             String      @id @default(cuid())
@@ -120,15 +239,27 @@ model Booking {
   serviceTypeId  String
   serviceType    ServiceType @relation(fields: [serviceTypeId], references: [id])
 
-  vehicleReg    String
-  vehicleMake   String?
-  vehicleModel  String?
-  vehicleColour String?
-  customerName  String
+  vehicleReg      String
+  vehicleMake     String?
+  vehicleModel    String?
+  vehicleColour   String?
+  customerName    String
+  keyNumber       String?
+  vehicleLocation String?
 
-  status      BookingStatus @default(PENDING)
-  isPriority  Boolean       @default(false)
-  readyByTime DateTime
+  status        BookingStatus @default(PENDING)
+  isPriority    Boolean       @default(false)
+  priorityLevel PriorityLevel @default(STANDARD)
+  readyByTime   DateTime
+
+  // Phase 2 add-ons (existing)
+  includeInspection      Boolean @default(false)
+  inspectionComplete     Boolean @default(false)
+  includeFreshScent      Boolean @default(false)
+  paintProtectionTier    String?
+  freshScentConfirmed    Boolean @default(false)
+  paintProtectionApplied Boolean @default(false)
+  photographyPackage     String?
 
   includeInspection      Boolean @default(false)
   inspectionComplete     Boolean @default(false)
@@ -147,14 +278,25 @@ model Booking {
   updatedAt   DateTime  @updatedAt
   completedAt DateTime?
 
+  // Completion notification
+  notifyEmail                String?
+  notifyPhone                String?
+  completionNotificationSent Boolean @default(false)
+
+  // Customer review note
+  customerReviewNote String?
+
   statusHistory JobStatusHistory[]
   photos        JobPhoto[]
+  complaints    Complaint[]
 
   @@index([organisationId])
   @@index([siteId])
   @@index([departmentId])
   @@index([assignedToId])
   @@index([status])
+  @@index([vehicleReg])
+  @@index([priorityLevel])
 }
 
 enum BookingStatus {
@@ -166,16 +308,22 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum PriorityLevel {
+  STANDARD
+  PRIORITY
+  URGENT
+}
+
 model JobStatusHistory {
-  id         String        @id @default(cuid())
+  id         String         @id @default(cuid())
   bookingId  String
-  booking    Booking       @relation(fields: [bookingId], references: [id])
+  booking    Booking        @relation(fields: [bookingId], references: [id])
   userId     String
-  user       User          @relation(fields: [userId], references: [id])
+  user       User           @relation(fields: [userId], references: [id])
   fromStatus BookingStatus?
   toStatus   BookingStatus
   note       String?
-  createdAt  DateTime      @default(now())
+  createdAt  DateTime       @default(now())
 
   @@index([bookingId])
 }
@@ -185,13 +333,373 @@ model JobPhoto {
   bookingId String
   booking   Booking  @relation(fields: [bookingId], references: [id])
   url       String
+<<<<<<< HEAD
+  type      String
+  stage     String   @default("pre_valet")
+  label     String?
+=======
   type      String   // "exterior_front" | "exterior_front_driver_corner" | "exterior_driver" | "exterior_rear_driver_corner" | "exterior_rear" | "exterior_rear_passenger_corner" | "exterior_passenger" | "exterior_front_passenger_corner" | "interior_front" | "interior_rear" | "boot" | "wheel_fl" | "wheel_fr" | "wheel_rl" | "wheel_rr" | "other"
   stage     String   @default("pre_valet") // "pre_valet" | "post_valet"
   label     String?  // human readable e.g. "Front of vehicle"
+>>>>>>> origin/main
   createdAt DateTime @default(now())
 
   @@index([bookingId])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLAINTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Complaint {
+  id             String          @id @default(cuid())
+  bookingId      String
+  booking        Booking         @relation(fields: [bookingId], references: [id])
+  raisedByUserId String
+  raisedBy       User            @relation("RaisedBy", fields: [raisedByUserId], references: [id])
+  note           String
+  status         ComplaintStatus @default(OPEN)
+
+  rectifiedByUserId String?
+  rectifiedBy       User?     @relation("RectifiedBy", fields: [rectifiedByUserId], references: [id])
+  rectifiedNote     String?
+  rectifiedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([status])
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RECTIFIED
+  CLOSED
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CLOCK EVENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ClockEvent {
+  id                String         @id @default(cuid())
+  userId            String
+  user              User           @relation(fields: [userId], references: [id])
+  siteId            String
+  site              Site           @relation(fields: [siteId], references: [id])
+  type              ClockEventType
+  timestamp         DateTime
+  lat               Float?
+  lng               Float?
+  geofenceTriggered Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+
+  @@index([userId])
+  @@index([siteId])
+  @@index([timestamp])
+}
+
+enum ClockEventType {
+  CLOCK_IN
+  CLOCK_OUT
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTRACTOR RATES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ContractorRate {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  hourlyRate    Float
+  overtimeRate  Float
+  effectiveFrom DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIMESHEETS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Timesheet {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id])
+  siteId       String
+  site         Site            @relation(fields: [siteId], references: [id])
+  weekStarting DateTime
+  weekEnding   DateTime
+
+  totalRegularHours  Float @default(0)
+  totalOvertimeHours Float @default(0)
+
+  status           TimesheetStatus @default(DRAFT)
+  approvedByUserId String?
+  approvedAt       DateTime?
+
+  sentToCustomerAt    DateTime?
+  customerAccepted    Boolean   @default(false)
+  customerAcceptedAt  DateTime?
+  autoAccepted        Boolean   @default(false)
+  customerDisputeNote String?
+  lateConfirmedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines      TimesheetLine[]
+  payRunLine PayRunLine?
+
+  @@unique([userId, weekStarting])
+  @@index([userId])
+  @@index([siteId])
+  @@index([status])
+}
+
+enum TimesheetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  DISPUTED
+  LOCKED
+}
+
+model TimesheetLine {
+  id          String    @id @default(cuid())
+  timesheetId String
+  timesheet   Timesheet @relation(fields: [timesheetId], references: [id])
+  date        DateTime
+
+  clockInTime  DateTime?
+  clockOutTime DateTime?
+  breakMins    Int       @default(60)
+
+  regularHours  Float @default(0)
+  overtimeHours Float @default(0)
+  note          String?
+
+  @@index([timesheetId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAY RUNS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PayRun {
+  id             String       @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  weekStarting   DateTime
+  weekEnding     DateTime
+  status         PayRunStatus @default(DRAFT)
+  exportedAt     DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  lines PayRunLine[]
+
+  @@unique([organisationId, weekStarting])
+  @@index([organisationId])
+}
+
+enum PayRunStatus {
+  DRAFT
+  APPROVED
+  EXPORTED
+  PAID
+}
+
+model PayRunLine {
+  id          String    @id @default(cuid())
+  payRunId    String
+  payRun      PayRun    @relation(fields: [payRunId], references: [id])
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  timesheetId String    @unique
+  timesheet   Timesheet @relation(fields: [timesheetId], references: [id])
+
+  regularHours  Float
+  overtimeHours Float
+  hourlyRate    Float
+  overtimeRate  Float
+  totalAmount   Float
+
+  bankSortCode      String?
+  bankAccountNumber String?
+  bankAccountName   String?
+  bankReference     String?
+
+  @@index([payRunId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOMER INVOICES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CustomerInvoice {
+  id             String                @id @default(cuid())
+  organisationId String
+  organisation   Organisation          @relation(fields: [organisationId], references: [id])
+  siteId         String
+  site           Site                  @relation(fields: [siteId], references: [id])
+  periodStart    DateTime
+  periodEnd      DateTime
+  billingCycle   BillingCycle
+  paymentTerms   PaymentTerms
+  dueDate        DateTime
+  status         CustomerInvoiceStatus @default(DRAFT)
+  totalAmount    Float
+  currency       String                @default("GBP")
+
+  xeroInvoiceId     String?
+  xeroInvoiceNumber String?
+  xeroSyncedAt      DateTime?
+
+  issuedAt  DateTime?
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  lineItems CustomerInvoiceLineItem[]
+
+  @@index([organisationId])
+  @@index([siteId])
+  @@index([status])
+}
+
+enum CustomerInvoiceStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DISPUTED
+  PAID
+  OVERDUE
+}
+
+model CustomerInvoiceLineItem {
+  id          String          @id @default(cuid())
+  invoiceId   String
+  invoice     CustomerInvoice @relation(fields: [invoiceId], references: [id])
+  description String
+  quantity    Float
+  unitAmount  Float
+  totalAmount Float
+  serviceType String?
+
+  @@index([invoiceId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDITS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Audit {
+  id                   String      @id @default(cuid())
+  siteId               String
+  site                 Site        @relation(fields: [siteId], references: [id])
+  accountManagerUserId String
+  accountManager       User        @relation(fields: [accountManagerUserId], references: [id])
+  visitDate            DateTime
+  overallScore         Float?
+  status               AuditStatus @default(DRAFT)
+  notes                String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  checklistItems AuditChecklistItem[]
+  weeklyReviews  WeeklyReviewAudit[]
+
+  @@index([siteId])
+  @@index([accountManagerUserId])
+}
+
+enum AuditStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model AuditChecklistItem {
+  id          String        @id @default(cuid())
+  auditId     String
+  audit       Audit         @relation(fields: [auditId], references: [id])
+  category    AuditCategory
+  description String
+  passed      Boolean
+  note        String?
+  photoUrl    String?
+
+  @@index([auditId])
+}
+
+enum AuditCategory {
+  SHOWROOM
+  FORECOURT
+  STANDARDS
+  FACILITIES
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEEKLY REVIEWS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WeeklyReview {
+  id                  String   @id @default(cuid())
+  siteId              String
+  site                Site     @relation(fields: [siteId], references: [id])
+  weekStarting        DateTime
+  generatedAt         DateTime @default(now())
+  totalJobsCompleted  Int
+  totalCostExVat      Float
+  complaintsRaised    Int      @default(0)
+  complaintsRectified Int      @default(0)
+  emailSentAt         DateTime?
+
+  audits WeeklyReviewAudit[]
+
+  @@unique([siteId, weekStarting])
+  @@index([siteId])
+}
+
+model WeeklyReviewAudit {
+  id             String       @id @default(cuid())
+  weeklyReviewId String
+  weeklyReview   WeeklyReview @relation(fields: [weeklyReviewId], references: [id])
+  auditId        String
+  audit          Audit        @relation(fields: [auditId], references: [id])
+
+  @@index([weeklyReviewId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACCOUNT MANAGER MESSAGES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AccountManagerMessage {
+  id         String    @id @default(cuid())
+  fromUserId String
+  from       User      @relation("MessageFrom", fields: [fromUserId], references: [id])
+  toUserId   String
+  to         User      @relation("MessageTo", fields: [toUserId], references: [id])
+  siteId     String
+  message    String
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([siteId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HOLIDAY / LEAVE
+// ─────────────────────────────────────────────────────────────────────────────
 
 model HolidayRequest {
   id        String        @id @default(cuid())
@@ -223,6 +731,10 @@ model LeaveAllowance {
   usedDays  Float  @default(0)
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LEGACY INVOICE (keep for now, superceded by CustomerInvoice)
+// ─────────────────────────────────────────────────────────────────────────────
+
 model Invoice {
   id             String        @id @default(cuid())
   organisationId String
@@ -240,7 +752,11 @@ model Invoice {
 
   xeroInvoiceId     String?
   xeroInvoiceNumber String?
+<<<<<<< HEAD
+  xeroStatus        String?
+=======
   xeroStatus        String? // "DRAFT" | "SUBMITTED" | "AUTHORISED" | "PAID"
+>>>>>>> origin/main
   pushedToXeroAt    DateTime?
 
   @@index([organisationId])
@@ -253,6 +769,13 @@ enum InvoiceStatus {
   OVERDUE
 }
 
+<<<<<<< HEAD
+// ─────────────────────────────────────────────────────────────────────────────
+// PLATFORM CONFIG & XERO (existing — unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+
+=======
+>>>>>>> origin/main
 model PlatformConfig {
   id        String   @id @default(cuid())
   key       String   @unique
@@ -268,15 +791,24 @@ model XeroConnection {
   organisation   Organisation @relation(fields: [organisationId], references: [id])
   tenantId       String
   tenantName     String
+<<<<<<< HEAD
+  accessToken    String
+  refreshToken   String
+=======
   accessToken    String // encrypted
   refreshToken   String // encrypted
+>>>>>>> origin/main
   tokenExpiresAt DateTime
   isActive       Boolean      @default(true)
   lastSyncAt     DateTime?
   invoicePrefix  String       @default("IV-")
   paymentTerms   Int          @default(30)
   taxType        String       @default("OUTPUT2")
+<<<<<<< HEAD
+  autoPush       String       @default("manual")
+=======
   autoPush       String       @default("manual") // "generated" | "approved" | "manual"
+>>>>>>> origin/main
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 }
