@@ -135,6 +135,7 @@ export const bookingsRouter = router({
         paintProtectionTier: z
           .enum(["essential", "standard", "premium", "ultimate"])
           .nullish(),
+        photographyPackage: z.enum(["standard", "premium", "full"]).nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -172,6 +173,7 @@ export const bookingsRouter = router({
           includeInspection: input.includeInspection,
           includeFreshScent: input.includeFreshScent,
           paintProtectionTier: input.paintProtectionTier ?? null,
+          photographyPackage: input.photographyPackage ?? null,
           createdById: ctx.session.userId,
           status: BookingStatus.PENDING,
         },
@@ -288,6 +290,30 @@ export const bookingsRouter = router({
       return updated;
     }),
 
+  /**
+   * Photos for a booking. Dealership users only ever see photography-stage
+   * photos — inspection photos are internal to the valeting company.
+   */
+  getPhotos: protectedProcedure
+    .input(z.object({ bookingId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id: input.bookingId, ...scopeFor(ctx.session) },
+      });
+      if (!booking) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+      }
+      return ctx.prisma.jobPhoto.findMany({
+        where: {
+          bookingId: booking.id,
+          ...(ctx.session.role === "dealership_user"
+            ? { stage: "photography" }
+            : {}),
+        },
+        orderBy: { createdAt: "asc" },
+      });
+    }),
+
   /** Store a single inspection/job photo against a booking. */
   uploadPhoto: protectedProcedure
     .input(
@@ -295,7 +321,7 @@ export const bookingsRouter = router({
         bookingId: z.string(),
         photoData: z.string().min(1),
         type: z.string().min(1),
-        stage: z.enum(["pre_valet", "post_valet"]).default("pre_valet"),
+        stage: z.enum(["pre_valet", "post_valet", "photography"]).default("pre_valet"),
         label: z.string().optional(),
       }),
     )

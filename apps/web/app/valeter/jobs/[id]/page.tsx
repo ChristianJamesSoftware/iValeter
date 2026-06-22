@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Sparkles,
   Droplets,
+  Camera,
 } from "lucide-react";
 import { TRPCError } from "@trpc/server";
 import { getServerApi } from "@/lib/trpc/server";
@@ -157,6 +158,26 @@ export default async function ValeterJobDetail({
             paintProtectionTier: booking.paintProtectionTier,
           }}
         />
+
+        {booking.photographyPackage && (
+          <Link
+            href={`/valeter/jobs/${booking.id}/photography`}
+            className="flex items-center justify-between rounded-xl border border-cyan bg-cyan/10 p-4 transition active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-3">
+              <Camera className="h-5 w-5 text-cyan-600" />
+              <span>
+                <span className="block font-heading font-bold text-navy">
+                  Photography
+                </span>
+                <span className="block text-sm text-slate">
+                  Capture the {booking.photographyPackage} photo set for the dealership
+                </span>
+              </span>
+            </span>
+            <ChevronLeft className="h-5 w-5 rotate-180 text-cyan-600" />
+          </Link>
+        )}
       </div>
     </div>
   );

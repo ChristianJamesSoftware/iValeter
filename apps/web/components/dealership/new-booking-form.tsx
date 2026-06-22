@@ -2,11 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ShieldCheck, Sparkles, Droplets } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Sparkles, Droplets, Camera } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
 type PaintTier = "essential" | "standard" | "premium" | "ultimate";
+type PhotoPackage = "standard" | "premium" | "full";
+
+const PHOTO_PACKAGES: { key: PhotoPackage; name: string; count: number }[] = [
+  { key: "standard", name: "Standard", count: 10 },
+  { key: "premium", name: "Premium", count: 25 },
+  { key: "full", name: "Full", count: 40 },
+];
 
 const PAINT_TIERS: {
   key: PaintTier;
@@ -84,6 +91,9 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
   const [includePaintProtection, setIncludePaintProtection] = useState(false);
   const [paintProtectionTier, setPaintProtectionTier] =
     useState<PaintTier>("essential");
+  const [includePhotography, setIncludePhotography] = useState(false);
+  const [photographyPackage, setPhotographyPackage] =
+    useState<PhotoPackage>("standard");
 
   const site = useMemo(() => sites.find((s) => s.id === siteId), [sites, siteId]);
   const departments = site?.departments ?? [];
@@ -377,6 +387,74 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
           </div>
         </div>
 
+        {/* ---- Photography ---- */}
+        <div className="rounded-xl border border-line bg-offwhite p-4">
+          <button
+            type="button"
+            onClick={() => setIncludePhotography((v) => !v)}
+            className={cn(
+              "w-full rounded-lg border-2 px-4 py-3 text-left transition",
+              includePhotography ? "border-cyan bg-cyan/10" : "border-line bg-white",
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className={cn(
+                  "flex items-center gap-2 font-semibold",
+                  includePhotography ? "text-navy" : "text-slate",
+                )}
+              >
+                <Camera className="h-5 w-5 text-cyan-600" />
+                Vehicle Photography
+              </span>
+              <span
+                className={cn(
+                  "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition",
+                  includePhotography ? "bg-cyan" : "bg-line",
+                )}
+              >
+                <span
+                  className={cn(
+                    "h-5 w-5 rounded-full bg-white transition",
+                    includePhotography && "translate-x-5",
+                  )}
+                />
+              </span>
+            </div>
+            <p className="mt-1 pl-7 text-sm text-slate">
+              Professional photo set shared with the dealership for listings
+            </p>
+          </button>
+
+          {includePhotography && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {PHOTO_PACKAGES.map((p) => {
+                const selected = photographyPackage === p.key;
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setPhotographyPackage(p.key)}
+                    className={cn(
+                      "rounded-lg border-2 p-3 text-center transition",
+                      selected
+                        ? "border-cyan bg-cyan/10 ring-2 ring-cyan/30"
+                        : "border-line bg-white hover:border-cyan/50",
+                    )}
+                  >
+                    <span className="block font-heading font-bold text-navy">
+                      {p.name}
+                    </span>
+                    <span className="block text-sm text-cyan-600">
+                      {p.count} photos
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {create.error && (
           <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
             {create.error.message}
@@ -399,6 +477,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
               paintProtectionTier: includePaintProtection
                 ? paintProtectionTier
                 : null,
+              photographyPackage: includePhotography ? photographyPackage : null,
             })
           }
           className="h-14 w-full rounded-lg bg-cyan font-heading text-lg font-bold text-navy transition hover:bg-cyan-600 disabled:opacity-60"
