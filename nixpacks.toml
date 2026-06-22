@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm-9_x"]
+
+[phases.install]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = [
+  "pnpm db:generate",
+  "pnpm --filter @ivaleter/web build",
+]
+
+[start]
+cmd = "pnpm --filter @ivaleter/db migrate && node apps/web/.next/standalone/apps/web/server.js"
