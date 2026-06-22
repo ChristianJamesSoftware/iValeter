@@ -16,6 +16,10 @@ const SERVICE_TYPES = [
   { name: "Mini Valet", durationMins: 45 },
   { name: "Showroom Prep", durationMins: 30 },
   { name: "Handover Detail", durationMins: 60 },
+  { name: "Paint Protection — Essential (6 months)", durationMins: 60 },
+  { name: "Paint Protection — Standard (1 year)", durationMins: 60 },
+  { name: "Paint Protection — Premium (5 years)", durationMins: 60 },
+  { name: "Paint Protection — Ultimate (10 years)", durationMins: 60 },
 ];
 
 const VALETER_NAMES: Array<[string, string]> = [
@@ -220,6 +224,19 @@ async function main() {
     const readyByTime =
       status === BookingStatus.COMPLETED ? hoursFromNow(-(i % 3)) : hoursFromNow(1 + (i % 6));
 
+    // Sprinkle add-ons across bookings so the new features are visible on login.
+    const includeInspection = i % 4 === 1;
+    const inspectionComplete =
+      includeInspection &&
+      status !== BookingStatus.ASSIGNED &&
+      status !== BookingStatus.PENDING;
+    const includeFreshScent = i % 3 === 0;
+    const PAINT_TIERS = ["essential", "standard", "premium", "ultimate"];
+    const paintProtectionTier =
+      i % 5 === 2
+        ? (PAINT_TIERS[Math.floor(i / 5) % PAINT_TIERS.length] ?? "premium")
+        : null;
+
     const booking = await prisma.booking.create({
       data: {
         organisationId: org.id,
@@ -234,6 +251,14 @@ async function main() {
         status,
         isPriority,
         readyByTime,
+        includeInspection,
+        inspectionComplete,
+        includeFreshScent,
+        paintProtectionTier,
+        freshScentConfirmed:
+          includeFreshScent && status === BookingStatus.COMPLETED,
+        paintProtectionApplied:
+          paintProtectionTier != null && status === BookingStatus.COMPLETED,
         assignedToId: assignedTo?.id ?? null,
         createdById: dealershipUser.id,
         completedAt,
