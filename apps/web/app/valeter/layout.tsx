@@ -1,0 +1,20 @@
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
+import { ValeterBottomNav } from "@/components/valeter/bottom-nav";
+
+export default async function ValeterLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.role !== "valeter") redirect("/");
+
+  return (
+    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-offwhite">
+      <div className="flex-1 pb-20">{children}</div>
+      <ValeterBottomNav />
+    </div>
+  );
+}
