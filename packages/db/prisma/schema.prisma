@@ -112,6 +112,13 @@ model Booking {
   isPriority  Boolean       @default(false)
   readyByTime DateTime
 
+  includeInspection      Boolean @default(false)
+  inspectionComplete     Boolean @default(false)
+  includeFreshScent      Boolean @default(false)
+  paintProtectionTier    String? // null | "essential" | "standard" | "premium" | "ultimate"
+  freshScentConfirmed    Boolean @default(false)
+  paintProtectionApplied Boolean @default(false)
+
   assignedToId String?
   assignedTo   User?   @relation("AssignedValeter", fields: [assignedToId], references: [id])
   createdById  String
@@ -159,7 +166,9 @@ model JobPhoto {
   bookingId String
   booking   Booking  @relation(fields: [bookingId], references: [id])
   url       String
-  type      String
+  type      String   // "exterior_front" | "exterior_front_driver_corner" | "exterior_driver" | "exterior_rear_driver_corner" | "exterior_rear" | "exterior_rear_passenger_corner" | "exterior_passenger" | "exterior_front_passenger_corner" | "interior_front" | "interior_rear" | "boot" | "wheel_fl" | "wheel_fr" | "wheel_rl" | "wheel_rr" | "other"
+  stage     String   @default("pre_valet") // "pre_valet" | "post_valet"
+  label     String?  // human readable e.g. "Front of vehicle"
   createdAt DateTime @default(now())
 
   @@index([bookingId])
