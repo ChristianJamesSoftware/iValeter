@@ -1,0 +1,17 @@
+{
+  "name": "iValeter",
+  "short_name": "iValeter",
+  "description": "Dealership valet job management",
+  "start_url": "/valeter",
+  "display": "standalone",
+  "background_color": "#002846",
+  "theme_color": "#002846",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy: #002846;
+  --color-navy-700: #013357;
+  --color-navy-600: #0a4066;
+  --color-cyan: #00c2ff;
+  --color-cyan-600: #00a6db;
+  --color-tvblue: #1464ff;
+  --color-offwhite: #f4f7fb;
+  --color-line: #e5e9ec;
+  --color-slate: #33536b;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  --font-heading: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --background: #f4f7fb;
+  --foreground: #002846;
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+/* Pulsing priority badge — must be impossible to miss */
+@keyframes priority-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+}
+
+.animate-priority-pulse {
+  animation: priority-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes priority-border-pulse {
+  0%,
+  100% {
+    border-color: #ef4444;
+  }
+  50% {
+    border-color: #f59e0b;
+  }
+}
+
+.animate-priority-border {
+  animation: priority-border-pulse 1.4s ease-in-out infinite;
+}
+
+/* Subtle status-change flash */
+@keyframes status-flash {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-status-flash {
+  animation: status-flash 0.4s ease-out;
+}
