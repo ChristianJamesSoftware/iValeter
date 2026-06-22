@@ -10,6 +10,9 @@ import { orgSettingsRouter } from "./routers/org-settings";
 import { xeroRouter } from "./routers/xero";
 import { invoicesRouter } from "./routers/invoices";
 import { organisationsRouter } from "./routers/organisations";
+import { timesheetsRouter } from "./routers/timesheets";
+import { payRunsRouter } from "./routers/payRuns";
+import { customerInvoicesRouter } from "./routers/customerInvoices";
 
 export const appRouter = router({
   auth: authRouter,
@@ -23,6 +26,10 @@ export const appRouter = router({
   xero: xeroRouter,
   invoices: invoicesRouter,
   organisations: organisationsRouter,
+  // Phase 2 — Payroll & Customer Invoicing
+  timesheets: timesheetsRouter,
+  payRuns: payRunsRouter,
+  customerInvoices: customerInvoicesRouter,
 });
 
 export type AppRouter = typeof appRouter;
