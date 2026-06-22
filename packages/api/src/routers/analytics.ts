@@ -2,13 +2,13 @@ import { z } from "zod";
 import { BookingStatus, type Prisma } from "@ivaleter/db";
 import { router, protectedProcedure } from "../trpc";
 
-function startOfToday(): Date {
-  const d = new Date();
+function startOfDay(date?: Date): Date {
+  const d = date ? new Date(date) : new Date();
   d.setHours(0, 0, 0, 0);
   return d;
 }
-function endOfToday(): Date {
-  const d = new Date();
+function endOfDay(date?: Date): Date {
+  const d = date ? new Date(date) : new Date();
   d.setHours(23, 59, 59, 999);
   return d;
 }
@@ -30,14 +30,14 @@ function baseScope(session: {
 export const analyticsRouter = router({
   /** Headline stat cards used on every dashboard. */
   statCards: protectedProcedure
-    .input(z.object({ siteId: z.string().optional() }).optional())
+    .input(z.object({ siteId: z.string().optional(), date: z.date().optional() }).optional())
     .query(async ({ ctx, input }) => {
       const where: Prisma.BookingWhereInput = baseScope(ctx.session);
       if (input?.siteId) where.siteId = input.siteId;
 
       const todayWhere = {
         ...where,
-        readyByTime: { gte: startOfToday(), lte: endOfToday() },
+        readyByTime: { gte: startOfDay(input?.date), lte: endOfDay(input?.date) },
       };
 
       const [total, pending, inProgress, completedToday, completedAll] =
@@ -91,7 +91,7 @@ export const analyticsRouter = router({
 
     const todayWhere = {
       organisationId: ctx.session.organisationId,
-      readyByTime: { gte: startOfToday(), lte: endOfToday() },
+      readyByTime: { gte: startOfDay(), lte: endOfDay() },
     };
 
     const grouped = await ctx.prisma.booking.groupBy({

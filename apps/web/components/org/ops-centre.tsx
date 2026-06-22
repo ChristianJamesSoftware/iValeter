@@ -7,6 +7,8 @@ import {
   Loader2,
   CheckCircle2,
   Timer,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import type { BookingStatus } from "@ivaleter/db";
 import { trpc } from "@/lib/trpc/react";
@@ -40,13 +42,36 @@ export function OpsCentre({
 }) {
   const [siteId, setSiteId] = useState<string>(sites[0]?.id ?? "");
   const [assignBookingId, setAssignBookingId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
+  const isToday = selectedDate.toDateString() === new Date().toDateString();
+
+  function shiftDate(days: number) {
+    setSelectedDate((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + days);
+      return d;
+    });
+  }
+
+  function formatSelectedDate(d: Date): string {
+    if (isToday) return "Today";
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  }
 
   const stats = trpc.analytics.statCards.useQuery(
-    { siteId: siteId || undefined },
+    { siteId: siteId || undefined, date: selectedDate },
     { refetchInterval: 15_000 },
   );
   const bookings = trpc.bookings.list.useQuery(
-    { siteId: siteId || undefined },
+    { siteId: siteId || undefined, date: selectedDate },
     { refetchInterval: 12_000 },
   );
 
@@ -76,21 +101,45 @@ export function OpsCentre({
             Live job board across your sites
           </p>
         </div>
-        <select
-          value={siteId}
-          onChange={(e) => setSiteId(e.target.value)}
-          className="h-11 rounded-lg border border-line bg-white px-4 font-heading font-semibold text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
-        >
-          {sites.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3">
+          {/* Date toggle */}
+          <div className="flex items-center gap-1 rounded-lg border border-line bg-white px-1 py-1">
+            <button
+              onClick={() => shiftDate(-1)}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-slate hover:bg-offwhite hover:text-navy"
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="min-w-[6rem] text-center font-heading text-sm font-semibold text-navy">
+              {formatSelectedDate(selectedDate)}
+            </span>
+            <button
+              onClick={() => shiftDate(1)}
+              disabled={isToday}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-slate hover:bg-offwhite hover:text-navy disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Next day"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          {/* Site selector */}
+          <select
+            value={siteId}
+            onChange={(e) => setSiteId(e.target.value)}
+            className="h-11 rounded-lg border border-line bg-white px-4 font-heading font-semibold text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+          >
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard icon={ListChecks} title="Total Today" value={stats.data?.totalToday ?? 0} accent="navy" />
+        <StatCard icon={ListChecks} title={isToday ? "Total Today" : "Total"} value={stats.data?.totalToday ?? 0} accent="navy" />
         <StatCard icon={Clock} title="Pending" value={stats.data?.pending ?? 0} accent="warning" />
         <StatCard icon={Loader2} title="In Progress" value={stats.data?.inProgress ?? 0} accent="cyan" />
         <StatCard icon={CheckCircle2} title="Completed" value={stats.data?.completedToday ?? 0} accent="success" />
