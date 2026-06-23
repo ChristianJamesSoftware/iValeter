@@ -1,51 +1,80 @@
 "use client";
 
-// TODO Phase 4: replace mock data with tRPC analytics queries
 import { useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
   Clock,
-  PoundSterling,
+  XCircle,
   Download,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/brand/stat-card";
-
-const BOOKINGS_BY_DAY = [
-  { day: "Mon", count: 24 },
-  { day: "Tue", count: 31 },
-  { day: "Wed", count: 28 },
-  { day: "Thu", count: 36 },
-  { day: "Fri", count: 42 },
-  { day: "Sat", count: 19 },
-  { day: "Sun", count: 8 },
-];
-
-const BY_DEPARTMENT = [
-  { name: "Valet Bay", total: 142, completed: 128, pending: 14, avg: "47m" },
-  { name: "Showroom Prep", total: 86, completed: 80, pending: 6, avg: "1h 12m" },
-  { name: "Service Wash", total: 64, completed: 61, pending: 3, avg: "22m" },
-  { name: "PDI", total: 38, completed: 33, pending: 5, avg: "1h 40m" },
-];
-
-const TOP_PERFORMERS = [
-  { name: "James Mitchell", jobs: 58, avg: "41m", rate: "98%" },
-  { name: "Sarah Connor", jobs: 52, avg: "44m", rate: "96%" },
-  { name: "David Okafor", jobs: 49, avg: "39m", rate: "99%" },
-  { name: "Priya Sharma", jobs: 47, avg: "46m", rate: "94%" },
-];
+import { trpc } from "@/lib/trpc/react";
 
 const th =
   "bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-400 px-5 py-3 text-left";
 const td = "border-b border-slate-50 text-sm text-slate-700 px-5 py-4";
 
+function fmtMins(mins: number): string {
+  if (!mins) return "—";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 export function ReportsClient() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const maxCount = Math.max(...BOOKINGS_BY_DAY.map((d) => d.count));
+  const [siteId, setSiteId] = useState("");
+
+  const sites = trpc.sites.list.useQuery();
+  const report = trpc.analytics.fullReport.useQuery({
+    from: from || undefined,
+    to: to || undefined,
+    siteId: siteId || undefined,
+  });
+
   const inputCls =
     "h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
+
+  const data = report.data;
+
+  function exportCsv() {
+    if (!data) return;
+    const rows: string[][] = [
+      ["Section", "Name", "Count", "Avg Mins", "Target Mins"],
+      ["Summary", "Total", String(data.total), "", ""],
+      ["Summary", "Completed", String(data.completed), "", ""],
+      ["Summary", "Cancelled", String(data.cancelled), "", ""],
+      ["Summary", "Completion Rate %", String(data.completionRate), "", ""],
+      ["Summary", "Overall Avg Mins", "", String(data.overallAvgMins), ""],
+      ...data.byValetType.map((v) => [
+        "Valet Type",
+        v.name,
+        String(v.count),
+        String(v.avgMins),
+        String(v.targetMins),
+      ]),
+      ...data.bySite.map((s) => [
+        "Site",
+        s.name,
+        String(s.count),
+        String(s.avgMins),
+        "",
+      ]),
+    ];
+    const csv = rows
+      .map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `report-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -82,13 +111,24 @@ export function ReportsClient() {
           <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">
             Site
           </label>
-          <select className={inputCls}>
-            <option>All sites</option>
-            <option>Arnold Clark · Glasgow</option>
-            <option>Evans Halshaw · Leeds</option>
+          <select
+            value={siteId}
+            onChange={(e) => setSiteId(e.target.value)}
+            className={inputCls}
+          >
+            <option value="">All sites</option>
+            {(sites.data ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
           </select>
         </div>
-        <button className="ml-auto flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+        <button
+          onClick={exportCsv}
+          disabled={!data}
+          className="ml-auto flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+        >
           <Download className="h-4 w-4" />
           Export CSV
         </button>
@@ -96,92 +136,127 @@ export function ReportsClient() {
 
       {/* Summary stats */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={CalendarDays} title="Total Bookings" value={168} accent="navy" />
-        <StatCard icon={CheckCircle2} title="Completed" value={148} accent="success" />
-        <StatCard icon={Clock} title="Avg Completion" value="48m" accent="cyan" />
-        <StatCard icon={PoundSterling} title="Revenue" value="£14,820" accent="warning" />
-      </div>
-
-      {/* Bookings by day */}
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">
-          Bookings by day
-        </h2>
-        <div className="flex items-end justify-between gap-3" style={{ height: 180 }}>
-          {BOOKINGS_BY_DAY.map((d) => (
-            <div key={d.day} className="flex flex-1 flex-col items-center gap-2">
-              <div className="flex w-full flex-1 items-end">
-                <div
-                  className="w-full rounded-t-md bg-slate-900 transition-all"
-                  style={{ height: `${(d.count / maxCount) * 100}%` }}
-                  title={`${d.count} bookings`}
-                />
-              </div>
-              <span className="text-xs font-medium text-slate-500">{d.day}</span>
-            </div>
-          ))}
-        </div>
+        <StatCard
+          icon={CalendarDays}
+          title="Total Bookings"
+          value={data?.total ?? 0}
+          accent="navy"
+        />
+        <StatCard
+          icon={CheckCircle2}
+          title="Completed"
+          value={data?.completed ?? 0}
+          accent="success"
+        />
+        <StatCard
+          icon={Clock}
+          title="Avg Completion"
+          value={data ? fmtMins(data.overallAvgMins) : "—"}
+          accent="cyan"
+        />
+        <StatCard
+          icon={XCircle}
+          title="Completion Rate"
+          value={data ? `${data.completionRate}%` : "—"}
+          accent="warning"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* By department */}
+        {/* By valet type */}
         <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="text-lg font-semibold text-slate-900">
-              Bookings by department
+              Average time per valet type
             </h2>
           </div>
           <table className="w-full">
             <thead>
               <tr>
-                <th className={th}>Department</th>
-                <th className={th}>Total</th>
-                <th className={th}>Done</th>
-                <th className={th}>Pending</th>
-                <th className={th}>Avg</th>
+                <th className={th}>Valet type</th>
+                <th className={th}>Completed</th>
+                <th className={th}>Avg time</th>
+                <th className={th}>Target</th>
               </tr>
             </thead>
             <tbody>
-              {BY_DEPARTMENT.map((d) => (
-                <tr key={d.name} className="hover:bg-slate-50/50">
-                  <td className={`${td} font-medium text-slate-900`}>{d.name}</td>
-                  <td className={td}>{d.total}</td>
-                  <td className={td}>{d.completed}</td>
-                  <td className={td}>{d.pending}</td>
-                  <td className={td}>{d.avg}</td>
+              {report.isLoading ? (
+                <tr>
+                  <td className={`${td} text-slate-400`} colSpan={4}>
+                    Loading…
+                  </td>
                 </tr>
-              ))}
+              ) : (data?.byValetType.length ?? 0) === 0 ? (
+                <tr>
+                  <td className={`${td} text-slate-400`} colSpan={4}>
+                    No completed jobs in range.
+                  </td>
+                </tr>
+              ) : (
+                data!.byValetType.map((v) => (
+                  <tr key={v.name} className="hover:bg-slate-50/50">
+                    <td className={`${td} font-medium text-slate-900`}>
+                      {v.name}
+                    </td>
+                    <td className={td}>{v.count}</td>
+                    <td className={td}>{fmtMins(v.avgMins)}</td>
+                    <td className={td}>
+                      <span
+                        className={
+                          v.avgMins > v.targetMins
+                            ? "text-danger"
+                            : "text-success"
+                        }
+                      >
+                        {fmtMins(v.targetMins)}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Top performers */}
+        {/* By site */}
         <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Top performers</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Average time per site
+            </h2>
           </div>
           <table className="w-full">
             <thead>
               <tr>
-                <th className={th}>Valeter</th>
-                <th className={th}>Jobs</th>
-                <th className={th}>Avg</th>
-                <th className={th}>Rate</th>
+                <th className={th}>Site</th>
+                <th className={th}>Completed</th>
+                <th className={th}>Avg time</th>
               </tr>
             </thead>
             <tbody>
-              {TOP_PERFORMERS.map((p) => (
-                <tr key={p.name} className="hover:bg-slate-50/50">
-                  <td className={`${td} font-medium text-slate-900`}>{p.name}</td>
-                  <td className={td}>{p.jobs}</td>
-                  <td className={td}>{p.avg}</td>
-                  <td className={td}>
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                      {p.rate}
-                    </span>
+              {report.isLoading ? (
+                <tr>
+                  <td className={`${td} text-slate-400`} colSpan={3}>
+                    Loading…
                   </td>
                 </tr>
-              ))}
+              ) : (data?.bySite.length ?? 0) === 0 ? (
+                <tr>
+                  <td className={`${td} text-slate-400`} colSpan={3}>
+                    No completed jobs in range.
+                  </td>
+                </tr>
+              ) : (
+                data!.bySite.map((s) => (
+                  <tr key={s.name} className="hover:bg-slate-50/50">
+                    <td className={`${td} font-medium text-slate-900`}>
+                      {s.name}
+                    </td>
+                    <td className={td}>{s.count}</td>
+                    <td className={td}>{fmtMins(s.avgMins)}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
