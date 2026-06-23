@@ -26,17 +26,12 @@ model Organisation {
   contactEmail   String?
   contactPhone   String?
 
-<<<<<<< HEAD
-  // Feature flags
-=======
   // Feature flags (defaults seeded from platform-level flags)
->>>>>>> origin/main
   featureInspection      Boolean @default(true)
   featurePhotography     Boolean @default(false)
   featureFreshScent      Boolean @default(true)
   featurePaintProtection Boolean @default(true)
   featureXero            Boolean @default(false)
-<<<<<<< HEAD
   // Phase 1 feature flags
   featureGeofencing      Boolean @default(false)
   featureTimesheets      Boolean @default(false)
@@ -49,13 +44,6 @@ model Organisation {
   customerInvoices CustomerInvoice[]
   payRuns          PayRun[]
   xeroConnection   XeroConnection?
-=======
-
-  sites          Site[]
-  users          User[]
-  invoices       Invoice[]
-  xeroConnection XeroConnection?
->>>>>>> origin/main
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -203,14 +191,9 @@ model ServiceType {
   description  String?
   category     ServiceCategory @default(VALET)
   durationMins Int
-<<<<<<< HEAD
   chargeRate   Float?
   isActive     Boolean         @default(true)
-  nominalCode  String?
-=======
-  isActive     Boolean    @default(true)
   nominalCode  String? // Xero nominal/account code for invoicing
->>>>>>> origin/main
 
   bookings Booking[]
 
@@ -333,15 +316,9 @@ model JobPhoto {
   bookingId String
   booking   Booking  @relation(fields: [bookingId], references: [id])
   url       String
-<<<<<<< HEAD
-  type      String
-  stage     String   @default("pre_valet")
-  label     String?
-=======
   type      String   // "exterior_front" | "exterior_front_driver_corner" | "exterior_driver" | "exterior_rear_driver_corner" | "exterior_rear" | "exterior_rear_passenger_corner" | "exterior_passenger" | "exterior_front_passenger_corner" | "interior_front" | "interior_rear" | "boot" | "wheel_fl" | "wheel_fr" | "wheel_rl" | "wheel_rr" | "other"
   stage     String   @default("pre_valet") // "pre_valet" | "post_valet"
   label     String?  // human readable e.g. "Front of vehicle"
->>>>>>> origin/main
   createdAt DateTime @default(now())
 
   @@index([bookingId])
@@ -752,11 +729,7 @@ model Invoice {
 
   xeroInvoiceId     String?
   xeroInvoiceNumber String?
-<<<<<<< HEAD
-  xeroStatus        String?
-=======
   xeroStatus        String? // "DRAFT" | "SUBMITTED" | "AUTHORISED" | "PAID"
->>>>>>> origin/main
   pushedToXeroAt    DateTime?
 
   @@index([organisationId])
@@ -769,13 +742,10 @@ enum InvoiceStatus {
   OVERDUE
 }
 
-<<<<<<< HEAD
 // ─────────────────────────────────────────────────────────────────────────────
-// PLATFORM CONFIG & XERO (existing — unchanged)
+// PLATFORM CONFIG & XERO
 // ─────────────────────────────────────────────────────────────────────────────
 
-=======
->>>>>>> origin/main
 model PlatformConfig {
   id        String   @id @default(cuid())
   key       String   @unique
@@ -791,24 +761,15 @@ model XeroConnection {
   organisation   Organisation @relation(fields: [organisationId], references: [id])
   tenantId       String
   tenantName     String
-<<<<<<< HEAD
-  accessToken    String
-  refreshToken   String
-=======
   accessToken    String // encrypted
   refreshToken   String // encrypted
->>>>>>> origin/main
   tokenExpiresAt DateTime
   isActive       Boolean      @default(true)
   lastSyncAt     DateTime?
   invoicePrefix  String       @default("IV-")
   paymentTerms   Int          @default(30)
   taxType        String       @default("OUTPUT2")
-<<<<<<< HEAD
-  autoPush       String       @default("manual")
-=======
   autoPush       String       @default("manual") // "generated" | "approved" | "manual"
->>>>>>> origin/main
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 }
