@@ -139,66 +139,79 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
       <div className="space-y-4">
         <Field label="Vehicle Registration">
           <div className="space-y-2">
-            {/* UK front number plate */}
-            <div
-              className="relative flex items-center rounded-lg border-4 border-slate-800 bg-white shadow-md pb-4"
-              style={{ fontFamily: "'UKNumberPlate', 'Charles Wright', 'Arial Black', sans-serif" }}
-            >
-              {/* Blue GB strip on left */}
-              <div className="flex h-16 w-10 shrink-0 flex-col items-center justify-center rounded-l bg-blue-700 text-white">
-                <span className="text-[9px] font-bold tracking-wider">GB</span>
-                <div className="mt-0.5 flex gap-0.5">
-                  <div className="h-1 w-1 rounded-full bg-yellow-400" />
-                  <div className="h-1 w-1 rounded-full bg-yellow-400" />
-                  <div className="h-1 w-1 rounded-full bg-yellow-400" />
+            {/* UK rear number plate — yellow, England flag, dealer name */}
+            <div style={{ background: "#FFC700", border: "4px solid #1a1a1a", borderRadius: 8, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.25)" }}>
+              {/* Main plate row */}
+              <div className="relative flex items-center gap-3 px-3 py-1">
+                {/* England flag badge */}
+                <div className="shrink-0 flex flex-col items-center gap-0.5">
+                  <div style={{ width: 30, height: 38, border: "1.5px solid #aaa", borderRadius: 3, overflow: "hidden", background: "white" }}>
+                    <svg width="30" height="38" viewBox="0 0 30 38" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="30" height="38" fill="white"/>
+                      <rect x="12" y="0" width="6" height="38" fill="#CC0000"/>
+                      <rect x="0" y="16" width="30" height="6" fill="#CC0000"/>
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", color: "#1a1a1a" }}>ENG</span>
+                </div>
+                {/* Reg input */}
+                <input
+                  value={vehicleReg}
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9 ]/g, "");
+                    setVehicleReg(val);
+                    setDvlaStatus("idle");
+                    setVehicleMake(""); setVehicleModel(""); setVehicleColour("");
+                    if (dvlaTimerRef.current) clearTimeout(dvlaTimerRef.current);
+                    const clean = val.replace(/\s/g, "");
+                    if (clean.length >= 5) {
+                      dvlaTimerRef.current = setTimeout(async () => {
+                        setDvlaStatus("loading");
+                        try {
+                          const res = await fetch("/api/dvla", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ registrationNumber: clean }),
+                          });
+                          if (!res.ok) { setDvlaStatus("error"); return; }
+                          const data = await res.json() as { make?: string; model?: string; colour?: string };
+                          setVehicleMake(data.make ?? "");
+                          setVehicleModel(data.model ?? "");
+                          setVehicleColour(data.colour ?? "");
+                          setDvlaStatus("found");
+                        } catch { setDvlaStatus("error"); }
+                      }, 600);
+                    }
+                  }}
+                  placeholder="AB12 CDE"
+                  maxLength={8}
+                  style={{
+                    flex: 1,
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    textAlign: "center",
+                    fontSize: 44,
+                    fontWeight: 900,
+                    letterSpacing: "0.1em",
+                    color: "#1a1a1a",
+                    height: 64,
+                    fontFamily: "'Charles Wright', 'Arial Black', Arial, sans-serif",
+                  }}
+                />
+                {/* Status indicator */}
+                <div className="shrink-0 w-5 flex items-center justify-center">
+                  {dvlaStatus === "loading" && <svg className="h-4 w-4 animate-spin text-slate-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
+                  {dvlaStatus === "found" && <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
+                  {dvlaStatus === "error" && <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>}
                 </div>
               </div>
-              <input
-                value={vehicleReg}
-                onChange={(e) => {
-                  const val = e.target.value.toUpperCase().replace(/[^A-Z0-9 ]/g, "");
-                  setVehicleReg(val);
-                  setDvlaStatus("idle");
-                  setVehicleMake(""); setVehicleModel(""); setVehicleColour("");
-                  if (dvlaTimerRef.current) clearTimeout(dvlaTimerRef.current);
-                  const clean = val.replace(/\s/g, "");
-                  if (clean.length >= 5) {
-                    dvlaTimerRef.current = setTimeout(async () => {
-                      setDvlaStatus("loading");
-                      try {
-                        const res = await fetch("/api/dvla", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ registrationNumber: clean }),
-                        });
-                        if (!res.ok) { setDvlaStatus("error"); return; }
-                        const data = await res.json() as { make?: string; model?: string; colour?: string };
-                        setVehicleMake(data.make ?? "");
-                        setVehicleModel(data.model ?? "");
-                        setVehicleColour(data.colour ?? "");
-                        setDvlaStatus("found");
-                      } catch { setDvlaStatus("error"); }
-                    }, 600);
-                  }
-                }}
-                placeholder="MK21 ABC"
-                maxLength={8}
-                className="h-16 w-full bg-transparent text-center font-heading text-3xl font-black tracking-widest text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal"
-              />
-              {/* Status indicator */}
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                {dvlaStatus === "loading" && <svg className="h-4 w-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
-                {dvlaStatus === "found" && <svg className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
-                {dvlaStatus === "error" && <svg className="h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>}
+              {/* Dealer name strip — bottom of plate */}
+              <div style={{ background: "#1a1a1a", padding: "3px 8px", display: "flex", justifyContent: "center" }}>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.25em", color: "white", textTransform: "uppercase" }}>
+                  {site?.name ?? "iValeter"}
+                </span>
               </div>
-              {/* Dealer name — bottom of plate like a real number plate */}
-              {site?.name && (
-                <div className="absolute bottom-0.5 left-10 right-0 flex justify-center">
-                  <span className="text-[7px] font-semibold tracking-[0.25em] text-slate-300 uppercase">
-                    {site.name}
-                  </span>
-                </div>
-              )}
             </div>
             {dvlaStatus === "found" && (vehicleMake || vehicleColour) && (
               <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2">
