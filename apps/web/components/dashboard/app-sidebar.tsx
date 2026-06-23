@@ -42,9 +42,7 @@ export function AppSidebar({
 
       <nav className="flex-1 overflow-y-auto py-2">
         {items.map((item) => {
-          const active =
-            pathname === item.href ||
-            (item.href !== "/" && pathname.startsWith(`${item.href}/`));
+          const active = pathname === item.href;
           const Icon = NAV_ICONS[item.icon];
           const showSection = item.section && item.section !== lastSection;
           lastSection = item.section ?? lastSection;

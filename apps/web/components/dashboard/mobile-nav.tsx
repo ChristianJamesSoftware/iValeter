@@ -37,9 +37,7 @@ export function MobileNav({
         <div className="absolute inset-x-0 top-14 z-50 border-b border-slate-200 bg-white p-3 shadow-lg">
           <nav className="space-y-1">
             {items.map((item) => {
-              const active =
-                pathname === item.href ||
-                (item.href !== "/" && pathname.startsWith(`${item.href}/`));
+              const active = pathname === item.href;
               const Icon = NAV_ICONS[item.icon];
               return (
                 <Link
