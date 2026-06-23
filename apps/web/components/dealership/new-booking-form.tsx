@@ -145,14 +145,20 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
               <div className="relative flex items-center gap-3 px-3 py-1">
                 {/* England flag badge */}
                 <div className="shrink-0 flex flex-col items-center gap-0.5">
-                  <div style={{ width: 30, height: 38, border: "1.5px solid #aaa", borderRadius: 3, overflow: "hidden", background: "white" }}>
-                    <svg width="30" height="38" viewBox="0 0 30 38" xmlns="http://www.w3.org/2000/svg">
-                      <rect width="30" height="38" fill="white"/>
-                      <rect x="12" y="0" width="6" height="38" fill="#CC0000"/>
-                      <rect x="0" y="16" width="30" height="6" fill="#CC0000"/>
+                  <div style={{ width: 30, height: 38, border: "1.5px solid #aaa", borderRadius: 3, overflow: "hidden" }}>
+                    <svg width="30" height="38" viewBox="0 0 60 38" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="60" height="38" fill="#012169"/>
+                      <polygon points="0,0 8,0 60,34 60,38 52,38 0,4" fill="white"/>
+                      <polygon points="60,0 52,0 0,34 0,38 8,38 60,4" fill="white"/>
+                      <polygon points="0,0 5,0 60,36 60,38 55,38 0,2" fill="#C8102E"/>
+                      <polygon points="60,0 55,0 0,36 0,38 5,38 60,2" fill="#C8102E"/>
+                      <rect x="24" y="0" width="12" height="38" fill="white"/>
+                      <rect x="0" y="13" width="60" height="12" fill="white"/>
+                      <rect x="26" y="0" width="8" height="38" fill="#C8102E"/>
+                      <rect x="0" y="15" width="60" height="8" fill="#C8102E"/>
                     </svg>
                   </div>
-                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", color: "#1a1a1a" }}>ENG</span>
+                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", color: "#1a1a1a" }}>GB</span>
                 </div>
                 {/* Reg input */}
                 <input
