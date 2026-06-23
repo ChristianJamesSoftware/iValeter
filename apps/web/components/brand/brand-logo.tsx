@@ -1,24 +1,25 @@
 import { cn } from "@/lib/utils";
 
 /**
- * "iValeter" wordmark. The leading "i" is cyan, the rest white (or navy on light).
+ * "iValeter" wordmark. The leading "i" is the orange accent; the rest is
+ * slate-900 on light surfaces ("light") or white on dark ones ("dark").
  */
 export function BrandLogo({
   className,
-  dark = false,
+  variant = "light",
 }: {
   className?: string;
-  dark?: boolean;
+  variant?: "light" | "dark";
 }) {
   return (
     <span
       className={cn(
         "font-heading font-bold tracking-tight",
-        dark ? "text-navy" : "text-white",
+        variant === "dark" ? "text-white" : "text-slate-900",
         className,
       )}
     >
-      <span className="text-cyan">i</span>Valeter
+      <span className="text-orange-500">i</span>Valeter
     </span>
   );
 }
