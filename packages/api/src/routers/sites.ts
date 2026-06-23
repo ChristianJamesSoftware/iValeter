@@ -38,6 +38,7 @@ export const sitesRouter = router({
       z.object({
         name: z.string().min(1),
         address: z.string().optional(),
+        dealershipId: z.string().optional(),
         departments: z.array(z.string()).default(["New Car Sales", "Used Car Sales", "Service"]),
       }),
     )
@@ -47,6 +48,7 @@ export const sitesRouter = router({
           organisationId: ctx.session.organisationId,
           name: input.name.trim(),
           address: input.address,
+          dealershipId: input.dealershipId ?? null,
           departments: {
             create: input.departments.map((name) => ({ name })),
           },

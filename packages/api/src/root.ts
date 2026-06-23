@@ -3,6 +3,7 @@ import { authRouter } from "./routers/auth";
 import { bookingsRouter } from "./routers/bookings";
 import { usersRouter } from "./routers/users";
 import { sitesRouter } from "./routers/sites";
+import { dealershipsRouter } from "./routers/dealerships";
 import { holidayRouter } from "./routers/holiday";
 import { analyticsRouter } from "./routers/analytics";
 import { platformRouter } from "./routers/platform";
@@ -16,6 +17,7 @@ export const appRouter = router({
   bookings: bookingsRouter,
   users: usersRouter,
   sites: sitesRouter,
+  dealerships: dealershipsRouter,
   holiday: holidayRouter,
   analytics: analyticsRouter,
   platform: platformRouter,

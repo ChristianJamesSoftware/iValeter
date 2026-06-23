@@ -10,6 +10,20 @@ function startOfToday(): Date {
   return d;
 }
 
+function generatePayId(firstName: string, lastName: string): string {
+  const f = firstName
+    .replace(/[^a-zA-Z]/g, "")
+    .substring(0, 4)
+    .toUpperCase()
+    .padEnd(4, "X");
+  const l = lastName
+    .replace(/[^a-zA-Z]/g, "")
+    .substring(0, 4)
+    .toUpperCase()
+    .padEnd(4, "X");
+  return `${f}.${l}`;
+}
+
 export const usersRouter = router({
   /** List valeters in the org, optionally filtered by site, with today's job counts. */
   listValeters: protectedProcedure
@@ -48,6 +62,12 @@ export const usersRouter = router({
         siteName: v.site?.name ?? null,
         skills: v.skills,
         isActive: v.isActive,
+        mobile: v.mobile,
+        payId: v.payId,
+        dailyRate: v.dailyRate,
+        dailyDeductions: v.dailyDeductions,
+        startDate: v.startDate,
+        contractComplete: v.contractComplete,
         jobsToday: countMap.get(v.id) ?? 0,
       }));
     }),
@@ -75,6 +95,13 @@ export const usersRouter = router({
         role: z.nativeEnum(Role),
         siteId: z.string().optional(),
         skills: z.array(z.string()).default([]),
+        mobile: z.string().optional(),
+        payId: z.string().optional(),
+        dailyRate: z.number().optional(),
+        dailyDeductions: z.number().optional(),
+        startDate: z.string().optional(),
+        contractComplete: z.boolean().optional(),
+        jobTitle: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -110,6 +137,15 @@ export const usersRouter = router({
           role: input.role,
           siteId: input.siteId ?? null,
           skills: input.skills,
+          mobile: input.mobile ?? null,
+          payId:
+            input.payId?.trim() ||
+            generatePayId(input.firstName, input.lastName),
+          dailyRate: input.dailyRate ?? null,
+          dailyDeductions: input.dailyDeductions ?? null,
+          startDate: input.startDate ? new Date(input.startDate) : null,
+          contractComplete: input.contractComplete ?? false,
+          jobTitle: input.jobTitle ?? null,
         },
       });
     }),
@@ -123,6 +159,13 @@ export const usersRouter = router({
         siteId: z.string().nullable().optional(),
         skills: z.array(z.string()).optional(),
         isActive: z.boolean().optional(),
+        mobile: z.string().optional(),
+        payId: z.string().optional(),
+        dailyRate: z.number().optional(),
+        dailyDeductions: z.number().optional(),
+        startDate: z.string().optional(),
+        contractComplete: z.boolean().optional(),
+        jobTitle: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -133,7 +176,15 @@ export const usersRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
       }
 
-      const { id, ...data } = input;
-      return ctx.prisma.user.update({ where: { id }, data });
+      const { id, startDate, ...rest } = input;
+      return ctx.prisma.user.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(startDate !== undefined
+            ? { startDate: startDate ? new Date(startDate) : null }
+            : {}),
+        },
+      });
     }),
 });
