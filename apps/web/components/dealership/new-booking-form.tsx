@@ -139,7 +139,20 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
       <div className="space-y-4">
         <Field label="Vehicle Registration">
           <div className="space-y-2">
-            <div className="relative">
+            {/* UK front number plate */}
+            <div
+              className="relative flex items-center rounded-lg border-4 border-slate-800 bg-white shadow-md"
+              style={{ fontFamily: "'UKNumberPlate', 'Charles Wright', 'Arial Black', sans-serif" }}
+            >
+              {/* Blue GB strip on left */}
+              <div className="flex h-16 w-10 shrink-0 flex-col items-center justify-center rounded-l bg-blue-700 text-white">
+                <span className="text-[9px] font-bold tracking-wider">GB</span>
+                <div className="mt-0.5 flex gap-0.5">
+                  <div className="h-1 w-1 rounded-full bg-yellow-400" />
+                  <div className="h-1 w-1 rounded-full bg-yellow-400" />
+                  <div className="h-1 w-1 rounded-full bg-yellow-400" />
+                </div>
+              </div>
               <input
                 value={vehicleReg}
                 onChange={(e) => {
@@ -170,11 +183,12 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                 }}
                 placeholder="MK21 ABC"
                 maxLength={8}
-                className="h-14 w-full rounded-lg border border-line bg-white px-4 pr-10 font-heading text-2xl font-bold tracking-widest text-navy outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                className="h-16 w-full bg-transparent text-center font-heading text-3xl font-black tracking-widest text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal"
               />
+              {/* Status indicator */}
               <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
                 {dvlaStatus === "loading" && <svg className="h-4 w-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
-                {dvlaStatus === "found" && <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
+                {dvlaStatus === "found" && <svg className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
                 {dvlaStatus === "error" && <svg className="h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>}
               </div>
             </div>
