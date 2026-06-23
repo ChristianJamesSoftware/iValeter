@@ -23,6 +23,7 @@ import {
 
 export type NavIconName =
   | "dashboard"
+  | "calendar"
   | "bookings"
   | "new"
   | "team"
@@ -44,6 +45,7 @@ export type NavIconName =
 
 export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   dashboard: LayoutDashboard,
+  calendar: CalendarDays,
   bookings: ClipboardList,
   new: PlusCircle,
   team: Users,
