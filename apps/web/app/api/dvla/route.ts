@@ -1,61 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
 
-interface DVLAResponse {
-  make?: string;
-  colour?: string;
+interface CheckCarDetailsResponse {
+  Response?: {
+    StatusCode?: string;
+    DataItems?: {
+      VehicleRegistration?: {
+        Make?: string;
+        Model?: string;
+        Colour?: string;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+  };
   [key: string]: unknown;
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json() as { registrationNumber?: string };
-  const reg = body.registrationNumber?.replace(/\s/g, "").toUpperCase();
+  const vrm = body.registrationNumber?.replace(/\s/g, "").toUpperCase();
 
-  if (!reg || reg.length < 2) {
+  if (!vrm || vrm.length < 2) {
     return NextResponse.json({ error: "Invalid registration" }, { status: 400 });
   }
 
-  const apiKey = process.env.DVLA_API_KEY;
+  const apiKey = process.env.CHECKCARDETAILS_API_KEY;
 
+  // Mock data for demo (when no API key set)
   if (!apiKey) {
-    // Mock data for demo — keyed by first 2 chars of reg
     const mocks: Record<string, { make: string; model: string; colour: string }> = {
       MK: { make: "VOLKSWAGEN", model: "GOLF", colour: "SILVER" },
       LS: { make: "BMW", model: "3 SERIES", colour: "BLACK" },
       BK: { make: "FORD", model: "FOCUS", colour: "WHITE" },
       PE: { make: "AUDI", model: "A4", colour: "GREY" },
+      LO: { make: "MERCEDES", model: "C CLASS", colour: "BLUE" },
     };
-    const key = reg.slice(0, 2);
+    const key = vrm.slice(0, 2);
     const mock = mocks[key] ?? { make: "TOYOTA", model: "COROLLA", colour: "BLUE" };
     return NextResponse.json(mock);
   }
 
   try {
-    const res = await fetch(
-      "https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles",
-      {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ registrationNumber: reg }),
-      }
-    );
+    const url = `https://api.checkcardetails.co.uk/vehicledata/vehicleregistration?apikey=${apiKey}&vrm=${vrm}`;
+    const res = await fetch(url, { method: "GET" });
 
     if (res.status === 404) {
       return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
     if (!res.ok) {
-      return NextResponse.json({ error: "DVLA lookup failed" }, { status: 502 });
+      return NextResponse.json({ error: "Lookup failed" }, { status: 502 });
     }
 
-    const data = await res.json() as DVLAResponse;
+    const data = await res.json() as CheckCarDetailsResponse;
+    const vr = data?.Response?.DataItems?.VehicleRegistration;
 
-    // Return only make, model (not in DVLA response directly — derived from make), colour
     return NextResponse.json({
-      make: data.make ?? "",
-      model: "",  // DVLA API doesn't return model — make is the best we get
-      colour: data.colour ?? "",
+      make: vr?.Make ?? "",
+      model: vr?.Model ?? "",
+      colour: vr?.Colour ?? "",
     });
   } catch {
     return NextResponse.json({ error: "Network error" }, { status: 500 });
