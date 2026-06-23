@@ -14,7 +14,7 @@ export function BrandLogo({
   return (
     <span
       className={cn(
-        "font-heading font-bold tracking-tight",
+        "font-heading font-black tracking-tight",
         variant === "dark" ? "text-white" : "text-slate-900",
         className,
       )}

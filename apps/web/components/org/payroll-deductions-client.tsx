@@ -24,8 +24,8 @@ const INITIAL: Deduction[] = [
 const TYPES = ["Equipment", "Uniform", "Advance", "Other"];
 
 const th =
-  "bg-slate-50 border-b border-slate-200 text-xs font-medium uppercase tracking-wider text-slate-500 px-4 py-3 text-left";
-const td = "border-b border-slate-100 text-sm text-slate-700 px-4 py-3.5";
+  "bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-400 px-5 py-3 text-left";
+const td = "border-b border-slate-50 text-sm text-slate-700 px-5 py-4";
 const inputCls =
   "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
 
@@ -88,7 +88,7 @@ export function PayrollDeductionsClient() {
         </form>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
         <table className="w-full">
           <thead>
             <tr>

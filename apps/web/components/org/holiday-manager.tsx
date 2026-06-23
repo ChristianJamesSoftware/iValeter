@@ -5,9 +5,9 @@ import { trpc } from "@/lib/trpc/react";
 import { cn, formatDate } from "@/lib/utils";
 
 const STATUS_STYLE = {
-  PENDING: "bg-warning/15 text-warning",
-  APPROVED: "bg-success/15 text-success",
-  REJECTED: "bg-danger/10 text-danger",
+  PENDING: "bg-amber-50 text-amber-700 border-amber-100",
+  APPROVED: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  REJECTED: "bg-red-50 text-red-500 border-red-100",
 } as const;
 
 export function HolidayManager() {
@@ -102,7 +102,7 @@ export function HolidayManager() {
                 </div>
                 <span
                   className={cn(
-                    "rounded-full px-2.5 py-1 text-xs font-semibold",
+                    "rounded-full border px-2.5 py-0.5 text-xs font-semibold",
                     STATUS_STYLE[r.status],
                   )}
                 >

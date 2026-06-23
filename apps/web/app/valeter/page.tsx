@@ -29,12 +29,12 @@ export default async function ValeterHomePage() {
 
   return (
     <div>
-      <header className="bg-navy px-5 pb-6 pt-8 text-white">
+      <header className="bg-slate-900 px-5 pb-6 pt-8 text-white">
         <p className="text-sm text-white/70">{formatDate(new Date())}</p>
-        <h1 className="font-heading text-2xl font-bold">
+        <h1 className="font-heading text-3xl font-black">
           {greeting()}, {session?.firstName}
         </h1>
-        <p className="mt-1 text-sm text-white/70">
+        <p className="mt-1 text-sm font-semibold text-orange-400">
           You have {jobs.filter((j) => j.status !== "COMPLETED").length} active
           {jobs.filter((j) => j.status !== "COMPLETED").length === 1
             ? " job"
