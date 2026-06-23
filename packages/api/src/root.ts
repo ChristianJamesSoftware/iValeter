@@ -11,6 +11,7 @@ import { orgSettingsRouter } from "./routers/org-settings";
 import { xeroRouter } from "./routers/xero";
 import { invoicesRouter } from "./routers/invoices";
 import { organisationsRouter } from "./routers/organisations";
+import { timesheetsRouter } from "./routers/timesheets";
 
 export const appRouter = router({
   auth: authRouter,
@@ -25,6 +26,7 @@ export const appRouter = router({
   xero: xeroRouter,
   invoices: invoicesRouter,
   organisations: organisationsRouter,
+  timesheets: timesheetsRouter,
 });
 
 export type AppRouter = typeof appRouter;
