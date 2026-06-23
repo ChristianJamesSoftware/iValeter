@@ -21,20 +21,20 @@ export function MobileNav({
   const pathname = usePathname();
 
   return (
-    <header className="flex h-14 items-center justify-between bg-navy px-4 text-white md:hidden">
+    <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 md:hidden">
       <Link href="/">
         <BrandLogo className="text-lg" />
       </Link>
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Toggle navigation"
-        className="rounded-lg p-2 hover:bg-white/10"
+        className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
       >
         {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </button>
 
       {open && (
-        <div className="absolute inset-x-0 top-14 z-50 bg-navy p-3 shadow-lg">
+        <div className="absolute inset-x-0 top-14 z-50 border-b border-slate-200 bg-white p-3 shadow-lg">
           <nav className="space-y-1">
             {items.map((item) => {
               const active =
@@ -47,10 +47,10 @@ export function MobileNav({
                   href={item.href}
                   onClick={() => setOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium",
+                    "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
                     active
-                      ? "bg-cyan/15 text-cyan"
-                      : "text-white/70 hover:bg-white/5",
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-slate-100",
                   )}
                 >
                   <Icon className="h-5 w-5" />
@@ -61,7 +61,7 @@ export function MobileNav({
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/70 hover:bg-white/5"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100"
               >
                 <LogOut className="h-5 w-5" />
                 Sign out ({user.firstName})

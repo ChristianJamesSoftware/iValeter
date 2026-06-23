@@ -17,30 +17,34 @@ export function StatCard({
   className?: string;
 }) {
   const accentMap = {
-    navy: "bg-navy/5 text-navy",
-    cyan: "bg-cyan/10 text-cyan-600",
-    warning: "bg-warning/10 text-warning",
-    success: "bg-success/10 text-success",
-    danger: "bg-danger/10 text-danger",
+    navy: "bg-slate-100 text-slate-700",
+    cyan: "bg-orange-50 text-orange-600",
+    warning: "bg-amber-50 text-amber-600",
+    success: "bg-emerald-50 text-emerald-600",
+    danger: "bg-red-50 text-red-600",
   } as const;
 
   return (
     <div
       className={cn(
-        "flex items-center gap-4 rounded-xl border border-line bg-white p-4 shadow-sm",
+        "rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-150 hover:border-slate-300 hover:shadow-md",
         className,
       )}
     >
-      <div className={cn("rounded-lg p-3", accentMap[accent])}>
-        <Icon className="h-6 w-6" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
           {title}
         </p>
-        <p className="font-heading text-2xl font-bold text-navy">{value}</p>
-        {subtitle && <p className="truncate text-xs text-slate">{subtitle}</p>}
+        <div className={cn("rounded-lg p-2.5", accentMap[accent])}>
+          <Icon className="h-5 w-5" />
+        </div>
       </div>
+      <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+        {value}
+      </p>
+      {subtitle && (
+        <p className="mt-1 truncate text-xs text-slate-400">{subtitle}</p>
+      )}
     </div>
   );
 }

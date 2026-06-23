@@ -34,25 +34,25 @@ export function BookingCard({
     <Link
       href={href}
       className={cn(
-        "block rounded-xl border bg-white p-4 shadow-sm transition active:scale-[0.99]",
+        "block rounded-xl border bg-white p-4 shadow-sm transition-all duration-150 hover:shadow-md active:scale-[0.99]",
         booking.isPriority
-          ? "border-2 border-danger animate-priority-border"
-          : "border-line hover:border-cyan/50",
+          ? "border-l-4 border-l-red-400 border-red-200 bg-red-50/30 animate-priority-border"
+          : "border-slate-200 hover:border-slate-300",
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-heading text-xl font-bold tracking-wide text-navy">
+            <span className="font-mono text-xl font-bold tracking-widest text-slate-900">
               {booking.vehicleReg}
             </span>
             {booking.isPriority && <PriorityBadge />}
           </div>
-          <p className="mt-0.5 truncate text-sm text-slate">
+          <p className="mt-0.5 truncate text-sm text-slate-500">
             {booking.customerName}
           </p>
         </div>
-        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate" />
+        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-300" />
       </div>
 
       {(inspectionDue || booking.includeFreshScent || booking.paintProtectionTier) && (
@@ -68,7 +68,7 @@ export function BookingCard({
             </span>
           )}
           {booking.paintProtectionTier && (
-            <span className="rounded-full bg-cyan px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy">
+            <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
               Paint Protection
             </span>
           )}
@@ -76,26 +76,30 @@ export function BookingCard({
       )}
 
       <div className="mt-3 flex items-center justify-between gap-2">
-        <div className="min-w-0 text-sm text-slate">
-          <span className="font-medium text-navy">
+        <div className="min-w-0 text-sm text-slate-500">
+          <span className="font-medium text-slate-700">
             {booking.serviceType.name}
           </span>
           {booking.department && (
-            <span className="ml-1 text-slate">· {booking.department.name}</span>
+            <span className="ml-1 text-slate-500">
+              · {booking.department.name}
+            </span>
           )}
         </div>
         <JobStatusBadge status={booking.status} />
       </div>
 
       <div className="mt-2 flex items-center justify-between text-sm">
-        <span className="text-slate">
+        <span className="text-slate-500">
           Ready by{" "}
-          <span className="font-semibold text-navy">
+          <span className="font-semibold text-slate-700">
             {formatTime(booking.readyByTime)}
           </span>
         </span>
         {booking.site && (
-          <span className="truncate text-xs text-slate">{booking.site.name}</span>
+          <span className="truncate text-xs text-slate-500">
+            {booking.site.name}
+          </span>
         )}
       </div>
     </Link>

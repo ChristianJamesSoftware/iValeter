@@ -12,6 +12,14 @@ export interface NavItem {
   href: string;
   label: string;
   icon: NavIconName;
+  /** Uppercase group label rendered above the first item of a section. */
+  section?: string;
+  /** Highlight with the orange accent (e.g. Impersonate User). */
+  accent?: boolean;
+}
+
+function initials(first: string, last: string) {
+  return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase();
 }
 
 export function AppSidebar({
@@ -22,57 +30,73 @@ export function AppSidebar({
   user: { firstName: string; lastName: string; role: string };
 }) {
   const pathname = usePathname();
+  let lastSection: string | undefined;
 
   return (
-    <aside className="flex h-full w-64 flex-col bg-navy text-white">
-      <div className="flex h-16 items-center px-6">
+    <aside className="flex h-full w-56 flex-col border-r border-slate-200 bg-white">
+      <div className="flex h-14 items-center border-b border-slate-100 px-4">
         <Link href="/">
           <BrandLogo className="text-xl" />
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 overflow-y-auto py-2">
         {items.map((item) => {
           const active =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(`${item.href}/`));
           const Icon = NAV_ICONS[item.icon];
+          const showSection = item.section && item.section !== lastSection;
+          lastSection = item.section ?? lastSection;
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
-                active
-                  ? "bg-cyan/15 text-cyan"
-                  : "text-white/70 hover:bg-white/5 hover:text-white",
+            <div key={item.href}>
+              {showSection && (
+                <p className="mb-1 mt-4 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  {item.section}
+                </p>
               )}
-            >
-              <Icon className="h-5 w-5" />
-              {item.label}
-            </Link>
+              <Link
+                href={item.href}
+                className={cn(
+                  "mx-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                  active
+                    ? "bg-slate-900 font-medium text-white"
+                    : item.accent
+                      ? "font-medium text-orange-600 hover:bg-orange-50"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                )}
+              >
+                <Icon className="h-[18px] w-[18px]" />
+                {item.label}
+              </Link>
+            </div>
           );
         })}
       </nav>
 
-      <div className="border-t border-white/10 p-4">
-        <div className="mb-3 px-2">
-          <p className="text-sm font-semibold">
-            {user.firstName} {user.lastName}
-          </p>
-          <p className="text-xs capitalize text-white/50">
-            {user.role.replace("_", " ")}
-          </p>
+      <div className="border-t border-slate-100 p-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+            {initials(user.firstName, user.lastName)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-slate-900">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="truncate text-xs capitalize text-slate-500">
+              {user.role.replace("_", " ")}
+            </p>
+          </div>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              aria-label="Sign out"
+              className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </form>
         </div>
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/5 hover:text-white"
-          >
-            <LogOut className="h-5 w-5" />
-            Sign out
-          </button>
-        </form>
       </div>
     </aside>
   );

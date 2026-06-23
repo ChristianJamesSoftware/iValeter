@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Montserrat, Source_Sans_3 } from "next/font/google";
+import { Montserrat, Inter } from "next/font/google";
 import "./globals.css";
 import { TRPCProvider } from "@/lib/trpc/react";
 
@@ -10,10 +10,10 @@ const montserrat = Montserrat({
   display: "swap",
 });
 
-const sourceSans = Source_Sans_3({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "600"],
-  variable: "--font-source-sans",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#002846",
+  themeColor: "#0f172a",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -37,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${montserrat.variable} ${sourceSans.variable}`}>
+    <html lang="en" className={`${montserrat.variable} ${inter.variable}`}>
       <body>
         <TRPCProvider>{children}</TRPCProvider>
       </body>

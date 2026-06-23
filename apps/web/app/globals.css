@@ -1,26 +1,52 @@
 @import "tailwindcss";
 
 @theme {
-  --color-navy: #002846;
-  --color-navy-700: #013357;
-  --color-navy-600: #0a4066;
-  --color-cyan: #00c2ff;
-  --color-cyan-600: #00a6db;
-  --color-tvblue: #1464ff;
-  --color-offwhite: #f4f7fb;
-  --color-line: #e5e9ec;
-  --color-slate: #33536b;
+  /* Brand */
+  --color-brand: #0f172a;
+  --color-brand-hover: #1e293b;
+  --color-accent: #f97316;
+  --color-accent-hover: #ea580c;
+
+  /* Neutrals */
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* Text */
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+
+  /* Semantic */
   --color-success: #10b981;
+  --color-success-bg: #ecfdf5;
   --color-warning: #f59e0b;
+  --color-warning-bg: #fffbeb;
   --color-danger: #ef4444;
+  --color-danger-bg: #fef2f2;
+  --color-info: #3b82f6;
+  --color-info-bg: #eff6ff;
+
+  /* Legacy compat — remap old tokens onto the new palette */
+  --color-navy: #0f172a;
+  --color-navy-700: #1e293b;
+  --color-navy-600: #334155;
+  --color-cyan: #f97316;
+  --color-cyan-600: #ea580c;
+  --color-offwhite: #fafafa;
+  --color-line: #e2e8f0;
+  --color-slate: #475569;
+  --color-tvblue: #0f172a;
 
   --font-heading: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --background: #f4f7fb;
-  --foreground: #002846;
+  --background: #fafafa;
+  --foreground: #0f172a;
 }
 
 * {
