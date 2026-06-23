@@ -244,14 +244,6 @@ model Booking {
   paintProtectionApplied Boolean @default(false)
   photographyPackage     String?
 
-  includeInspection      Boolean @default(false)
-  inspectionComplete     Boolean @default(false)
-  includeFreshScent      Boolean @default(false)
-  paintProtectionTier    String? // null | "essential" | "standard" | "premium" | "ultimate"
-  freshScentConfirmed    Boolean @default(false)
-  paintProtectionApplied Boolean @default(false)
-  photographyPackage     String? // null | "standard" | "premium" | "full"
-
   assignedToId String?
   assignedTo   User?   @relation("AssignedValeter", fields: [assignedToId], references: [id])
   createdById  String
