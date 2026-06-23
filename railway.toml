@@ -3,7 +3,7 @@ builder = "RAILPACK"
 buildCommand = "pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ivaleter/web build"
 
 [deploy]
-startCommand = "pnpm --filter @ivaleter/db exec prisma migrate resolve --rolled-back 20260622200000_phase1_payroll_portal 2>/dev/null || true && pnpm --filter @ivaleter/db migrate && HOSTNAME=0.0.0.0 node apps/web/.next/standalone/apps/web/server.js"
+startCommand = "pnpm --filter @ivaleter/db exec prisma migrate resolve --rolled-back 20260622200000_phase1_payroll_portal 2>/dev/null || true && pnpm --filter @ivaleter/db migrate && cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static && cp -r apps/web/public apps/web/.next/standalone/apps/web/public && HOSTNAME=0.0.0.0 node apps/web/.next/standalone/apps/web/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
