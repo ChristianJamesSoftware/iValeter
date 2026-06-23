@@ -235,15 +235,7 @@ model Booking {
   priorityLevel PriorityLevel @default(STANDARD)
   readyByTime   DateTime
 
-  // Phase 2 add-ons (existing)
-  includeInspection      Boolean @default(false)
-  inspectionComplete     Boolean @default(false)
-  includeFreshScent      Boolean @default(false)
-  paintProtectionTier    String?
-  freshScentConfirmed    Boolean @default(false)
-  paintProtectionApplied Boolean @default(false)
-  photographyPackage     String?
-
+  // Phase 2 add-ons
   includeInspection      Boolean @default(false)
   inspectionComplete     Boolean @default(false)
   includeFreshScent      Boolean @default(false)
