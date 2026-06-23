@@ -139,28 +139,24 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
       <div className="space-y-4">
         <Field label="Vehicle Registration">
           <div className="space-y-2">
-            {/* UK rear number plate — yellow, England flag, dealer name */}
-            <div style={{ background: "#FFC700", border: "4px solid #1a1a1a", borderRadius: 8, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.25)" }}>
+            {/* UK rear number plate — yellow, GB badge, dealer name */}
+            <div style={{ background: "#F5C500", border: "2px solid #333", borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
               {/* Main plate row */}
-              <div className="relative flex items-center gap-3 px-3 py-1">
-                {/* England flag badge */}
-                <div className="shrink-0 flex flex-col items-center gap-0.5">
-                  <div style={{ width: 30, height: 38, border: "1.5px solid #aaa", borderRadius: 3, overflow: "hidden" }}>
-                    <svg width="30" height="38" viewBox="0 0 60 38" xmlns="http://www.w3.org/2000/svg">
-                      <rect width="60" height="38" fill="#012169"/>
-                      <polygon points="0,0 8,0 60,34 60,38 52,38 0,4" fill="white"/>
-                      <polygon points="60,0 52,0 0,34 0,38 8,38 60,4" fill="white"/>
-                      <polygon points="0,0 5,0 60,36 60,38 55,38 0,2" fill="#C8102E"/>
-                      <polygon points="60,0 55,0 0,36 0,38 5,38 60,2" fill="#C8102E"/>
-                      <rect x="24" y="0" width="12" height="38" fill="white"/>
-                      <rect x="0" y="13" width="60" height="12" fill="white"/>
-                      <rect x="26" y="0" width="8" height="38" fill="#C8102E"/>
-                      <rect x="0" y="15" width="60" height="8" fill="#C8102E"/>
-                    </svg>
-                  </div>
-                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", color: "#1a1a1a" }}>GB</span>
+              <div className="relative flex items-stretch">
+                {/* GB badge — full-height blue column */}
+                <div style={{ background: "#003399", width: 52, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px 5px" }}>
+                  <svg width="36" height="24" viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block" }}>
+                    <rect width="60" height="40" fill="#012169"/>
+                    <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" strokeWidth="10"/>
+                    <path d="M0,0 L60,40" stroke="#C8102E" strokeWidth="6"/>
+                    <path d="M60,0 L0,40" stroke="#C8102E" strokeWidth="6"/>
+                    <path d="M30,0 V40 M0,20 H60" stroke="#fff" strokeWidth="14"/>
+                    <path d="M30,0 V40 M0,20 H60" stroke="#C8102E" strokeWidth="8"/>
+                  </svg>
+                  <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: "0.04em", color: "#F5C500", fontFamily: "'Arial Black', Arial, sans-serif", lineHeight: 1 }}>GB</span>
                 </div>
-                {/* Reg input */}
+                {/* Reg input + status */}
+                <div style={{ flex: 1, display: "flex", alignItems: "center", paddingLeft: 8, paddingRight: 8 }}>
                 <input
                   value={vehicleReg}
                   onChange={(e) => {
@@ -211,6 +207,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                   {dvlaStatus === "found" && <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
                   {dvlaStatus === "error" && <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>}
                 </div>
+                </div>{/* end reg+status wrapper */}
               </div>
               {/* Dealer name strip — bottom of plate */}
               <div style={{ background: "#1a1a1a", padding: "3px 8px", display: "flex", justifyContent: "center" }}>
