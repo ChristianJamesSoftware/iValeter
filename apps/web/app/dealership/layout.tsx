@@ -3,6 +3,7 @@ import type { NavItem } from "@/components/dashboard/app-sidebar";
 
 const NAV: NavItem[] = [
   { href: "/dealership", label: "Dashboard", icon: "dashboard" },
+  { href: "/dealership/calendar", label: "Calendar", icon: "calendar" },
   { href: "/dealership/bookings/new", label: "New Booking", icon: "new" },
   { href: "/dealership/bookings", label: "Bookings", icon: "bookings" },
 ];
