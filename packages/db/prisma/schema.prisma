@@ -39,11 +39,33 @@ model Organisation {
   featureCustomerPortal  Boolean @default(false)
 
   sites            Site[]
+  dealerships      Dealership[]
   users            User[]
   invoices         Invoice[]
   customerInvoices CustomerInvoice[]
   payRuns          PayRun[]
   xeroConnection   XeroConnection?
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEALERSHIP
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Dealership {
+  id             String       @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  name           String
+  address        String?
+  contactName    String?
+  contactEmail   String?
+  contactPhone   String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  sites Site[]
+
+  @@index([organisationId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -59,6 +81,9 @@ model Site {
   address        String?
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
+
+  dealershipId String?
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id])
 
   // Geofencing
   geofenceLat          Float?
@@ -139,6 +164,17 @@ model User {
   phone          String?
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
+
+  // Valeting team fields
+  mobile           String?
+  payId            String? // auto-generated: XXXX.XXXX format
+  dailyRate        Float?
+  dailyDeductions  Float?
+  startDate        DateTime?
+  contractComplete Boolean   @default(false)
+
+  // Dealership team field
+  jobTitle String?
 
   // NatWest Bankline payroll fields
   bankSortCode      String?
