@@ -26,6 +26,11 @@ export default async function OrgTeamPage() {
           siteName: v.siteName,
           jobsToday: v.jobsToday,
           isActive: v.isActive,
+          payId: v.payId,
+          mobile: v.mobile,
+          dailyRate: v.dailyRate,
+          startDate: v.startDate,
+          contractComplete: v.contractComplete,
         }))}
         sites={sites.map((s) => ({ id: s.id, name: s.name }))}
       />
