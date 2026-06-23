@@ -141,7 +141,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
           <div className="space-y-2">
             {/* UK front number plate */}
             <div
-              className="relative flex items-center rounded-lg border-4 border-slate-800 bg-white shadow-md"
+              className="relative flex items-center rounded-lg border-4 border-slate-800 bg-white shadow-md pb-4"
               style={{ fontFamily: "'UKNumberPlate', 'Charles Wright', 'Arial Black', sans-serif" }}
             >
               {/* Blue GB strip on left */}
@@ -191,6 +191,14 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                 {dvlaStatus === "found" && <svg className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
                 {dvlaStatus === "error" && <svg className="h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>}
               </div>
+              {/* Dealer name — bottom of plate like a real number plate */}
+              {site?.name && (
+                <div className="absolute bottom-0.5 left-10 right-0 flex justify-center">
+                  <span className="text-[7px] font-semibold tracking-[0.25em] text-slate-300 uppercase">
+                    {site.name}
+                  </span>
+                </div>
+              )}
             </div>
             {dvlaStatus === "found" && (vehicleMake || vehicleColour) && (
               <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2">
