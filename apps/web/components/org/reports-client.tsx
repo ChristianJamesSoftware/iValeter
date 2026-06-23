@@ -37,8 +37,8 @@ const TOP_PERFORMERS = [
 ];
 
 const th =
-  "bg-slate-50 border-b border-slate-200 text-xs font-medium uppercase tracking-wider text-slate-500 px-4 py-3 text-left";
-const td = "border-b border-slate-100 text-sm text-slate-700 px-4 py-3.5";
+  "bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-400 px-5 py-3 text-left";
+const td = "border-b border-slate-50 text-sm text-slate-700 px-5 py-4";
 
 export function ReportsClient() {
   const [from, setFrom] = useState("");
@@ -125,7 +125,7 @@ export function ReportsClient() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* By department */}
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="text-lg font-semibold text-slate-900">
               Bookings by department
@@ -156,7 +156,7 @@ export function ReportsClient() {
         </div>
 
         {/* Top performers */}
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="text-lg font-semibold text-slate-900">Top performers</h2>
           </div>

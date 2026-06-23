@@ -49,16 +49,16 @@ export function ValeterJobList({ initialJobs }: { initialJobs: Job[] }) {
 
   return (
     <div>
-      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+      <div className="-mx-4 -mt-4 mb-4 flex gap-2 overflow-x-auto bg-slate-900 px-4 pb-4 pt-1">
         {FILTERS.map((f) => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
             className={cn(
-              "whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition",
+              "whitespace-nowrap rounded-full px-4 py-2 text-sm transition",
               filter === f.key
-                ? "bg-navy text-white"
-                : "bg-white text-slate border border-line",
+                ? "bg-white font-bold text-slate-900 shadow-sm"
+                : "border border-white/20 bg-white/10 font-semibold text-white/70",
             )}
           >
             {f.label}
@@ -67,7 +67,7 @@ export function ValeterJobList({ initialJobs }: { initialJobs: Job[] }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-line bg-white p-10 text-center text-slate">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-10 text-center text-slate-400">
           No jobs here right now.
         </div>
       ) : (

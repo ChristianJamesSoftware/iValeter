@@ -7,10 +7,18 @@ import { loginAction, type LoginState } from "./actions";
 const initialState: LoginState = { error: null };
 
 const DEMO_ACCOUNTS = [
-  { email: "admin@ivaleter.co.uk", password: "admin123" },
-  { email: "manager@totalvaleting.co.uk", password: "test123" },
-  { email: "dealer.arnold@totalvaleting.co.uk", password: "test123" },
-  { email: "james.mitchell@totalvaleting.co.uk", password: "test123" },
+  { email: "admin@ivaleter.co.uk", password: "admin123", role: "Super Admin" },
+  { email: "manager@totalvaleting.co.uk", password: "test123", role: "Manager" },
+  {
+    email: "dealer.arnold@totalvaleting.co.uk",
+    password: "test123",
+    role: "Dealer",
+  },
+  {
+    email: "james.mitchell@totalvaleting.co.uk",
+    password: "test123",
+    role: "Valeter",
+  },
 ];
 
 function SubmitButton() {
@@ -19,9 +27,9 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="mt-2 h-11 w-full rounded-lg bg-slate-900 text-sm font-semibold text-white transition-colors hover:bg-slate-700 disabled:opacity-60"
+      className="mt-2 h-12 w-full rounded-lg bg-orange-500 text-sm font-bold text-white transition-colors hover:bg-orange-600 disabled:opacity-60"
     >
-      {pending ? "Signing in…" : "Sign in"}
+      {pending ? "Signing in…" : "Sign in →"}
     </button>
   );
 }
@@ -32,16 +40,15 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
 
   const inputClass =
-    "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 placeholder:text-slate-400";
+    "h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 placeholder:text-slate-400";
+  const labelClass =
+    "mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500";
 
   return (
     <>
-      <form action={formAction} className="mt-2 space-y-4">
+      <form action={formAction} className="space-y-4">
         <div>
-          <label
-            htmlFor="email"
-            className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-slate-700"
-          >
+          <label htmlFor="email" className={labelClass}>
             Email
           </label>
           <input
@@ -57,10 +64,7 @@ export function LoginForm() {
           />
         </div>
         <div>
-          <label
-            htmlFor="password"
-            className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-slate-700"
-          >
+          <label htmlFor="password" className={labelClass}>
             Password
           </label>
           <input
@@ -85,11 +89,11 @@ export function LoginForm() {
         <SubmitButton />
       </form>
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Demo accounts
+      <div className="mt-8">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Quick access
         </p>
-        <ul className="space-y-1.5">
+        <ul className="space-y-1">
           {DEMO_ACCOUNTS.map((acc) => (
             <li key={acc.email}>
               <button
@@ -98,11 +102,13 @@ export function LoginForm() {
                   setEmail(acc.email);
                   setPassword(acc.password);
                 }}
-                className="flex w-full items-center justify-between rounded-md px-1 py-0.5 text-left transition-colors hover:bg-slate-100"
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors hover:bg-slate-50"
               >
-                <span className="text-sm text-slate-700">{acc.email}</span>
-                <span className="font-mono text-xs text-slate-400">
-                  {acc.password}
+                <span className="text-sm font-medium text-slate-700">
+                  {acc.email}
+                </span>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                  {acc.role}
                 </span>
               </button>
             </li>

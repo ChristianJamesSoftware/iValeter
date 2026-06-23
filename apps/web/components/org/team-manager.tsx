@@ -34,68 +34,95 @@ export function TeamManager({
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="flex h-11 items-center gap-2 rounded-lg bg-cyan px-4 font-heading font-semibold text-navy transition hover:bg-cyan-600"
-        >
-          <UserPlus className="h-5 w-5" />
-          Add Valeter
-        </button>
-      </div>
-
       {showForm && (
         <AddValeterForm sites={sites} onDone={() => setShowForm(false)} />
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-line bg-white">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-line bg-offwhite text-xs uppercase text-slate">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Site</th>
-              <th className="px-4 py-3">Jobs Today</th>
-              <th className="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {valeters.length === 0 ? (
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h2 className="text-base font-bold text-slate-900">
+            Team
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+              {valeters.length}
+            </span>
+          </h2>
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="flex h-9 items-center gap-2 rounded-lg bg-orange-500 px-4 text-sm font-semibold text-white transition hover:bg-orange-600"
+          >
+            <UserPlus className="h-4 w-4" />
+            Add Valeter
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="bg-slate-50">
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate">
-                  No valeters yet.
-                </td>
+                <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Name
+                </th>
+                <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Email
+                </th>
+                <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Site
+                </th>
+                <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Jobs Today
+                </th>
+                <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Status
+                </th>
               </tr>
-            ) : (
-              valeters.map((v) => (
-                <tr key={v.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-medium text-navy">
-                    {v.firstName} {v.lastName}
-                  </td>
-                  <td className="px-4 py-3 text-slate">{v.email}</td>
-                  <td className="px-4 py-3 text-slate">{v.siteName ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-navy/5 px-2 py-0.5 text-xs font-bold text-navy">
-                      {v.jobsToday}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        "rounded-full px-2.5 py-1 text-xs font-semibold",
-                        v.isActive
-                          ? "bg-success/15 text-success"
-                          : "bg-slate/10 text-slate",
-                      )}
-                    >
-                      {v.isActive ? "Active" : "Inactive"}
-                    </span>
+            </thead>
+            <tbody>
+              {valeters.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-5 py-16 text-center text-sm text-slate-400"
+                  >
+                    No valeters yet.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                valeters.map((v) => (
+                  <tr
+                    key={v.id}
+                    className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50"
+                  >
+                    <td className="px-5 py-4 text-sm font-medium text-slate-900">
+                      {v.firstName} {v.lastName}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                      {v.email}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                      {v.siteName ?? "—"}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+                        {v.jobsToday}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span
+                        className={cn(
+                          "rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                          v.isActive
+                            ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+                            : "border-slate-200 bg-slate-100 text-slate-500",
+                        )}
+                      >
+                        {v.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

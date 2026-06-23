@@ -34,10 +34,10 @@ export function BookingCard({
     <Link
       href={href}
       className={cn(
-        "block rounded-xl border bg-white p-4 shadow-sm transition-all duration-150 hover:shadow-md active:scale-[0.99]",
+        "block rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-all duration-150 hover:shadow-md active:scale-[0.99]",
         booking.isPriority
-          ? "border-l-4 border-l-red-400 border-red-200 bg-red-50/30 animate-priority-border"
-          : "border-slate-200 hover:border-slate-300",
+          ? "border-l-[3px] border-l-orange-500 bg-orange-50/20"
+          : "hover:border-slate-200",
       )}
     >
       <div className="flex items-start justify-between gap-3">

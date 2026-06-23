@@ -29,8 +29,8 @@ const STATUS: Record<DocStatus, { label: string; cls: string }> = {
 };
 
 const th =
-  "bg-slate-50 border-b border-slate-200 text-xs font-medium uppercase tracking-wider text-slate-500 px-4 py-3 text-left";
-const td = "border-b border-slate-100 text-sm text-slate-700 px-4 py-3.5";
+  "bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-400 px-5 py-3 text-left";
+const td = "border-b border-slate-50 text-sm text-slate-700 px-5 py-4";
 
 export function ComplianceClient() {
   const counts = {
@@ -61,7 +61,7 @@ export function ComplianceClient() {
         <StatCard icon={FileQuestion} title="Missing" value={counts.missing} accent="navy" />
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
         <table className="w-full">
           <thead>
             <tr>

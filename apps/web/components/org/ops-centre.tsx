@@ -1,17 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  ListChecks,
-  Clock,
-  Loader2,
-  CheckCircle2,
-  Timer,
-} from "lucide-react";
 import type { BookingStatus } from "@ivaleter/db";
 import { trpc } from "@/lib/trpc/react";
 import { cn, formatTime, minutesToHuman } from "@/lib/utils";
-import { StatCard } from "@/components/brand/stat-card";
 import { JobStatusBadge } from "@/components/brand/job-status-badge";
 import { PriorityBadge } from "@/components/brand/priority-badge";
 import { AssignModal } from "./assign-modal";
@@ -30,6 +22,38 @@ interface ValeterOpt {
 }
 
 const DEPARTMENTS = ["New Car Sales", "Used Car Sales", "Service"];
+
+function initials(first: string, last: string) {
+  return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase();
+}
+
+function StatTile({
+  label,
+  value,
+  tone = "dark",
+}: {
+  label: string;
+  value: string | number;
+  tone?: "dark" | "success" | "priority";
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl p-4 text-white",
+        tone === "success"
+          ? "bg-emerald-500"
+          : tone === "priority"
+            ? "bg-orange-500"
+            : "bg-slate-900",
+      )}
+    >
+      <p className="text-3xl font-black tracking-tight">{value}</p>
+      <p className="mt-1 text-[10px] uppercase tracking-wider opacity-60">
+        {label}
+      </p>
+    </div>
+  );
+}
 
 export function OpsCentre({
   sites,
@@ -50,8 +74,14 @@ export function OpsCentre({
     { refetchInterval: 12_000 },
   );
 
-  const siteValeters = valeters.filter(
-    (v) => !siteId || v.siteId === siteId,
+  const siteValeters = valeters.filter((v) => !siteId || v.siteId === siteId);
+
+  const priorityCount = useMemo(
+    () =>
+      (bookings.data ?? []).filter(
+        (b) => b.isPriority && b.status !== "COMPLETED",
+      ).length,
+    [bookings.data],
   );
 
   const byDept = useMemo(() => {
@@ -65,21 +95,24 @@ export function OpsCentre({
     return map;
   }, [bookings.data]);
 
+  const siteName = sites.find((s) => s.id === siteId)?.name ?? "All sites";
+
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-navy">
+          <h1 className="font-heading text-3xl font-black tracking-tight text-slate-900">
             Operations Centre
           </h1>
-          <p className="mt-1 text-sm text-slate">
-            Live job board across your sites
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+            Live · {siteName}
           </p>
         </div>
         <select
           value={siteId}
           onChange={(e) => setSiteId(e.target.value)}
-          className="h-11 rounded-lg border border-line bg-white px-4 font-heading font-semibold text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+          className="h-11 rounded-lg border border-slate-200 bg-white px-4 font-heading font-semibold text-slate-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
         >
           {sites.map((s) => (
             <option key={s.id} value={s.id}>
@@ -90,11 +123,22 @@ export function OpsCentre({
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard icon={ListChecks} title="Total Today" value={stats.data?.totalToday ?? 0} accent="navy" />
-        <StatCard icon={Clock} title="Pending" value={stats.data?.pending ?? 0} accent="warning" />
-        <StatCard icon={Loader2} title="In Progress" value={stats.data?.inProgress ?? 0} accent="cyan" />
-        <StatCard icon={CheckCircle2} title="Completed" value={stats.data?.completedToday ?? 0} accent="success" />
-        <StatCard icon={Timer} title="Avg Time" value={minutesToHuman(stats.data?.avgTimeMins ?? 0)} accent="navy" />
+        <StatTile label="Total Today" value={stats.data?.totalToday ?? 0} />
+        <StatTile
+          label="Pending"
+          value={stats.data?.pending ?? 0}
+          tone={priorityCount > 0 ? "priority" : "dark"}
+        />
+        <StatTile label="In Progress" value={stats.data?.inProgress ?? 0} />
+        <StatTile
+          label="Completed"
+          value={stats.data?.completedToday ?? 0}
+          tone="success"
+        />
+        <StatTile
+          label="Avg Time"
+          value={minutesToHuman(stats.data?.avgTimeMins ?? 0)}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
@@ -104,18 +148,16 @@ export function OpsCentre({
             {DEPARTMENTS.map((dept) => {
               const items = byDept.get(dept) ?? [];
               return (
-                <div key={dept} className="rounded-xl bg-offwhite">
-                  <div className="flex items-center justify-between px-1 pb-2">
-                    <h3 className="font-heading text-sm font-bold text-navy">
-                      {dept}
-                    </h3>
-                    <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate">
+                <div key={dept}>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-900">{dept}</h3>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
                       {items.length}
                     </span>
                   </div>
                   <div className="space-y-2">
                     {items.length === 0 ? (
-                      <p className="rounded-lg border border-dashed border-line bg-white p-4 text-center text-xs text-slate">
+                      <p className="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-center text-xs text-slate-400">
                         No jobs
                       </p>
                     ) : (
@@ -123,37 +165,42 @@ export function OpsCentre({
                         <div
                           key={b.id}
                           className={cn(
-                            "rounded-lg border bg-white p-3 shadow-sm",
+                            "rounded-xl border bg-white p-3.5 shadow-sm transition-all hover:border-orange-200 hover:shadow-md",
                             b.isPriority
-                              ? "border-2 border-danger animate-priority-border"
-                              : "border-line",
+                              ? "border-l-4 border-l-orange-500 bg-orange-50/30"
+                              : "border-slate-100",
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-heading font-bold text-navy">
+                            <span className="font-mono text-lg font-black tracking-widest text-slate-900">
                               {b.vehicleReg}
                             </span>
-                            {b.isPriority && <PriorityBadge />}
+                            {b.isPriority ? (
+                              <PriorityBadge />
+                            ) : (
+                              <JobStatusBadge
+                                status={b.status as BookingStatus}
+                              />
+                            )}
                           </div>
-                          <p className="mt-0.5 truncate text-xs text-slate">
+                          <p className="mt-1 truncate text-xs text-slate-400">
                             {b.customerName} · {b.serviceType.name}
                           </p>
-                          <div className="mt-2 flex items-center justify-between">
-                            <JobStatusBadge status={b.status as BookingStatus} />
-                            <span className="text-xs text-slate">
+                          <div className="mt-2.5 flex items-center justify-between border-t border-slate-50 pt-2.5">
+                            <span className="text-xs font-medium text-slate-600">
                               {formatTime(b.readyByTime)}
                             </span>
-                          </div>
-                          <div className="mt-2 flex items-center justify-between">
-                            <span className="text-xs text-slate">
-                              {b.assignedTo
-                                ? `${b.assignedTo.firstName} ${b.assignedTo.lastName}`
-                                : "Unassigned"}
-                            </span>
-                            {(b.status === "PENDING" || !b.assignedTo) && (
+                            {b.assignedTo ? (
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">
+                                {initials(
+                                  b.assignedTo.firstName,
+                                  b.assignedTo.lastName,
+                                )}
+                              </span>
+                            ) : (
                               <button
                                 onClick={() => setAssignBookingId(b.id)}
-                                className="rounded-md bg-cyan px-2.5 py-1 text-xs font-semibold text-navy hover:bg-cyan-600"
+                                className="rounded-md bg-orange-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-orange-600"
                               >
                                 Assign
                               </button>
@@ -171,32 +218,31 @@ export function OpsCentre({
 
         {/* Valeter workload */}
         <aside>
-          <h3 className="mb-3 font-heading text-sm font-bold text-navy">
-            Valeter Workload
-          </h3>
+          <h3 className="mb-3 text-sm font-bold text-slate-900">Valeters</h3>
           <div className="space-y-2">
             {siteValeters.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-line bg-white p-4 text-center text-xs text-slate">
+              <p className="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-center text-xs text-slate-400">
                 No valeters at this site
               </p>
             ) : (
               siteValeters.map((v) => (
                 <div
                   key={v.id}
-                  className="flex items-center justify-between rounded-lg border border-line bg-white p-3"
+                  className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm"
                 >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "h-2 w-2 rounded-full",
-                        v.isActive ? "bg-success" : "bg-line",
-                      )}
-                    />
-                    <span className="text-sm font-medium text-navy">
-                      {v.firstName} {v.lastName}
-                    </span>
-                  </div>
-                  <span className="rounded-full bg-navy/5 px-2 py-0.5 text-xs font-bold text-navy">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+                    {initials(v.firstName, v.lastName)}
+                  </span>
+                  <span className="text-sm font-semibold text-slate-900">
+                    {v.firstName} {v.lastName}
+                  </span>
+                  <span
+                    className={cn(
+                      "h-2 w-2 rounded-full",
+                      v.isActive ? "bg-emerald-500" : "bg-slate-300",
+                    )}
+                  />
+                  <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                     {v.jobsToday}
                   </span>
                 </div>
