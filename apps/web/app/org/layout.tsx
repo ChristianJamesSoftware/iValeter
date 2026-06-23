@@ -9,6 +9,7 @@ const NAV: NavItem[] = [
     icon: "recurring",
   },
   { href: "/org/team", label: "Team", icon: "team", section: "Team" },
+  { href: "/org/dealership-team", label: "Dealership Team", icon: "team" },
   { href: "/org/attendance", label: "Attendance", icon: "attendance" },
   { href: "/org/holiday", label: "Holiday", icon: "holiday" },
   { href: "/org/training", label: "Training", icon: "training" },
