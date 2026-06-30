@@ -101,7 +101,7 @@ const TIME_SLOTS: string[] = (() => {
 })();
 
 function formatSlotLabel(time: string): string {
-  const [hStr, mStr] = time.split(":");
+  const [hStr = "0", mStr = "00"] = time.split(":");
   const h = parseInt(hStr, 10);
   const m = mStr;
   const period = h >= 12 ? "PM" : "AM";
