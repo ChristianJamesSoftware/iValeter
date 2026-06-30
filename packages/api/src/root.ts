@@ -9,6 +9,7 @@ import { analyticsRouter } from "./routers/analytics";
 import { platformRouter } from "./routers/platform";
 import { orgSettingsRouter } from "./routers/org-settings";
 import { xeroRouter } from "./routers/xero";
+import { auditsRouter } from "./routers/audits";
 import { invoicesRouter } from "./routers/invoices";
 import { organisationsRouter } from "./routers/organisations";
 import { timesheetsRouter } from "./routers/timesheets";
@@ -29,6 +30,7 @@ export const appRouter = router({
   platform: platformRouter,
   orgSettings: orgSettingsRouter,
   xero: xeroRouter,
+  audits: auditsRouter,
   invoices: invoicesRouter,
   organisations: organisationsRouter,
   timesheets: timesheetsRouter,

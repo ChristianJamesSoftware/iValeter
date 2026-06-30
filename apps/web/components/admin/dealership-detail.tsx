@@ -32,7 +32,6 @@ export function DealershipDetail({
   const utils = trpc.useUtils();
   const detail = trpc.dealerships.getById.useQuery(
     { id: dealership.id },
-    { initialData: undefined },
   );
 
   const sites = (detail.data?.sites ?? dealership.sites).map((s) =>
