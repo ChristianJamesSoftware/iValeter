@@ -186,7 +186,7 @@ export const usersRouter = router({
             : {}),
         },
       });
-    }),,
+    }),
   /**
    * Returns today's clock-in status for each valeter at a site.
    * Used by Ops Centre to show green/red status and flag late arrivals.

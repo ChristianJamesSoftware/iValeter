@@ -392,7 +392,7 @@ export const bookingsRouter = router({
             input.paintProtectionApplied ?? booking.paintProtectionApplied,
         },
       });
-    }),,
+    }),
   /**
    * Edit an existing booking (customer/dealership side).
    * Only allowed while the booking has not been COMPLETED or CANCELLED.
