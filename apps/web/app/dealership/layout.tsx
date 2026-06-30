@@ -6,6 +6,8 @@ const NAV: NavItem[] = [
   { href: "/dealership/calendar", label: "Calendar", icon: "calendar" },
   { href: "/dealership/bookings/new", label: "New Booking", icon: "new" },
   { href: "/dealership/bookings", label: "Bookings", icon: "bookings" },
+  { href: "/dealership/reports", label: "Reports", icon: "reports" },
+  { href: "/dealership/support", label: "Support", icon: "support" },
 ];
 
 export default function DealershipLayout({

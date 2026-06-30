@@ -247,4 +247,50 @@ export const usersRouter = router({
         };
       });
     }),
+
+  /** Valeter: clock in */
+  clockIn: protectedProcedure
+    .input(
+      z.object({
+        lat: z.number().optional(),
+        lng: z.number().optional(),
+      }).optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const siteId = ctx.session.siteId;
+      if (!siteId) throw new TRPCError({ code: "BAD_REQUEST", message: "No site assigned" });
+      return ctx.prisma.clockEvent.create({
+        data: {
+          userId: ctx.session.userId,
+          siteId,
+          type: "CLOCK_IN",
+          timestamp: new Date(),
+          lat: input?.lat ?? null,
+          lng: input?.lng ?? null,
+        },
+      });
+    }),
+
+  /** Valeter: clock out */
+  clockOut: protectedProcedure
+    .input(
+      z.object({
+        lat: z.number().optional(),
+        lng: z.number().optional(),
+      }).optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const siteId = ctx.session.siteId;
+      if (!siteId) throw new TRPCError({ code: "BAD_REQUEST", message: "No site assigned" });
+      return ctx.prisma.clockEvent.create({
+        data: {
+          userId: ctx.session.userId,
+          siteId,
+          type: "CLOCK_OUT",
+          timestamp: new Date(),
+          lat: input?.lat ?? null,
+          lng: input?.lng ?? null,
+        },
+      });
+    }),
 });

@@ -12,6 +12,10 @@ import { xeroRouter } from "./routers/xero";
 import { invoicesRouter } from "./routers/invoices";
 import { organisationsRouter } from "./routers/organisations";
 import { timesheetsRouter } from "./routers/timesheets";
+import { reportsRouter } from "./routers/reports";
+import { valeterTimesheetsRouter } from "./routers/valeter-timesheets";
+import { messagesRouter } from "./routers/messages";
+import { overtimeRouter } from "./routers/overtime";
 
 export const appRouter = router({
   auth: authRouter,
@@ -27,6 +31,10 @@ export const appRouter = router({
   invoices: invoicesRouter,
   organisations: organisationsRouter,
   timesheets: timesheetsRouter,
+  reports: reportsRouter,
+  valeterTimesheets: valeterTimesheetsRouter,
+  messages: messagesRouter,
+  overtime: overtimeRouter,
 });
 
 export type AppRouter = typeof appRouter;

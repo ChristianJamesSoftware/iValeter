@@ -173,6 +173,10 @@ model User {
   startDate        DateTime?
   contractComplete Boolean   @default(false)
 
+  // Schedule (set by head office)
+  workingDays      String[]  // e.g. ["MON","TUE","WED","THU","FRI"]
+  contractedHours  Float?    // daily contracted hours, e.g. 8.0
+
   // Dealership team field
   jobTitle String?
 
@@ -181,6 +185,10 @@ model User {
   bankAccountNumber String?
   bankAccountName   String?
   bankReference     String?
+
+  // Password reset
+  passwordResetToken     String?   @unique
+  passwordResetExpiresAt DateTime?
 
   assignedBookings     Booking[]          @relation("AssignedValeter")
   createdBookings      Booking[]          @relation("CreatedBy")
@@ -197,6 +205,9 @@ model User {
   accountManagerSites  Site[]             @relation("AccountManagerSites")
   sentMessages         AccountManagerMessage[] @relation("MessageFrom")
   receivedMessages     AccountManagerMessage[] @relation("MessageTo")
+  messagesSent         Message[]               @relation("MessageFrom")
+  messagesReceived     Message[]               @relation("MessageTo")
+  overtimeRequests     OvertimeRequest[]
 
   @@index([organisationId])
   @@index([siteId])
@@ -813,4 +824,50 @@ model XeroNominalMapping {
   createdAt       DateTime @default(now())
 
   @@unique([organisationId, serviceTypeId])
+}
+
+// ─── Valeter Messaging ────────────────────────────────────────────────────────
+
+model Message {
+  id             String   @id @default(cuid())
+  organisationId String
+  fromUserId     String
+  toUserId       String
+  body           String
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  fromUser User @relation("MessageFrom", fields: [fromUserId], references: [id])
+  toUser   User @relation("MessageTo", fields: [toUserId], references: [id])
+
+  @@index([toUserId])
+  @@index([fromUserId])
+  @@index([organisationId])
+}
+
+// ─── Overtime Requests ────────────────────────────────────────────────────────
+
+enum OvertimeStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+model OvertimeRequest {
+  id             String        @id @default(cuid())
+  userId         String
+  organisationId String
+  siteId         String?
+  requestedDate  DateTime
+  requestedHours Float
+  reason         String
+  status         OvertimeStatus @default(PENDING)
+  reviewedByUserId String?
+  reviewedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([organisationId])
 }

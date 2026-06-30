@@ -18,6 +18,7 @@ import {
   FileText,
   BarChart2,
   UserCog,
+  HelpCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -41,7 +42,8 @@ export type NavIconName =
   | "deductions"
   | "quote"
   | "reports"
-  | "impersonate";
+  | "impersonate"
+  | "support";
 
 export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -64,4 +66,5 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   quote: FileText,
   reports: BarChart2,
   impersonate: UserCog,
+  support: HelpCircle,
 };

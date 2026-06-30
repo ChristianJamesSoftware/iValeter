@@ -65,12 +65,48 @@ interface SiteOpt {
   departments: DeptOpt[];
 }
 
-function defaultReadyBy(): string {
-  const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
-  // round to nearest 5 min, format for datetime-local
-  d.setMinutes(Math.round(d.getMinutes() / 5) * 5, 0, 0);
+/** Returns today's date as YYYY-MM-DD */
+function defaultBookingDate(): string {
+  const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Default time: next slot at or after now, capped to 08:00–17:00 */
+function defaultBookingTime(): string {
+  const now = new Date();
+  let h = now.getHours();
+  let m = Math.ceil(now.getMinutes() / 15) * 15;
+  if (m >= 60) { h += 1; m = 0; }
+  if (h < 8) { h = 8; m = 0; }
+  if (h >= 17) { h = 17; m = 0; }
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** Build ISO-like string for datetime from date YYYY-MM-DD + time HH:MM */
+function combineDateAndTime(date: string, time: string): string {
+  return `${date}T${time}`;
+}
+
+/** All 15-min slots from 08:00 to 17:00 */
+const TIME_SLOTS: string[] = (() => {
+  const slots: string[] = [];
+  for (let h = 8; h <= 17; h++) {
+    const maxM = h === 17 ? 0 : 45;
+    for (let m = 0; m <= maxM; m += 15) {
+      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+  }
+  return slots;
+})();
+
+function formatSlotLabel(time: string): string {
+  const [hStr, mStr] = time.split(":");
+  const h = parseInt(hStr, 10);
+  const m = mStr;
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return `${h12}:${m} ${period}`;
 }
 
 export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
@@ -89,7 +125,10 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
   const [dvlaStatus, setDvlaStatus] = useState<"idle"|"loading"|"found"|"error">("idle");
   const dvlaTimerRef = React.useRef<ReturnType<typeof setTimeout>|null>(null);
   const [customerName, setCustomerName] = useState("");
-  const [readyByTime, setReadyByTime] = useState(defaultReadyBy());
+  const [bookingDate, setBookingDate] = useState(defaultBookingDate());
+  const [bookingTime, setBookingTime] = useState(defaultBookingTime());
+  // Combined value used by allocation check and form submit
+  const readyByTime = combineDateAndTime(bookingDate, bookingTime);
   const [isPriority, setIsPriority] = useState(false);
   const [includeInspection, setIncludeInspection] = useState(false);
   const [includeFreshScent, setIncludeFreshScent] = useState(false);
@@ -299,12 +338,28 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
         </Field>
 
         <Field label="Ready By">
-          <input
-            type="datetime-local"
-            value={readyByTime}
-            onChange={(e) => setReadyByTime(e.target.value)}
-            className="h-12 w-full rounded-lg border border-line bg-white px-4 text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
-          />
+          <div className="flex gap-3">
+            {/* Date */}
+            <input
+              type="date"
+              value={bookingDate}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setBookingDate(e.target.value)}
+              className="h-12 flex-1 rounded-lg border border-line bg-white px-4 text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+            />
+            {/* Time — restricted to 08:00–17:00 in 15-min slots */}
+            <select
+              value={bookingTime}
+              onChange={(e) => setBookingTime(e.target.value)}
+              className="h-12 w-36 rounded-lg border border-line bg-white px-3 text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+            >
+              {TIME_SLOTS.map((slot) => (
+                <option key={slot} value={slot}>
+                  {formatSlotLabel(slot)}
+                </option>
+              ))}
+            </select>
+          </div>
         </Field>
 
         {/* ── Over-allocation warning ─────────────────────────── */}
