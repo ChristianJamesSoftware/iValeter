@@ -191,6 +191,7 @@ export function BookingHistory() {
           booking={{
             ...editBooking,
             readyByTime: editBooking.readyByTime.toISOString(),
+            siteId: editBooking.site.id,
           }}
           departments={editDepartments}
           onClose={handleModalClose}
