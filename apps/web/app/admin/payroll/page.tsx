@@ -1,4 +1,3 @@
-import { getServerApi } from "@/lib/trpc/server";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PayrollClient } from "@/components/admin/payroll-client";
 
@@ -14,10 +13,8 @@ function getMondayOfCurrentWeek(): string {
   return monday.toISOString().split("T")[0] ?? "";
 }
 
-export default async function PayrollPage() {
-  const api = await getServerApi();
+export default function PayrollPage() {
   const weekStart = getMondayOfCurrentWeek();
-  const summary = await api.hq.payrollSummary({ weekStart });
 
   return (
     <div>
@@ -25,7 +22,7 @@ export default async function PayrollPage() {
         title="Payroll"
         subtitle="Review and approve weekly timesheets"
       />
-      <PayrollClient initialSummary={summary} initialWeekStart={weekStart} />
+      <PayrollClient initialWeekStart={weekStart} />
     </div>
   );
 }

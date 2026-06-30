@@ -5,28 +5,7 @@ import { ChevronLeft, ChevronRight, CheckCircle2, Loader2, Download } from "luci
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
-type PayrollLine = {
-  userId: string;
-  timesheetId: string;
-  name: string;
-  siteId: string;
-  siteName: string;
-  regularHours: number;
-  overtimeHours: number;
-  dailyRate: number;
-  totalEstimate: number;
-  status: string;
-};
-
-type PayrollSummary = {
-  weekStart: string;
-  timesheetCount: number;
-  totalEstimate: number;
-  lines: PayrollLine[];
-};
-
 interface PayrollClientProps {
-  initialSummary: PayrollSummary;
   initialWeekStart: string;
 }
 
@@ -51,16 +30,12 @@ const STATUS_CHIP: Record<string, string> = {
   LOCKED: "bg-blue-100 text-blue-700",
 };
 
-export function PayrollClient({
-  initialSummary,
-  initialWeekStart,
-}: PayrollClientProps) {
+export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [approveSuccess, setApproveSuccess] = useState(false);
 
   const { data: summary, refetch } = trpc.hq.payrollSummary.useQuery(
     { weekStart },
-    { initialData: weekStart === initialWeekStart ? initialSummary : undefined },
   );
 
   const approveAll = trpc.hq.payrollApproveAll.useMutation({
