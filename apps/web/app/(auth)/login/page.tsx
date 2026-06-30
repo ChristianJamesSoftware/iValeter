@@ -1,6 +1,11 @@
 import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
+interface Props {
+  searchParams: Promise<{ reset?: string }>;
+}
+
+export default async function LoginPage({ searchParams }: Props) {
+  const { reset } = await searchParams;
   return (
     <main className="flex min-h-screen flex-col lg:flex-row">
       {/* Left panel — dark, sells the product */}
@@ -54,7 +59,7 @@ export default function LoginPage() {
           <p className="mb-8 mt-1 text-sm text-slate-500">
             Sign in to your account
           </p>
-          <LoginForm />
+          <LoginForm resetSuccess={reset === "1"} />
         </div>
       </section>
     </main>

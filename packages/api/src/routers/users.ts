@@ -91,7 +91,7 @@ export const usersRouter = router({
         email: z.string().email(),
         firstName: z.string().min(1),
         lastName: z.string().min(1),
-        password: z.string().min(6),
+        password: z.string().min(6).optional(), // omit to auto-generate a temp password
         role: z.nativeEnum(Role),
         siteId: z.string().optional(),
         skills: z.array(z.string()).default([]),
@@ -127,13 +127,25 @@ export const usersRouter = router({
         }
       }
 
+      // If no password supplied, generate a secure random temp password
+      // and set a password-reset token so the user must set their own on first login
+      const { randomBytes } = await import("crypto");
+      const tempPassword = input.password ?? randomBytes(16).toString("hex");
+      const needsReset = !input.password;
+      const resetToken = needsReset ? randomBytes(32).toString("hex") : null;
+      const resetExpiry = needsReset
+        ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        : null;
+
       return ctx.prisma.user.create({
         data: {
           organisationId: ctx.session.organisationId,
           email: input.email.toLowerCase().trim(),
           firstName: input.firstName.trim(),
           lastName: input.lastName.trim(),
-          passwordHash: hashPassword(input.password),
+          passwordHash: hashPassword(tempPassword),
+          passwordResetToken: resetToken,
+          passwordResetExpiresAt: resetExpiry,
           role: input.role,
           siteId: input.siteId ?? null,
           skills: input.skills,

@@ -34,7 +34,7 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
   const [state, formAction] = useActionState(loginAction, initialState);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,6 +46,11 @@ export function LoginForm() {
 
   return (
     <>
+      {resetSuccess && (
+        <div className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          Password updated — sign in with your new password.
+        </div>
+      )}
       <form action={formAction} className="space-y-4">
         <div>
           <label htmlFor="email" className={labelClass}>
@@ -78,6 +83,14 @@ export function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             className={inputClass}
           />
+          <div className="mt-1.5 text-right">
+            <a
+              href="/forgot-password"
+              className="text-xs font-semibold text-orange-500 hover:text-orange-600"
+            >
+              Forgot password?
+            </a>
+          </div>
         </div>
 
         {state.error && (
