@@ -71,7 +71,9 @@ function getStatus(row: Recurring): BookingStatus {
   }
 
   // Check if deadline has passed today
-  const [h, m] = row.mustDoneByTime.split(":").map(Number);
+  const parts = row.mustDoneByTime.split(":");
+  const h = Number(parts[0] ?? 0);
+  const m = Number(parts[1] ?? 0);
   const deadline = new Date(now);
   deadline.setHours(h, m, 0, 0);
 

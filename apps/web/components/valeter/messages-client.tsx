@@ -110,7 +110,7 @@ export function MessagesClient({ meUserId }: { meUserId: string }) {
               </div>
             </div>
             <button
-              onClick={() => handleReply(msg.fromUser.id ?? msg.fromUserId)}
+              onClick={() => handleReply(msg.fromUser.id)}
               className="mt-2 text-xs font-semibold text-orange-400 hover:underline"
             >
               Reply

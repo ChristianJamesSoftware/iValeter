@@ -9,7 +9,7 @@ export const messagesRouter = router({
       where: { toUserId: ctx.session.userId },
       orderBy: { createdAt: "desc" },
       include: {
-        fromUser: { select: { firstName: true, lastName: true, role: true } },
+        fromUser: { select: { id: true, firstName: true, lastName: true, role: true } },
       },
     });
   }),
