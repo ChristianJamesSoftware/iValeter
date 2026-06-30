@@ -1,8 +1,9 @@
 "use client";
 
 // TODO: Add TrainingRecord model to schema in Phase 4
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/dashboard/page-header";
 
 interface Record {
@@ -67,6 +68,41 @@ export function TrainingClient() {
           </button>
         }
       />
+
+      {/* Expiry alerts */}
+      {(() => {
+        const expired = records.filter((r) => new Date(r.expiry) < new Date());
+        const expiringSoon = records.filter((r) => {
+          const exp = new Date(r.expiry);
+          const now = new Date();
+          const in30 = new Date();
+          in30.setDate(now.getDate() + 30);
+          return exp >= now && exp < in30;
+        });
+        if (expired.length === 0 && expiringSoon.length === 0) return null;
+        return (
+          <div className="mb-5 space-y-2">
+            {expired.length > 0 && (
+              <div className="flex items-start gap-3 rounded-xl border border-red-300 bg-red-50 px-5 py-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+                <div>
+                  <p className="font-semibold text-red-900">Expired training — renewal required</p>
+                  <p className="text-sm text-red-700">{expired.map((r) => `${r.valeter} (${r.course})`).join(", ")}</p>
+                </div>
+              </div>
+            )}
+            {expiringSoon.length > 0 && (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-5 py-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+                <div>
+                  <p className="font-semibold text-amber-900">Training expiring within 30 days</p>
+                  <p className="text-sm text-amber-700">{expiringSoon.map((r) => `${r.valeter} (${r.course})`).join(", ")}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {open && (
         <form

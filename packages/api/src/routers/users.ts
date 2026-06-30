@@ -186,5 +186,65 @@ export const usersRouter = router({
             : {}),
         },
       });
+    }),,
+  /**
+   * Returns today's clock-in status for each valeter at a site.
+   * Used by Ops Centre to show green/red status and flag late arrivals.
+   */
+  clockStatusToday: orgAdminProcedure
+    .input(z.object({ siteId: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const today = startOfToday();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
+      // All active valeters for the org (optionally filtered by site)
+      const valeters = await ctx.prisma.user.findMany({
+        where: {
+          organisationId: ctx.session.organisationId,
+          role: Role.valeter,
+          isActive: true,
+          ...(input.siteId ? { siteId: input.siteId } : {}),
+        },
+        select: { id: true, firstName: true, lastName: true, siteId: true },
+      });
+
+      // All clock events for these valeters today
+      const events = await ctx.prisma.clockEvent.findMany({
+        where: {
+          userId: { in: valeters.map((v) => v.id) },
+          timestamp: { gte: today, lt: tomorrow },
+        },
+        orderBy: { timestamp: "asc" },
+      });
+
+      // Build a map: userId -> earliest CLOCK_IN today
+      const clockInMap = new Map<string, Date>();
+      for (const e of events) {
+        if (e.type === "CLOCK_IN" && !clockInMap.has(e.userId)) {
+          clockInMap.set(e.userId, e.timestamp);
+        }
+      }
+
+      // 8:15 AM threshold
+      const cutoff = new Date(today);
+      cutoff.setHours(8, 15, 0, 0);
+      const now = new Date();
+
+      return valeters.map((v) => {
+        const clockedInAt = clockInMap.get(v.id) ?? null;
+        const isClockedIn = clockedInAt !== null;
+        const isLate = !isClockedIn && now > cutoff; // past 8:15 and still not in
+
+        return {
+          id: v.id,
+          firstName: v.firstName,
+          lastName: v.lastName,
+          siteId: v.siteId,
+          isClockedIn,
+          clockedInAt,
+          isLate, // needs flagging red + alert
+        };
+      });
     }),
 });

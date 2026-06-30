@@ -15,14 +15,6 @@ const NAV: NavItem[] = [
   { href: "/org/training", label: "Training", icon: "training" },
   { href: "/org/compliance", label: "Compliance", icon: "compliance" },
   {
-    href: "/org/payroll-deductions",
-    label: "Pay Deductions",
-    icon: "deductions",
-    section: "Finance",
-  },
-  { href: "/org/billing", label: "Billing", icon: "billing" },
-  { href: "/org/quote-builder", label: "Quote Builder", icon: "quote" },
-  {
     href: "/org/reports",
     label: "Reports",
     icon: "reports",
