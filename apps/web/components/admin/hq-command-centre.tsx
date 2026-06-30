@@ -31,8 +31,6 @@ type Site = {
 };
 
 interface HqCommandCentreProps {
-  initialAlerts: Alert[];
-  initialSiteHealth: SiteHealth[];
   sites: Site[];
 }
 
@@ -43,19 +41,13 @@ const AUDIENCE_OPTIONS = [
   { value: "dealership_user" as const, label: "All Customers" },
 ];
 
-export function HqCommandCentre({
-  initialAlerts,
-  initialSiteHealth,
-  sites,
-}: HqCommandCentreProps) {
+export function HqCommandCentre({ sites }: HqCommandCentreProps) {
   // Alerts — auto-refresh every 60s
   const { data: alerts } = trpc.hq.alerts.useQuery(undefined, {
-    initialData: initialAlerts,
     refetchInterval: 60_000,
   });
 
   const { data: siteHealth } = trpc.hq.siteHealth.useQuery(undefined, {
-    initialData: initialSiteHealth,
     refetchInterval: 60_000,
   });
 
@@ -83,8 +75,8 @@ export function HqCommandCentre({
     });
   }
 
-  const displayAlerts = alerts ?? initialAlerts;
-  const displayHealth = siteHealth ?? initialSiteHealth;
+  const displayAlerts = alerts ?? [];
+  const displayHealth = siteHealth ?? [];
 
   return (
     <div className="space-y-6">

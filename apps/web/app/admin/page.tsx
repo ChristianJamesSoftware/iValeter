@@ -8,13 +8,11 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
   const api = await getServerApi();
-  const [sites, valeters, stats, siteHealth, alerts, xeroConn] =
+  const [sites, valeters, stats, xeroConn] =
     await Promise.all([
       api.sites.list(),
       api.users.listValeters(),
       api.analytics.statCards(),
-      api.hq.siteHealth(),
-      api.hq.alerts(),
       api.xero.getConnection(),
     ]);
 
@@ -66,8 +64,6 @@ export default async function AdminDashboard() {
       </div>
 
       <HqCommandCentre
-        initialAlerts={alerts}
-        initialSiteHealth={siteHealth}
         sites={sites.map((s) => ({ id: s.id, name: s.name }))}
       />
     </div>
