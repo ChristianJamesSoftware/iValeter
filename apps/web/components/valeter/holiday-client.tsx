@@ -117,7 +117,7 @@ export function HolidayClient() {
                 <span
                   className={cn(
                     "rounded-full px-2.5 py-1 text-xs font-semibold",
-                    STATUS_STYLE[r.status],
+                    STATUS_STYLE[r.status as keyof typeof STATUS_STYLE] ?? "bg-slate-100 text-slate-500",
                   )}
                 >
                   {r.status}

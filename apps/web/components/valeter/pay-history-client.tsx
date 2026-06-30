@@ -105,7 +105,7 @@ export function PayHistoryClient() {
       <div className="overflow-hidden rounded-2xl bg-white/10">
         <div className="divide-y divide-white/10">
           {sheets.map((ts) => {
-            const s = STATUS_DISPLAY[ts.status] ?? STATUS_DISPLAY.DRAFT;
+            const s = STATUS_DISPLAY[ts.status] ?? { label: "Draft", icon: <Clock className="h-3.5 w-3.5" />, cls: "text-white/40" };
             const total = ts.totalRegularHours + ts.totalOvertimeHours;
             return (
               <div key={ts.id} className="flex items-center gap-4 px-5 py-4">
