@@ -73,7 +73,7 @@ export function ReportsDashboard({
 }) {
   const [siteId, setSiteId] = useState(defaultSiteId);
   const [periodIdx, setPeriodIdx] = useState(1); // "This Week" default
-  const period = PERIODS[periodIdx];
+  const period = PERIODS[periodIdx] ?? PERIODS[1]!;
   const { from, to } = getDateRange(period.days);
 
   const { data, isLoading } = trpc.reports.summary.useQuery(
