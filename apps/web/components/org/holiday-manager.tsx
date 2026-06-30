@@ -66,7 +66,11 @@ export function HolidayManager() {
   }
 
   function confirmCover(id: string) {
-    setCoverState((s) => ({ ...s, [id]: { ...s[id], coverConfirmed: true } }));
+    setCoverState((s) => {
+      const existing = s[id];
+      if (!existing) return s;
+      return { ...s, [id]: { coverName: existing.coverName, coverConfirmed: true } };
+    });
   }
 
   return (
