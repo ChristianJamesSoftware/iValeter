@@ -78,7 +78,6 @@ export function ReportsDashboard({
 
   const { data, isLoading } = trpc.reports.summary.useQuery(
     { siteId: siteId || undefined, dateFrom: from, dateTo: to },
-    { keepPreviousData: true },
   );
 
   const siteName = sites.find((s) => s.id === siteId)?.name ?? "All Sites";
