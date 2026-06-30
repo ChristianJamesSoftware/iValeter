@@ -101,8 +101,11 @@ function check(file) {
     }
 
     // ── React Query / tRPC options that don't exist ───────────────────────────
-    if (/initialData\s*:/.test(line) && /useQuery/.test(src.slice(0, src.indexOf(line)))) {
-      // initialData is fine — skip
+    // ── initialData with a locally-typed variable ────────────────────────────────────
+    // Local types use string for enum fields — causes build failures.
+    // Safe pattern: initialData only with `as never` cast or no initialData at all.
+    if (/initialData\s*:/.test(line) && !/as never/.test(line) && /useQuery/.test(src)) {
+      warnings.push(`${rel}:${ln} \u2014 initialData may cause enum type mismatch (Role, TimesheetStatus, etc.) — consider removing initialData or casting with 'as never': ${line.trim()}`);
     }
 
     // ── Missing required props — basic heuristic: JSX spread without explicit required field ──
