@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { formatDate, greeting } from "@/lib/utils";
 import { ValeterJobList } from "@/components/valeter/job-list";
 import { ClockWidget } from "@/components/valeter/clock-widget";
+import { logoutAction } from "@/app/(auth)/login/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -48,14 +49,26 @@ export default async function ValeterHomePage() {
   return (
     <div>
       <header className="bg-slate-900 px-5 pb-6 pt-8 text-white">
-        <p className="text-sm text-white/70">{formatDate(new Date())}</p>
-        <h1 className="font-heading text-3xl font-black">
-          {greeting()}, {session?.firstName}
-        </h1>
-        <p className="mt-1 text-sm font-semibold text-orange-400">
-          {jobs.filter((j) => j.status !== "COMPLETED").length} active job
-          {jobs.filter((j) => j.status !== "COMPLETED").length !== 1 ? "s" : ""} today
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm text-white/70">{formatDate(new Date())}</p>
+            <h1 className="font-heading text-3xl font-black">
+              {greeting()}, {session?.firstName}
+            </h1>
+            <p className="mt-1 text-sm font-semibold text-orange-400">
+              {jobs.filter((j) => j.status !== "COMPLETED").length} active job
+              {jobs.filter((j) => j.status !== "COMPLETED").length !== 1 ? "s" : ""} today
+            </p>
+          </div>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="mt-1 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/60 transition hover:bg-white/20 hover:text-white"
+            >
+              Log out
+            </button>
+          </form>
+        </div>
 
         {/* Clock widget */}
         <div className="mt-5">
