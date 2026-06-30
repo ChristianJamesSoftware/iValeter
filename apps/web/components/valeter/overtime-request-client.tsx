@@ -181,7 +181,7 @@ export function OvertimeRequestClient() {
           </div>
           <div className="divide-y divide-white/5">
             {requests!.map((r) => {
-              const s = STATUS_STYLE[r.status];
+              const s = STATUS_STYLE[r.status] ?? { label: r.status, cls: "text-white/60" };
               return (
                 <div key={r.id} className="flex items-center justify-between px-5 py-3.5">
                   <div>
