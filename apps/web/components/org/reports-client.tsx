@@ -82,9 +82,9 @@ export function ReportsClient() {
   function exportCsv() {
     if (!data) return;
     const rows = [
-      ["Site", "Total", "Completed", "Cancelled", "Avg Mins"],
-      ...(data.bySite ?? []).map((s: { site: string; total: number; completed: number; cancelled: number; avgMins: number }) => [
-        s.site, String(s.total), String(s.completed), String(s.cancelled), String(s.avgMins),
+      ["Site", "Count", "Avg Mins"],
+      ...(data.bySite ?? []).map((s: { name: string; count: number; avgMins: number }) => [
+        s.name, String(s.count), "", "", String(s.avgMins),
       ]),
     ];
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -195,30 +195,26 @@ export function ReportsClient() {
                   <thead className="border-b border-line bg-offwhite text-xs uppercase text-slate">
                     <tr>
                       <th className="px-5 py-2.5 text-left">Site</th>
-                      <th className="px-5 py-2.5 text-right">Total</th>
-                      <th className="px-5 py-2.5 text-right">Completed</th>
-                      <th className="px-5 py-2.5 text-right">Cancelled</th>
+                      <th className="px-5 py-2.5 text-right">Count</th>
                       <th className="px-5 py-2.5 text-right">Avg Time</th>
                       <th className="px-5 py-2.5 text-center">Capacity</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.bySite.map((row: { site: string; total: number; completed: number; cancelled: number; avgMins: number }, i: number) => {
-                      const matchedSite = sites.find((s) => s.name === row.site);
+                    {data.bySite.map((row: { name: string; count: number; avgMins: number }, i: number) => {
+                      const matchedSite = sites.find((s) => s.name === row.name);
                       const allocIdx = matchedSite ? sites.indexOf(matchedSite) : -1;
                       const allocData = allocIdx >= 0 ? allocationQueries[allocIdx]?.data : null;
                       const isOver = allocData?.isOverAllocated ?? false;
                       return (
-                        <tr key={row.site} className={cn("border-b border-line last:border-0", isOver && "bg-amber-50/40")}>
+                        <tr key={row.name} className={cn("border-b border-line last:border-0", isOver && "bg-amber-50/40")}>
                           <td className="px-5 py-3 font-medium text-navy">
                             <span className="flex items-center gap-2">
-                              {row.site}
+                              {row.name}
                               {isOver && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" title="Over capacity today" />}
                             </span>
                           </td>
-                          <td className="px-5 py-3 text-right text-slate">{row.total}</td>
-                          <td className="px-5 py-3 text-right text-emerald-600">{row.completed}</td>
-                          <td className="px-5 py-3 text-right text-red-500">{row.cancelled}</td>
+                          <td className="px-5 py-3 text-right text-slate">{row.count}</td>
                           <td className="px-5 py-3 text-right text-slate">{row.avgMins ? `${row.avgMins}m` : "—"}</td>
                           <td className="px-5 py-3 text-center">
                             {allocData ? (
