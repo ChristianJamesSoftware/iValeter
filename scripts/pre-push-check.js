@@ -84,6 +84,11 @@ function check(file) {
       errors.push(`${rel}:${ln} — 'keepPreviousData' removed in TanStack Query v5 — remove it: ${line.trim()}`);
     }
 
+    // ── Lucide icon title prop (not a valid LucideProps field) ───────────────
+    if (/<[A-Z][a-zA-Z]+[^>]+title="/.test(line) && /from "lucide-react"/.test(src)) {
+      errors.push(`${rel}:${ln} — Lucide icons don't accept 'title' prop — use aria-label instead: ${line.trim()}`);
+    }
+
     // ── React Query / tRPC options that don't exist ───────────────────────────
     if (/initialData\s*:/.test(line) && /useQuery/.test(src.slice(0, src.indexOf(line)))) {
       // initialData is fine — skip
