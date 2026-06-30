@@ -211,7 +211,7 @@ export function ReportsClient() {
                           <td className="px-5 py-3 font-medium text-navy">
                             <span className="flex items-center gap-2">
                               {row.name}
-                              {isOver && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" title="Over capacity today" />}
+                              {isOver && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" aria-label="Over capacity today" />}
                             </span>
                           </td>
                           <td className="px-5 py-3 text-right text-slate">{row.count}</td>
