@@ -85,8 +85,19 @@ function check(file) {
     }
 
     // ── Lucide icon title prop (not a valid LucideProps field) ───────────────
-    if (/<[A-Z][a-zA-Z]+[^>]+title="/.test(line) && /from "lucide-react"/.test(src)) {
-      errors.push(`${rel}:${ln} — Lucide icons don't accept 'title' prop — use aria-label instead: ${line.trim()}`);
+    // Only flag actual Lucide icon components — extract imported names from the file's lucide import
+    if (/from "lucide-react"/.test(src)) {
+      // Extract all named imports from lucide-react in this file
+      const lucideImportMatch = src.match(/import\s*\{([^}]+)\}\s*from\s*"lucide-react"/);
+      if (lucideImportMatch) {
+        const lucideNames = lucideImportMatch[1].split(',').map(s => s.trim().split(/\s+as\s+/).pop().trim());
+        const lucideSet = new Set(lucideNames);
+        // Check if this line uses a known Lucide icon with a title prop
+        const iconUsageMatch = line.match(/<([A-Z][a-zA-Z0-9]+)/);
+        if (iconUsageMatch && lucideSet.has(iconUsageMatch[1]) && /\btitle="/.test(line)) {
+          errors.push(`${rel}:${ln} — Lucide icons don't accept 'title' prop — use aria-label instead: ${line.trim()}`);
+        }
+      }
     }
 
     // ── React Query / tRPC options that don't exist ───────────────────────────

@@ -148,7 +148,7 @@ function AddValeterTab() {
       firstName: form.firstName,
       lastName: form.lastName,
       email: form.email,
-      phone: form.phone || undefined,
+      mobile: form.phone || undefined,
       siteId: form.siteId || undefined,
       role: "valeter",
     });
@@ -227,7 +227,7 @@ function AddCustomerTab() {
       firstName: form.firstName,
       lastName: form.lastName,
       email: form.email,
-      phone: form.phone || undefined,
+      mobile: form.phone || undefined,
       jobTitle: form.jobTitle || undefined,
       siteId: form.siteId || undefined,
       role: "dealership_user",
