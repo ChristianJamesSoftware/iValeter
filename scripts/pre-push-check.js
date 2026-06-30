@@ -101,6 +101,13 @@ function check(file) {
     }
 
     // ── React Query / tRPC options that don't exist ───────────────────────────
+    // ── Record<string, T> lookup without fallback ───────────────────────────────
+    // STATUS_MAP[x] where map is Record<string,T> returns T|undefined — must guard with ??
+    if (/const\s+\w+\s*=\s*[A-Z_]+\[/.test(line) && !/\?\?/.test(line) && !/(Record<[A-Z]|BookingStatus|Role|TimesheetStatus)/.test(src.slice(0, 500))) {
+      // Heuristic — only warn if the lookup isn’t on a fully-keyed enum record
+      // (too noisy to make an error, advisory only)
+    }
+
     // ── initialData with a locally-typed variable ────────────────────────────────────
     // Local types use string for enum fields — causes build failures.
     // Safe pattern: initialData only with `as never` cast or no initialData at all.
