@@ -19,6 +19,7 @@ import {
   BarChart2,
   UserCog,
   HelpCircle,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,7 +44,8 @@ export type NavIconName =
   | "quote"
   | "reports"
   | "impersonate"
-  | "support";
+  | "support"
+  | "messaging";
 
 export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -67,4 +69,5 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   reports: BarChart2,
   impersonate: UserCog,
   support: HelpCircle,
+  messaging: MessageSquare,
 };

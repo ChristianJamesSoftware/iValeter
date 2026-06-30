@@ -24,8 +24,11 @@ const NAV: NavItem[] = [
   { href: "/org/compliance", label: "Compliance", icon: "compliance" },
 
   // Finance
-  { href: "/org/payroll-deductions", label: "Pay Deductions", icon: "deductions", section: "Finance" },
-  { href: "/org/billing", label: "Billing", icon: "billing" },
+  { href: "/admin/payroll", label: "Payroll", icon: "deductions", section: "Finance" },
+  { href: "/org/payroll-deductions", label: "Pay Deductions", icon: "deductions" },
+
+  // Messaging
+  { href: "/admin/broadcast", label: "Broadcast", icon: "messaging", section: "Messaging" },
 
   // Reporting
   { href: "/admin/reports", label: "Reports", icon: "reports", section: "Reporting" },

@@ -16,6 +16,7 @@ import { reportsRouter } from "./routers/reports";
 import { valeterTimesheetsRouter } from "./routers/valeter-timesheets";
 import { messagesRouter } from "./routers/messages";
 import { overtimeRouter } from "./routers/overtime";
+import { hqRouter } from "./routers/hq";
 
 export const appRouter = router({
   auth: authRouter,
@@ -35,6 +36,7 @@ export const appRouter = router({
   valeterTimesheets: valeterTimesheetsRouter,
   messages: messagesRouter,
   overtime: overtimeRouter,
+  hq: hqRouter,
 });
 
 export type AppRouter = typeof appRouter;
