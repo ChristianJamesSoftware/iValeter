@@ -392,5 +392,168 @@ export const bookingsRouter = router({
             input.paintProtectionApplied ?? booking.paintProtectionApplied,
         },
       });
+    }),,
+  /**
+   * Edit an existing booking (customer/dealership side).
+   * Only allowed while the booking has not been COMPLETED or CANCELLED.
+   */
+  update: dealershipProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        serviceTypeId: z.string().optional(),
+        vehicleReg: z.string().min(1).max(12).optional(),
+        vehicleMake: z.string().optional(),
+        vehicleModel: z.string().optional(),
+        vehicleColour: z.string().optional(),
+        customerName: z.string().min(1).optional(),
+        readyByTime: z.date().optional(),
+        keyNumber: z.string().optional(),
+        vehicleLocation: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...fields } = input;
+
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id, ...scopeFor(ctx.session) },
+      });
+      if (!booking) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+      }
+
+      if (
+        booking.status === BookingStatus.COMPLETED ||
+        booking.status === BookingStatus.CANCELLED
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot edit a completed or cancelled booking",
+        });
+      }
+
+      // If changing service type, verify it exists in the same org
+      if (fields.serviceTypeId) {
+        const st = await ctx.prisma.serviceType.findFirst({
+          where: {
+            id: fields.serviceTypeId,
+            department: { site: { organisationId: ctx.session.organisationId } },
+          },
+        });
+        if (!st) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Service type not found",
+          });
+        }
+      }
+
+      const updated = await ctx.prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          ...(fields.serviceTypeId && { serviceTypeId: fields.serviceTypeId }),
+          ...(fields.vehicleReg && { vehicleReg: fields.vehicleReg.toUpperCase().trim() }),
+          ...(fields.vehicleMake !== undefined && { vehicleMake: fields.vehicleMake }),
+          ...(fields.vehicleModel !== undefined && { vehicleModel: fields.vehicleModel }),
+          ...(fields.vehicleColour !== undefined && { vehicleColour: fields.vehicleColour }),
+          ...(fields.customerName && { customerName: fields.customerName.trim() }),
+          ...(fields.readyByTime && { readyByTime: fields.readyByTime }),
+          ...(fields.keyNumber !== undefined && { keyNumber: fields.keyNumber }),
+          ...(fields.vehicleLocation !== undefined && { vehicleLocation: fields.vehicleLocation }),
+        },
+        include: { serviceType: true, site: true, department: true },
+      });
+
+      await ctx.prisma.jobStatusHistory.create({
+        data: {
+          bookingId: booking.id,
+          userId: ctx.session.userId,
+          fromStatus: booking.status,
+          toStatus: booking.status,
+          note: "Booking details updated",
+        },
+      });
+
+      return updated;
+    }),
+
+  /**
+   * Get daily allocation for a site on a given date.
+   * Returns total booked minutes per valeter and an over-allocation flag
+   * if any valeter exceeds their daily capacity (default 8h = 480 mins).
+   */
+  getDayAllocation: dealershipProcedure
+    .input(
+      z.object({
+        siteId: z.string(),
+        date: z.date(),
+        capacityMinsPerValeter: z.number().default(480), // 8 hours
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const dayStart = new Date(input.date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(input.date);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      // All non-cancelled bookings for this site on this day
+      const bookings = await ctx.prisma.booking.findMany({
+        where: {
+          organisationId: ctx.session.organisationId,
+          siteId: input.siteId,
+          readyByTime: { gte: dayStart, lte: dayEnd },
+          status: { not: BookingStatus.CANCELLED },
+        },
+        include: {
+          serviceType: { select: { durationMins: true, name: true } },
+          assignedTo: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+
+      // Total minutes booked for the day (all valeters combined, for the site)
+      const totalBookedMins = bookings.reduce(
+        (sum, b) => sum + b.serviceType.durationMins,
+        0,
+      );
+
+      // Per-valeter breakdown (only assigned bookings)
+      const valeterMap: Record<
+        string,
+        { name: string; bookedMins: number; bookingCount: number }
+      > = {};
+
+      for (const b of bookings) {
+        if (!b.assignedTo) continue;
+        const vid = b.assignedTo.id;
+        if (!valeterMap[vid]) {
+          valeterMap[vid] = {
+            name: `${b.assignedTo.firstName} ${b.assignedTo.lastName}`,
+            bookedMins: 0,
+            bookingCount: 0,
+          };
+        }
+        valeterMap[vid].bookedMins += b.serviceType.durationMins;
+        valeterMap[vid].bookingCount += 1;
+      }
+
+      const capacityMins = input.capacityMinsPerValeter;
+      const overAllocatedValeters = Object.entries(valeterMap)
+        .filter(([, v]) => v.bookedMins > capacityMins)
+        .map(([id, v]) => ({ id, ...v }));
+
+      return {
+        date: input.date,
+        siteId: input.siteId,
+        totalBookings: bookings.length,
+        totalBookedMins,
+        capacityMinsPerValeter: capacityMins,
+        isOverAllocated: overAllocatedValeters.length > 0,
+        overAllocatedValeters,
+        valeterBreakdown: Object.entries(valeterMap).map(([id, v]) => ({
+          id,
+          ...v,
+          isOverCapacity: v.bookedMins > capacityMins,
+        })),
+      };
     }),
 });

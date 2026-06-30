@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { BookingStatus } from "@ivaleter/db";
 import { trpc } from "@/lib/trpc/react";
 import { formatDateTime, formatTime, cn } from "@/lib/utils";
 import { JobStatusBadge } from "@/components/brand/job-status-badge";
+import { EditBookingModal } from "@/components/dealership/edit-booking-modal";
 
 const STATUS_OPTIONS: (BookingStatus | "ALL")[] = [
   "ALL",
@@ -16,17 +18,71 @@ const STATUS_OPTIONS: (BookingStatus | "ALL")[] = [
   "COMPLETED",
 ];
 
+const EDITABLE_STATUSES: BookingStatus[] = [
+  BookingStatus.PENDING,
+  BookingStatus.ASSIGNED,
+];
+
+type BookingRow = {
+  id: string;
+  vehicleReg: string;
+  vehicleMake: string | null;
+  vehicleModel: string | null;
+  vehicleColour: string | null;
+  customerName: string;
+  readyByTime: Date;
+  keyNumber: string | null;
+  vehicleLocation: string | null;
+  status: BookingStatus;
+  serviceType: { id: string; name: string };
+  department: { id: string; name: string } | null;
+  site: { id: string; name: string };
+  assignedTo: { firstName: string; lastName: string } | null;
+  createdAt: Date;
+};
+
 export function BookingHistory() {
   const [status, setStatus] = useState<BookingStatus | "ALL">("ALL");
   const [search, setSearch] = useState("");
+  const [editBooking, setEditBooking] = useState<BookingRow | null>(null);
 
   const query = trpc.bookings.list.useQuery({
     status: status === "ALL" ? undefined : status,
     search: search.trim() || undefined,
   });
 
+  // Load departments for the site when edit modal is open
+  const sitesQuery = trpc.sites.list.useQuery(undefined, {
+    enabled: editBooking !== null,
+  });
+  const editSite = sitesQuery.data?.find((s) => s.id === editBooking?.site?.id);
+  const editDepartments =
+    editSite?.departments.map((d) => ({
+      id: d.id,
+      name: d.name,
+      serviceTypes: d.serviceTypes.map((st) => ({
+        id: st.id,
+        name: st.name,
+        durationMins: st.durationMins,
+      })),
+    })) ?? [];
+
+  function handleEdit(b: BookingRow) {
+    setEditBooking(b);
+  }
+
+  function handleModalClose() {
+    setEditBooking(null);
+  }
+
+  function handleModalSaved() {
+    setEditBooking(null);
+    query.refetch();
+  }
+
   return (
     <div>
+      {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
           value={search}
@@ -52,8 +108,9 @@ export function BookingHistory() {
         </div>
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-line bg-white">
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <table className="w-full min-w-[780px] text-left text-sm">
           <thead className="border-b border-line bg-offwhite text-xs uppercase text-slate">
             <tr>
               <th className="px-4 py-3">Reg</th>
@@ -63,54 +120,83 @@ export function BookingHistory() {
               <th className="px-4 py-3">Ready By</th>
               <th className="px-4 py-3">Valeter</th>
               <th className="px-4 py-3">Created</th>
+              <th className="px-4 py-3 sr-only">Edit</th>
             </tr>
           </thead>
           <tbody>
             {query.isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate">
+                <td colSpan={8} className="px-4 py-8 text-center text-slate">
                   Loading…
                 </td>
               </tr>
             ) : !query.data || query.data.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate">
+                <td colSpan={8} className="px-4 py-8 text-center text-slate">
                   No bookings found.
                 </td>
               </tr>
             ) : (
-              query.data.map((b) => (
-                <tr key={b.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-heading font-bold">
-                    <Link
-                      href={`/dealership/bookings/${b.id}`}
-                      className="text-navy underline-offset-2 hover:text-cyan-600 hover:underline"
-                    >
-                      {b.vehicleReg}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate">{b.customerName}</td>
-                  <td className="px-4 py-3 text-slate">{b.serviceType.name}</td>
-                  <td className="px-4 py-3">
-                    <JobStatusBadge status={b.status} />
-                  </td>
-                  <td className="px-4 py-3 text-slate">
-                    {formatTime(b.readyByTime)}
-                  </td>
-                  <td className="px-4 py-3 text-slate">
-                    {b.assignedTo
-                      ? `${b.assignedTo.firstName} ${b.assignedTo.lastName}`
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate">
-                    {formatDateTime(b.createdAt)}
-                  </td>
-                </tr>
-              ))
+              query.data.map((b) => {
+                const canEdit = EDITABLE_STATUSES.includes(b.status);
+                return (
+                  <tr key={b.id} className="border-b border-line last:border-0 hover:bg-offwhite/50 transition-colors">
+                    <td className="px-4 py-3 font-heading font-bold">
+                      <Link
+                        href={`/dealership/bookings/${b.id}`}
+                        className="text-navy underline-offset-2 hover:text-cyan-600 hover:underline"
+                      >
+                        {b.vehicleReg}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-slate">{b.customerName}</td>
+                    <td className="px-4 py-3 text-slate">{b.serviceType.name}</td>
+                    <td className="px-4 py-3">
+                      <JobStatusBadge status={b.status} />
+                    </td>
+                    <td className="px-4 py-3 text-slate">
+                      {formatTime(b.readyByTime)}
+                    </td>
+                    <td className="px-4 py-3 text-slate">
+                      {b.assignedTo
+                        ? `${b.assignedTo.firstName} ${b.assignedTo.lastName}`
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-slate">
+                      {formatDateTime(b.createdAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {canEdit && (
+                        <button
+                          onClick={() => handleEdit(b as unknown as BookingRow)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-slate transition hover:border-navy hover:text-navy"
+                          title="Edit booking"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Edit Modal */}
+      {editBooking && editDepartments.length > 0 && (
+        <EditBookingModal
+          booking={{
+            ...editBooking,
+            readyByTime: editBooking.readyByTime.toISOString(),
+          }}
+          departments={editDepartments}
+          onClose={handleModalClose}
+          onSaved={handleModalSaved}
+        />
+      )}
     </div>
   );
 }

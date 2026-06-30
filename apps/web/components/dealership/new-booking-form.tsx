@@ -112,6 +112,20 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
     },
   });
 
+  // Allocation check — runs when site + date are both set
+  const allocationDate = readyByTime ? new Date(readyByTime) : null;
+  const allocationQuery = trpc.bookings.getDayAllocation.useQuery(
+    {
+      siteId,
+      date: allocationDate!,
+      capacityMinsPerValeter: 480,
+    },
+    {
+      enabled: !!(siteId && allocationDate && !isNaN(allocationDate.getTime())),
+      staleTime: 30_000,
+    },
+  );
+
   function onSiteChange(id: string) {
     setSiteId(id);
     const s = sites.find((x) => x.id === id);
@@ -292,6 +306,32 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
             className="h-12 w-full rounded-lg border border-line bg-white px-4 text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
           />
         </Field>
+
+        {/* ── Over-allocation warning ─────────────────────────── */}
+        {allocationQuery.data?.isOverAllocated && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <div>
+              <p className="font-semibold">Valeters over capacity on this day</p>
+              <p className="mt-0.5 text-xs text-amber-700">
+                One or more valeters already have more than 8 hours of bookings on{" "}
+                {allocationDate
+                  ? allocationDate.toLocaleDateString("en-GB", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    })
+                  : "this date"}
+                . You can still book — but you may need to arrange extra valeting resource.
+              </p>
+              {allocationQuery.data.overAllocatedValeters.map((v) => (
+                <p key={v.id} className="mt-1 text-xs text-amber-700">
+                  {v.name}: {Math.round(v.bookedMins / 60 * 10) / 10}h booked
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button
           type="button"
