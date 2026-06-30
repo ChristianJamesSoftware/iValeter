@@ -6,10 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function BroadcastPage() {
   const api = await getServerApi();
-  const [sites, sentMessages] = await Promise.all([
-    api.sites.list(),
-    api.messages.sent(),
-  ]);
+  const sites = await api.sites.list();
 
   return (
     <div>
@@ -19,7 +16,6 @@ export default async function BroadcastPage() {
       />
       <BroadcastClient
         sites={sites.map((s) => ({ id: s.id, name: s.name }))}
-        initialSent={sentMessages.slice(0, 20)}
       />
     </div>
   );

@@ -10,20 +10,8 @@ type Site = {
   name: string;
 };
 
-type SentMessage = {
-  id: string;
-  body: string;
-  createdAt: Date;
-  toUser: {
-    firstName: string;
-    lastName: string;
-    role: string;
-  };
-};
-
 interface BroadcastClientProps {
   sites: Site[];
-  initialSent: SentMessage[];
 }
 
 type AudienceTab = "valeter" | "org_admin" | "dealership_user" | "all";
@@ -35,16 +23,14 @@ const TABS: { value: AudienceTab; label: string }[] = [
   { value: "all", label: "All" },
 ];
 
-export function BroadcastClient({ sites, initialSent }: BroadcastClientProps) {
+export function BroadcastClient({ sites }: BroadcastClientProps) {
   const [activeTab, setActiveTab] = useState<AudienceTab>("valeter");
   const [siteId, setSiteId] = useState("");
   const [body, setBody] = useState("");
   const [lastSentCount, setLastSentCount] = useState<number | null>(null);
 
   const { data: sentMessages, refetch: refetchSent } =
-    trpc.messages.sent.useQuery(undefined, {
-      initialData: initialSent,
-    });
+    trpc.messages.sent.useQuery();
 
   const broadcastMutation = trpc.hq.broadcast.useMutation({
     onSuccess: (data) => {
@@ -65,7 +51,7 @@ export function BroadcastClient({ sites, initialSent }: BroadcastClientProps) {
     });
   }
 
-  const displayed = (sentMessages ?? initialSent).slice(0, 20);
+  const displayed = (sentMessages ?? []).slice(0, 20);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
