@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/lib/trpc";
+import { trpc } from "@/lib/trpc/react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -265,10 +265,10 @@ export function InactiveUsersClient() {
   }>({ open: false, action: null, userId: "", userName: "" });
 
   // Queries
-  const valetersQuery = api.inactiveUsers.inactiveValeters.useQuery();
-  const clientsQuery = api.inactiveUsers.inactiveClients.useQuery();
+  const valetersQuery = trpc.inactiveUsers.inactiveValeters.useQuery();
+  const clientsQuery = trpc.inactiveUsers.inactiveClients.useQuery();
 
-  const utils = api.useUtils();
+  const utils = trpc.useUtils();
 
   function invalidate() {
     void utils.inactiveUsers.inactiveValeters.invalidate();
@@ -276,9 +276,9 @@ export function InactiveUsersClient() {
   }
 
   // Mutations
-  const suspend = api.inactiveUsers.suspend.useMutation({ onSuccess: invalidate });
-  const archive = api.inactiveUsers.archive.useMutation({ onSuccess: invalidate });
-  const reinstate = api.inactiveUsers.reinstate.useMutation({ onSuccess: invalidate });
+  const suspend = trpc.inactiveUsers.suspend.useMutation({ onSuccess: invalidate });
+  const archive = trpc.inactiveUsers.archive.useMutation({ onSuccess: invalidate });
+  const reinstate = trpc.inactiveUsers.reinstate.useMutation({ onSuccess: invalidate });
 
   function openDialog(
     action: "suspend" | "archive" | "reinstate",
