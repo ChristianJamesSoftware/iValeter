@@ -63,5 +63,9 @@ export function roleHomePath(role: Role): string {
       return "/dealership";
     case "valeter":
       return "/valeter";
+    case "management":
+      return "/admin";
+    default:
+      return "/admin";
   }
 }

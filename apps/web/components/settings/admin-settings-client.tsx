@@ -6,12 +6,14 @@ import { SettingsTabs } from "@/components/settings/tabs";
 import { TextField, SaveBar } from "@/components/settings/field";
 import { ToggleRow } from "@/components/settings/toggle";
 import { AddOnsTab } from "@/components/settings/add-ons-tab";
+import { ManagementTeamTab } from "@/components/settings/management-team-tab";
 
 const TABS = [
   { key: "platform", label: "Platform" },
   { key: "integrations", label: "Integrations" },
   { key: "flags", label: "Feature Flags" },
   { key: "addons", label: "Add-Ons" },
+  { key: "team", label: "Management Team" },
 ];
 
 const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
@@ -53,6 +55,7 @@ export function AdminSettingsClient() {
         <FlagsTab get={get} save={(v) => update.mutateAsync({ values: v })} pending={update.isPending} />
       )}
       {tab === "addons" && <AddOnsTab />}
+      {tab === "team" && <ManagementTeamTab />}
     </div>
   );
 }

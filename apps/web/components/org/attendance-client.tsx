@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Clock, PoundSterling, Download } from "lucide-react";
+import { Users, Clock, PoundSterling, Download, Info } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/brand/stat-card";
 import { trpc } from "@/lib/trpc/react";
@@ -21,7 +21,7 @@ const td = "border-b border-slate-50 text-sm text-slate-700 px-5 py-4";
 function mondayOf(d: Date): string {
   const date = new Date(d);
   const day = date.getDay();
-  const diff = (day + 6) % 7; // days since Monday
+  const diff = (day + 6) % 7;
   date.setDate(date.getDate() - diff);
   return date.toISOString().slice(0, 10);
 }
@@ -39,13 +39,12 @@ function fmtDate(d: string | Date | null): string {
 export function AttendanceClient() {
   const [weekStart, setWeekStart] = useState(mondayOf(new Date()));
   const [siteId, setSiteId] = useState("");
-  const [department, setDepartment] = useState("");
 
   const sites = trpc.sites.list.useQuery();
-  const timesheets = trpc.timesheets.list.useQuery({
+  // Manager view: only shows SA-approved timesheets
+  const timesheets = trpc.timesheets.managerList.useQuery({
     weekStart: weekStart || undefined,
     siteId: siteId || undefined,
-    departmentId: department || undefined,
   });
 
   const rows = (timesheets.data ?? []).map((t) => {
@@ -59,7 +58,6 @@ export function AttendanceClient() {
       name: `${t.user.firstName} ${t.user.lastName}`,
       payId: t.user.payId ?? "—",
       site: t.site?.name ?? t.user.site?.name ?? "—",
-      department: "—",
       weekStart: t.weekStarting,
       regular,
       overtime,
@@ -77,28 +75,14 @@ export function AttendanceClient() {
 
   function exportCsv() {
     const header = [
-      "Name",
-      "Pay ID",
-      "Site",
-      "Department",
-      "Week Start",
-      "Regular Hours",
-      "Overtime Hours",
-      "Total Hours",
-      "Daily Rate",
-      "Total Pay",
+      "Name", "Pay ID", "Site", "Week Start",
+      "Regular Hours", "Overtime Hours", "Total Hours", "Daily Rate", "Total Pay",
     ];
     const body = rows.map((r) => [
-      r.name,
-      r.payId,
-      r.site,
-      r.department,
+      r.name, r.payId, r.site,
       fmtDate(r.weekStart),
-      r.regular.toFixed(2),
-      r.overtime.toFixed(2),
-      r.total.toFixed(2),
-      r.dailyRate.toFixed(2),
-      r.totalPay.toFixed(2),
+      r.regular.toFixed(2), r.overtime.toFixed(2), r.total.toFixed(2),
+      r.dailyRate.toFixed(2), r.totalPay.toFixed(2),
     ]);
     const csv = [header, ...body]
       .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
@@ -116,7 +100,7 @@ export function AttendanceClient() {
     <div className="mx-auto max-w-6xl">
       <PageHeader
         title="Attendance"
-        subtitle="Weekly timesheets across your team."
+        subtitle="Approved weekly timesheets for your team."
         action={
           <button
             onClick={exportCsv}
@@ -128,6 +112,15 @@ export function AttendanceClient() {
           </button>
         }
       />
+
+      {/* Info notice */}
+      <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+        <p className="text-sm text-blue-800">
+          This view shows timesheets that have been approved by Head Office and signed off by the iValeter admin team.
+          If you&apos;re expecting a timesheet and it isn&apos;t here, it may still be in the approval queue.
+        </p>
+      </div>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div>
@@ -158,49 +151,17 @@ export function AttendanceClient() {
             ))}
           </select>
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">
-            Department
-          </label>
-          <select
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            className={inputCls}
-          >
-            <option value="">All departments</option>
-            {DEPARTMENTS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          icon={Users}
-          title="Timesheets"
-          value={rows.length}
-          accent="navy"
-        />
-        <StatCard
-          icon={Clock}
-          title="Total Hours"
-          value={totalHours.toFixed(1)}
-          accent="cyan"
-        />
-        <StatCard
-          icon={PoundSterling}
-          title="Total Pay"
-          value={`£${totalPayroll.toFixed(2)}`}
-          accent="success"
-        />
+        <StatCard icon={Users}        title="Timesheets"   value={rows.length}                accent="navy" />
+        <StatCard icon={Clock}        title="Total Hours"  value={totalHours.toFixed(1)}      accent="cyan" />
+        <StatCard icon={PoundSterling} title="Total Pay"   value={`£${totalPayroll.toFixed(2)}`} accent="success" />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr>
                 <th className={th}>Name</th>
@@ -217,22 +178,18 @@ export function AttendanceClient() {
             <tbody>
               {timesheets.isLoading ? (
                 <tr>
-                  <td className={`${td} text-slate-400`} colSpan={9}>
-                    Loading…
-                  </td>
+                  <td className={`${td} text-slate-400`} colSpan={9}>Loading…</td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
                   <td className={`${td} text-slate-400`} colSpan={9}>
-                    No timesheets for this week.
+                    No approved timesheets for this week.
                   </td>
                 </tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} className="hover:bg-slate-50/50">
-                    <td className={`${td} font-medium text-slate-900`}>
-                      {r.name}
-                    </td>
+                    <td className={`${td} font-medium text-slate-900`}>{r.name}</td>
                     <td className={`${td} font-mono text-xs`}>{r.payId}</td>
                     <td className={td}>{r.site}</td>
                     <td className={td}>{fmtDate(r.weekStart)}</td>

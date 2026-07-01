@@ -453,5 +453,96 @@ export const usersRouter = router({
         },
       });
     }),
+
+  /** Super admin: list all management team members */
+  listManagementTeam: superAdminProcedure
+    .query(async ({ ctx }) => {
+      return ctx.prisma.user.findMany({
+        where: { role: "management", isActive: true },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          mobile: true,
+          jobTitle: true,
+          managementRole: true,
+          isActive: true,
+          createdAt: true,
+          lastLoginAt: true,
+        },
+        orderBy: [{ managementRole: "asc" }, { firstName: "asc" }],
+      });
+    }),
+
+  /** Super admin: create a management team member */
+  createManagementUser: superAdminProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        password: z.string().min(6),
+        managementRole: z.enum(["ADMINISTRATION", "ACCOUNTANT", "ACCOUNT_MANAGER", "COO", "CEO"]),
+        mobile: z.string().optional(),
+        jobTitle: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.prisma.user.findUnique({
+        where: { email: input.email.toLowerCase().trim() },
+      });
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "A user with this email already exists" });
+      // Attach to Total Valeting org
+      const tvOrg = await ctx.prisma.organisation.findFirst({
+        where: { name: { contains: "Total Valeting", mode: "insensitive" } },
+        select: { id: true },
+      });
+      if (!tvOrg) throw new TRPCError({ code: "NOT_FOUND", message: "Total Valeting organisation not found" });
+      return ctx.prisma.user.create({
+        data: {
+          organisationId: tvOrg.id,
+          email: input.email.toLowerCase().trim(),
+          firstName: input.firstName.trim(),
+          lastName: input.lastName.trim(),
+          passwordHash: hashPassword(input.password),
+          role: "management",
+          managementRole: input.managementRole,
+          mobile: input.mobile ?? null,
+          jobTitle: input.jobTitle ?? null,
+          payId: generatePayId(input.firstName, input.lastName),
+        },
+      });
+    }),
+
+  /** Super admin: update a management team member */
+  updateManagementUser: superAdminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        firstName: z.string().min(1).optional(),
+        lastName: z.string().min(1).optional(),
+        email: z.string().email().optional(),
+        mobile: z.string().nullable().optional(),
+        jobTitle: z.string().nullable().optional(),
+        managementRole: z.enum(["ADMINISTRATION", "ACCOUNTANT", "ACCOUNT_MANAGER", "COO", "CEO"]).optional(),
+        isActive: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...rest } = input;
+      return ctx.prisma.user.update({ where: { id }, data: rest });
+    }),
+
+  /** Super admin: remove management team member (soft delete) */
+  deactivateManagementUser: superAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.user.update({
+        where: { id: input.id },
+        data: { isActive: false, archivedAt: new Date() },
+      });
+    }),
+
 });
 // Note: router registration via root.ts

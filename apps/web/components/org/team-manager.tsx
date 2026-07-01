@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { UserPlus, X, Pencil, Power } from "lucide-react";
+import { useState, useMemo } from "react";
+import { UserPlus, X, Pencil, Power, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +49,7 @@ export function TeamManager({
   const [showForm, setShowForm] = useState(false);
   const [activeSiteId, setActiveSiteId] = useState<string>("__all__");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const list = trpc.users.listValeters.useQuery(undefined, {
     initialData: initialValeters as never,
@@ -60,21 +61,25 @@ export function TeamManager({
     onSuccess: () => utils.users.listValeters.invalidate(),
   });
 
-  const filtered =
-    activeSiteId === "__all__"
-      ? valeters
-      : valeters.filter((v) => {
-          const site = sites.find((s) => s.id === activeSiteId);
-          return v.siteName === site?.name;
-        });
-
-  const siteTabs = [
-    { id: "__all__", name: `All (${valeters.length})` },
-    ...sites.map((s) => ({
-      id: s.id,
-      name: `${s.name} (${valeters.filter((v) => v.siteName === s.name).length})`,
-    })),
-  ];
+  const filtered = useMemo(() => {
+    let result =
+      activeSiteId === "__all__"
+        ? valeters
+        : valeters.filter((v) => {
+            const site = sites.find((s) => s.id === activeSiteId);
+            return v.siteName === site?.name;
+          });
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (v) =>
+          `${v.firstName} ${v.lastName}`.toLowerCase().includes(q) ||
+          (v.siteName ?? "").toLowerCase().includes(q) ||
+          (v.payId ?? "").toLowerCase().includes(q),
+      );
+    }
+    return result;
+  }, [valeters, activeSiteId, sites, searchQuery]);
 
   return (
     <div>
@@ -100,22 +105,42 @@ export function TeamManager({
           </button>
         </div>
 
-        {/* Site tabs */}
-        <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-4 pt-3">
-          {siteTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveSiteId(tab.id)}
-              className={cn(
-                "whitespace-nowrap rounded-t-lg px-4 py-2 text-xs font-semibold transition -mb-px",
-                activeSiteId === tab.id
-                  ? "border border-b-white border-slate-200 bg-white text-orange-500"
-                  : "text-slate-500 hover:text-slate-800",
-              )}
+        {/* Site filter + search */}
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-slate-500">Site</label>
+            <select
+              value={activeSiteId}
+              onChange={(e) => setActiveSiteId(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
             >
-              {tab.name}
+              <option value="__all__">All sites ({valeters.length})</option>
+              {sites.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({valeters.filter((v) => v.siteName === s.name).length})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              placeholder="Search name, site or pay ID…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+            />
+          </div>
+          {(activeSiteId !== "__all__" || searchQuery) && (
+            <button
+              onClick={() => { setActiveSiteId("__all__"); setSearchQuery(""); }}
+              className="h-9 rounded-lg border border-slate-200 px-3 text-xs text-slate-500 hover:bg-slate-50"
+            >
+              Clear
             </button>
-          ))}
+          )}
+          <span className="ml-auto text-xs text-slate-400">{filtered.length} valeter{filtered.length !== 1 ? "s" : ""}</span>
         </div>
 
         {/* Table */}

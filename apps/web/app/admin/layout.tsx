@@ -14,6 +14,7 @@ const NAV: NavItem[] = [
 
   // Finance
   { href: "/admin/payroll", label: "Payroll", icon: "deductions", section: "Finance" },
+  { href: "/admin/attendance", label: "Attendance", icon: "attendance" },
 
   // Messaging
   { href: "/admin/broadcast", label: "Broadcast", icon: "messaging", section: "Messaging" },

@@ -185,6 +185,9 @@ model User {
   // Dealership team field
   jobTitle String?
 
+  // Management team field (only for role = management)
+  managementRole ManagementRole?
+
   // NatWest Bankline payroll fields
   bankSortCode      String?
   bankAccountNumber String?
@@ -227,6 +230,15 @@ enum Role {
   org_admin
   dealership_user
   valeter
+  management
+}
+
+enum ManagementRole {
+  ADMINISTRATION
+  ACCOUNTANT
+  ACCOUNT_MANAGER
+  COO
+  CEO
 }
 
 enum StaffType {
@@ -483,6 +495,9 @@ model Timesheet {
   approvedByUserId String?
   approvedAt       DateTime?
 
+  saApprovedByUserId String?
+  saApprovedAt       DateTime?
+
   sentToCustomerAt    DateTime?
   customerAccepted    Boolean   @default(false)
   customerAcceptedAt  DateTime?
@@ -508,6 +523,7 @@ enum TimesheetStatus {
   APPROVED
   DISPUTED
   LOCKED
+  SA_APPROVED
 }
 
 model TimesheetLine {
