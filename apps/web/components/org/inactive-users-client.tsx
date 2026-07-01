@@ -12,7 +12,7 @@ interface InactiveValeter {
   email: string;
   isActive: boolean;
   siteName: string | null;
-  lastSeen: string | null;
+  lastSeen: Date | null;
   daysSince: number | null;
   neverLoggedIn: boolean;
 }
@@ -24,7 +24,7 @@ interface InactiveClient {
   email: string;
   isActive: boolean;
   siteName: string | null;
-  lastBookingAt: string | null;
+  lastBookingAt: Date | null;
   daysSinceBooking: number | null;
   neverBooked: boolean;
 }
