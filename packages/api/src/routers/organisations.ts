@@ -162,4 +162,80 @@ export const organisationsRouter = router({
   plans: superAdminProcedure.query(() => {
     return (Object.keys(PLANS) as PlanKey[]).map((k) => PLANS[k]);
   }),
+
+  /** Simple list of all head offices for dropdowns (super admin) */
+  listAll: superAdminProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.organisation.findMany({
+      select: { id: true, name: true, isActive: true },
+      orderBy: { name: "asc" },
+    });
+  }),
+
+  /** Create a head office — simple client record, no SaaS plumbing */
+  createHeadOffice: superAdminProcedure
+    .input(
+      z.object({
+        name: z.string().min(1),
+        address: z.string().optional(),
+        contactName: z.string().optional(),
+        contactEmail: z.string().email().or(z.literal("")).optional(),
+        contactPhone: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const slug = input.name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        + "-" + Date.now();
+      return ctx.prisma.organisation.create({
+        data: {
+          name: input.name.trim(),
+          slug,
+          plan: "starter",
+          billingAddress: input.address?.trim() ?? null,
+          contactEmail: input.contactEmail || null,
+          contactPhone: input.contactPhone?.trim() ?? null,
+        },
+      });
+    }),
+
+  /** Update head office details */
+  updateHeadOffice: superAdminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).optional(),
+        address: z.string().optional(),
+        contactName: z.string().optional(),
+        contactEmail: z.string().optional(),
+        contactPhone: z.string().optional(),
+        isActive: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, name, address, contactEmail, contactPhone, isActive } = input;
+      return ctx.prisma.organisation.update({
+        where: { id },
+        data: {
+          ...(name && { name: name.trim() }),
+          ...(address !== undefined && { billingAddress: address }),
+          ...(contactEmail !== undefined && { contactEmail }),
+          ...(contactPhone !== undefined && { contactPhone }),
+          ...(isActive !== undefined && { isActive }),
+        },
+      });
+    }),
+
+  /** List all dealerships under a head office */
+  getDealerships: superAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.dealership.findMany({
+        where: { organisationId: input.id },
+        include: { _count: { select: { sites: true } } },
+        orderBy: { name: "asc" },
+      });
+    }),
 });

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure, orgAdminProcedure } from "../trpc";
+import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
 
 export const dealershipsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -88,5 +88,41 @@ export const dealershipsRouter = router({
         });
       const { id, ...data } = input;
       return ctx.prisma.dealership.update({ where: { id }, data });
+    }),
+
+  /** Super-admin: list ALL dealerships across all head offices */
+  listAll: superAdminProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.dealership.findMany({
+      include: {
+        organisation: { select: { id: true, name: true } },
+        _count: { select: { sites: true } },
+      },
+      orderBy: [{ organisation: { name: "asc" } }, { name: "asc" }],
+    });
+  }),
+
+  /** Super-admin: create a dealership under a specific head office */
+  createForHeadOffice: superAdminProcedure
+    .input(
+      z.object({
+        organisationId: z.string(),
+        name: z.string().min(1),
+        address: z.string().optional(),
+        contactName: z.string().optional(),
+        contactEmail: z.string().email().or(z.literal("")).optional(),
+        contactPhone: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.dealership.create({
+        data: {
+          organisationId: input.organisationId,
+          name: input.name.trim(),
+          address: input.address?.trim() ?? null,
+          contactName: input.contactName?.trim() ?? null,
+          contactEmail: input.contactEmail?.trim() || null,
+          contactPhone: input.contactPhone?.trim() ?? null,
+        },
+      });
     }),
 });

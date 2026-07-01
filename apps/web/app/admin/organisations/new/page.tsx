@@ -1,16 +1,16 @@
 import { PageHeader } from "@/components/dashboard/page-header";
-import { OnboardingWizard } from "@/components/admin/onboarding-wizard";
+import { NewHeadOfficeForm } from "@/components/admin/new-head-office-form";
 
 export const dynamic = "force-dynamic";
 
-export default function NewOrganisationPage() {
+export default function NewHeadOfficePage() {
   return (
     <div>
       <PageHeader
-        title="New organisation"
-        subtitle="Onboard a new valeting company onto iValeter"
+        title="New Head Office"
+        subtitle="Add a client group to the platform"
       />
-      <OnboardingWizard />
+      <NewHeadOfficeForm />
     </div>
   );
 }

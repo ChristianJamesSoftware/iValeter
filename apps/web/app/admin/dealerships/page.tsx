@@ -1,5 +1,7 @@
+import Link from "next/link";
+import { PlusCircle } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { DealershipsList } from "@/components/admin/dealerships-list";
+import { AdminDealershipsList } from "@/components/admin/admin-dealerships-list";
 
 export const dynamic = "force-dynamic";
 
@@ -8,9 +10,17 @@ export default function AdminDealershipsPage() {
     <div>
       <PageHeader
         title="Dealerships"
-        subtitle="Dealer groups and their sites across the platform"
+        subtitle="All dealerships across every head office"
+        action={
+          <Link
+            href="/admin/organisations"
+            className="inline-flex h-11 items-center gap-2 rounded-lg border border-line bg-white px-5 font-heading font-semibold text-navy transition hover:bg-offwhite"
+          >
+            Add via Head Office
+          </Link>
+        }
       />
-      <DealershipsList />
+      <AdminDealershipsList />
     </div>
   );
 }
