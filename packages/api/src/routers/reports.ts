@@ -501,4 +501,190 @@ export const reportsRouter = router({
         slowestDays: withDays.length > 0 ? Math.max(...withDays.map((b) => b.daysInPrep ?? 0)) : null,
       };
     }),
+  /**
+   * Platform-wide summary for super_admin / org_admin SA dashboard.
+   * Returns headline KPIs, per-site performance, dept breakdown, quality scores,
+   * busiest sites and a period comparison.
+   */
+  platformSummary: orgAdminProcedure
+    .input(
+      z.object({
+        dateFrom: z.date(),
+        dateTo: z.date(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const { dateFrom, dateTo } = input;
+
+      // ── A. Fetch all non-cancelled bookings in range ──────────────────────
+      const bookings = await ctx.prisma.booking.findMany({
+        where: {
+          organisationId: ctx.session.organisationId,
+          readyByTime: { gte: dateFrom, lte: dateTo },
+          status: { not: "CANCELLED" },
+        },
+        include: {
+          serviceType: { select: { durationMins: true } },
+          site: { select: { id: true, name: true } },
+          department: { select: { id: true, name: true } },
+        },
+      });
+
+      const completedBookings = bookings.filter((b) => b.status === "COMPLETED");
+      const totalBookings = bookings.length;
+      const totalCompleted = completedBookings.length;
+      const completionRate =
+        totalBookings > 0 ? Math.round((totalCompleted / totalBookings) * 100) : 0;
+
+      // ── A. Headline KPIs ──────────────────────────────────────────────────
+      const activeValeters = await ctx.prisma.user.count({
+        where: {
+          organisationId: ctx.session.organisationId,
+          role: "valeter",
+          isActive: true,
+        },
+      });
+
+      const avgCompletionMins =
+        completedBookings.length > 0
+          ? Math.round(
+              completedBookings.reduce((s, b) => s + b.serviceType.durationMins, 0) /
+                completedBookings.length,
+            )
+          : 0;
+
+      // isPriority exists in schema
+      const priorityCount = bookings.filter((b) => b.isPriority).length;
+      // doNotClean exists in schema
+      const dncCount = bookings.filter((b) => b.doNotClean).length;
+
+      // ── B. Site performance ───────────────────────────────────────────────
+      const DAILY_CAP = 480;
+
+      type SitePerf = {
+        siteId: string;
+        siteName: string;
+        completed: number;
+        totalMins: number;
+        avgMins: number;
+        overAllocDays: number;
+      };
+
+      const sitePerfMap = new Map<string, SitePerf>();
+      const siteDailyMins = new Map<string, number>(); // key: siteId:date
+
+      for (const b of bookings) {
+        const siteId = b.site.id;
+        if (!sitePerfMap.has(siteId)) {
+          sitePerfMap.set(siteId, {
+            siteId,
+            siteName: b.site.name,
+            completed: 0,
+            totalMins: 0,
+            avgMins: 0,
+            overAllocDays: 0,
+          });
+        }
+        // Daily minutes for over-alloc (all non-cancelled)
+        const dk = `${siteId}:${b.readyByTime.toISOString().slice(0, 10)}`;
+        siteDailyMins.set(dk, (siteDailyMins.get(dk) ?? 0) + b.serviceType.durationMins);
+
+        // Completed-only metrics
+        if (b.status === "COMPLETED") {
+          const sp = sitePerfMap.get(siteId)!;
+          sp.completed += 1;
+          sp.totalMins += b.serviceType.durationMins;
+        }
+      }
+
+      // Tally over-alloc days
+      for (const [dk, mins] of siteDailyMins) {
+        if (mins > DAILY_CAP) {
+          const siteId = dk.split(":")[0]!;
+          const sp = sitePerfMap.get(siteId);
+          if (sp) sp.overAllocDays += 1;
+        }
+      }
+
+      // Compute avgMins
+      for (const sp of sitePerfMap.values()) {
+        sp.avgMins = sp.completed > 0 ? Math.round(sp.totalMins / sp.completed) : 0;
+      }
+
+      const sitePerformance = Array.from(sitePerfMap.values());
+
+      // ── C. Quality scores (qualityScore field exists in schema) ──────────
+      const qualityBookings = completedBookings.filter((b) => b.qualityScore !== null);
+      const avgQualityScore =
+        qualityBookings.length > 0
+          ? Math.round(
+              (qualityBookings.reduce((s, b) => s + (b.qualityScore ?? 0), 0) /
+                qualityBookings.length) *
+                10,
+            ) / 10
+          : null;
+
+      // ── D. Busiest sites — top 5 by completed count ───────────────────────
+      const busiestSites = [...sitePerformance]
+        .sort((a, b) => b.completed - a.completed)
+        .slice(0, 5)
+        .map((s) => ({ siteId: s.siteId, siteName: s.siteName, completed: s.completed }));
+
+      // ── E. Department breakdown ───────────────────────────────────────────
+      const deptMap = new Map<string, { deptId: string; deptName: string; completed: number }>();
+      for (const b of completedBookings) {
+        const deptId = b.department.id;
+        if (!deptMap.has(deptId)) {
+          deptMap.set(deptId, { deptId, deptName: b.department.name, completed: 0 });
+        }
+        deptMap.get(deptId)!.completed += 1;
+      }
+      const departmentBreakdown = Array.from(deptMap.values()).sort(
+        (a, b) => b.completed - a.completed,
+      );
+
+      // ── F. Period comparison ──────────────────────────────────────────────
+      const periodMs = dateTo.getTime() - dateFrom.getTime();
+      const prevDateTo = new Date(dateFrom.getTime() - 1);
+      const prevDateFrom = new Date(prevDateTo.getTime() - periodMs);
+
+      const prevCompleted = await ctx.prisma.booking.count({
+        where: {
+          organisationId: ctx.session.organisationId,
+          readyByTime: { gte: prevDateFrom, lte: prevDateTo },
+          status: "COMPLETED",
+        },
+      });
+
+      return {
+        // A. Headline KPIs
+        totalCompleted,
+        totalBookings,
+        completionRate,
+        activeValeters,
+        avgCompletionMins,
+        dncCount,
+        priorityCount,
+        // B. Site performance
+        sitePerformance,
+        // C. Quality
+        avgQualityScore,
+        // D. Busiest sites
+        busiestSites,
+        // E. Department breakdown
+        departmentBreakdown,
+        // F. Period comparison
+        periodComparison: {
+          current: totalCompleted,
+          previous: prevCompleted,
+          delta: totalCompleted - prevCompleted,
+          deltaPercent:
+            prevCompleted > 0
+              ? Math.round(((totalCompleted - prevCompleted) / prevCompleted) * 100)
+              : null,
+        },
+      };
+    }),
+
+
 });
