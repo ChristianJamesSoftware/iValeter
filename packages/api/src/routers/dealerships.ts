@@ -209,4 +209,53 @@ export const dealershipsRouter = router({
 
       return { ok: true, count: departments.length };
     }),
+
+  /**
+   * Super admin: list all active dealerships with their site users,
+   * so we can pick a user to impersonate for the "Preview Dealer View" flow.
+   */
+  listAllWithUsers: superAdminProcedure.query(async ({ ctx }) => {
+    const dealerships = await ctx.prisma.dealership.findMany({
+      where: { isActive: true },
+      include: {
+        organisation: { select: { id: true, name: true } },
+        sites: {
+          include: {
+            users: {
+              where: {
+                isActive: true,
+                role: { in: ["dealership_user", "org_admin"] },
+              },
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                role: true,
+                organisationId: true,
+                siteId: true,
+              },
+              take: 1, // only need one per site
+            },
+          },
+        },
+      },
+      orderBy: [{ organisation: { name: "asc" } }, { name: "asc" }],
+    });
+
+    return dealerships.map((d) => {
+      const allSiteUsers = d.sites.flatMap((s) => s.users);
+      const previewUser =
+        allSiteUsers.find((u) => u.role === "dealership_user") ??
+        allSiteUsers.find((u) => u.role === "org_admin") ??
+        null;
+      return {
+        id: d.id,
+        name: d.name,
+        organisationId: d.organisationId,
+        organisationName: d.organisation.name,
+        previewUser,
+      };
+    });
+  }),
 });
