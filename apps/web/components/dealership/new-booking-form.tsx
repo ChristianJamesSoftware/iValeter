@@ -211,7 +211,9 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                   <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: "0.04em", color: "#F5C500", fontFamily: "'Arial Black', Arial, sans-serif", lineHeight: 1 }}>GB</span>
                 </div>
                 {/* Reg input + status */}
-                <div style={{ flex: 1, display: "flex", alignItems: "center", paddingLeft: 8, paddingRight: 8 }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", paddingLeft: 4, paddingRight: 4 }}>
+                  {/* Left spacer mirrors status icon width — keeps reg optically centred */}
+                  <div style={{ width: 24, flexShrink: 0 }} />
                 <input
                   value={vehicleReg}
                   onChange={(e) => {
@@ -257,7 +259,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                   }}
                 />
                 {/* Status indicator */}
-                <div className="shrink-0 w-5 flex items-center justify-center">
+                <div style={{ width: 24, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {dvlaStatus === "loading" && <svg className="h-4 w-4 animate-spin text-slate-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
                   {dvlaStatus === "found" && <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
                   {dvlaStatus === "error" && <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>}
@@ -267,7 +269,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
               {/* Dealer name strip — bottom of plate */}
               <div style={{ background: "#1a1a1a", padding: "3px 8px", display: "flex", justifyContent: "center" }}>
                 <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.25em", color: "white", textTransform: "uppercase" }}>
-                  {site?.name ?? "iValeter"}
+                  {customerName.trim() || site?.name || "iValeter"}
                 </span>
               </div>
             </div>
