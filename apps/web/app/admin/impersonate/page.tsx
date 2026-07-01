@@ -5,7 +5,10 @@ export const dynamic = "force-dynamic";
 
 export default async function ImpersonatePage() {
   const api = await getServerApi();
-  const orgs = await api.organisations.list();
+  const [orgs, dealerships] = await Promise.all([
+    api.organisations.list(),
+    api.dealerships.listAllWithUsers(),
+  ]);
 
   const detailed = await Promise.all(
     orgs.map((o) => api.organisations.getById({ id: o.id })),
@@ -20,11 +23,9 @@ export default async function ImpersonatePage() {
       lastName: u.lastName,
       email: u.email,
       role: u.role,
-      // siteId isn't returned by getById's user select; impersonation falls
-      // back to no specific site, which the app handles.
       siteId: null,
     })),
   }));
 
-  return <ImpersonateClient orgs={data} />;
+  return <ImpersonateClient orgs={data} dealerships={dealerships} />;
 }

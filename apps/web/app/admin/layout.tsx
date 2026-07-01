@@ -9,8 +9,7 @@ const NAV: NavItem[] = [
   { href: "/admin/team", label: "Valeting Team", icon: "team" },
 
   // Admin Tools
-  { href: "/admin/dealer-preview", label: "Preview Dealer View", icon: "impersonate", section: "Admin Tools", accent: true },
-  { href: "/admin/impersonate", label: "Impersonate User", icon: "impersonate" },
+  { href: "/admin/impersonate", label: "Impersonate User", icon: "impersonate", section: "Admin Tools", accent: true },
   { href: "/admin/quote-builder", label: "Quote Builder", icon: "quote" },
 
   // Finance
