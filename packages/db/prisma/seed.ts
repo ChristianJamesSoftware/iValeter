@@ -74,40 +74,23 @@ function hoursFromNow(h: number): Date {
 
 async function main() {
   console.log("Clearing existing data...");
-  // Phase 1 tables (children first)
-  await prisma.overtimeRequest.deleteMany();
-  await prisma.message.deleteMany();
-  await prisma.accountManagerMessage.deleteMany();
-  await prisma.payRunLine.deleteMany();
-  await prisma.timesheetLine.deleteMany();
-  await prisma.timesheet.deleteMany();
-  await prisma.payRun.deleteMany();
-  await prisma.contractorRate.deleteMany();
-  await prisma.customerInvoiceLineItem.deleteMany();
-  await prisma.customerInvoice.deleteMany();
-  await prisma.weeklyReviewAudit.deleteMany();
-  await prisma.weeklyReview.deleteMany();
-  await prisma.auditChecklistItem.deleteMany();
-  await prisma.audit.deleteMany();
-  await prisma.complaint.deleteMany();
-  await prisma.vehicleSizeRate.deleteMany();
-  // Original tables
-  await prisma.clockEvent.deleteMany();
-  await prisma.jobStatusHistory.deleteMany();
-  await prisma.jobPhoto.deleteMany();
-  await prisma.booking.deleteMany();
-  await prisma.holidayRequest.deleteMany();
-  await prisma.leaveAllowance.deleteMany();
-  await prisma.invoice.deleteMany();
-  await prisma.xeroNominalMapping.deleteMany();
-  await prisma.xeroConnection.deleteMany();
-  await prisma.serviceType.deleteMany();
-  await prisma.department.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.dealership.deleteMany();
-  await prisma.site.deleteMany();
-  await prisma.organisation.deleteMany();
-  await prisma.platformConfig.deleteMany();
+  // Single TRUNCATE CASCADE — wipes all tables regardless of FK order.
+  // Far safer than chaining deleteMany() calls which break whenever a new
+  // model is added or FK constraints change.
+  await prisma.$executeRawUnsafe(`
+    TRUNCATE TABLE
+      "OvertimeRequest", "Message", "AccountManagerMessage",
+      "PayRunLine", "TimesheetLine", "Timesheet", "PayRun",
+      "ContractorRate", "CustomerInvoiceLineItem", "CustomerInvoice",
+      "WeeklyReviewAudit", "WeeklyReview", "AuditChecklistItem", "Audit",
+      "Complaint", "VehicleSizeRate", "ClockEvent",
+      "JobStatusHistory", "JobPhoto", "Booking",
+      "HolidayRequest", "LeaveAllowance", "Invoice",
+      "XeroNominalMapping", "XeroConnection",
+      "ServiceType", "Department",
+      "User", "Dealership", "Site", "Organisation", "PlatformConfig"
+    CASCADE
+  `);
 
   console.log("Seeding platform config...");
   for (const cfg of PLATFORM_CONFIG) {
