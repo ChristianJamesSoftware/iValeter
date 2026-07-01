@@ -29,6 +29,16 @@ const DEPT_FILTERS = [
 
 const DAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
+// Lower number = higher priority (float to top)
+const STATUS_ORDER: Record<BookingStatus, number> = {
+  IN_PROGRESS: 0,
+  ASSIGNED:    1,
+  QC_CHECK:    2,
+  PENDING:     3,
+  COMPLETED:   4,
+  CANCELLED:   5,
+};
+
 const STATUS_DOT: Record<BookingStatus, string> = {
   PENDING: "bg-slate-400",
   ASSIGNED: "bg-blue-400",
@@ -150,11 +160,15 @@ export function WeeklyCalendar({
     return days.map((date, index) => {
       const dayJobs = filtered
         .filter((j) => sameDay(new Date(j.readyByTime), date))
-        .sort(
-          (a, c) =>
-            new Date(a.readyByTime).getTime() -
-            new Date(c.readyByTime).getTime(),
-        );
+        .sort((a, b) => {
+          // 1. Active jobs first by status priority
+          const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+          if (statusDiff !== 0) return statusDiff;
+          // 2. Priority flag within same status group
+          if (a.isPriority !== b.isPriority) return a.isPriority ? -1 : 1;
+          // 3. Ready-by time within same group
+          return new Date(a.readyByTime).getTime() - new Date(b.readyByTime).getTime();
+        });
       return { date, index, jobs: dayJobs, isToday: index === todayIndex };
     });
   }, [jobs, days, deptFilter, todayIndex]);
@@ -380,6 +394,7 @@ function BookingCard({
       className={cn(
         "w-full rounded-xl border border-slate-100 bg-white p-3 text-left shadow-sm transition-all hover:border-slate-200 hover:shadow-md",
         job.isPriority && "border-l-[3px] border-l-orange-500",
+        (job.status === "COMPLETED" || job.status === "CANCELLED") && "opacity-40",
       )}
     >
       <p className="font-mono text-sm font-black tracking-widest text-slate-900">
