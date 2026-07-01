@@ -63,7 +63,8 @@ model Dealership {
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
 
-  sites Site[]
+  sites           Site[]
+  dealershipAddOns DealershipAddOn[]
 
   @@index([organisationId])
 }
@@ -919,4 +920,36 @@ model OvertimeRequest {
 
   @@index([userId])
   @@index([organisationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CSI SENSORY STANDARD ADD-ONS
+// Global add-on catalogue (managed by super admin).
+// DealershipAddOn tracks which add-ons are enabled per dealership.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AddOn {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  dealershipAddOns DealershipAddOn[]
+}
+
+model DealershipAddOn {
+  id           String   @id @default(cuid())
+  dealershipId String
+  addOnId      String
+  enabled      Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+
+  dealership Dealership @relation(fields: [dealershipId], references: [id])
+  addOn      AddOn      @relation(fields: [addOnId], references: [id])
+
+  @@unique([dealershipId, addOnId])
+  @@index([dealershipId])
 }

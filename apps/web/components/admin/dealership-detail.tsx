@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PlusCircle, X, Building2 } from "lucide-react";
+import { DealershipAddOns } from "@/components/admin/dealership-addons";
 import { trpc } from "@/lib/trpc/react";
 
 interface SiteRow {
@@ -70,6 +71,9 @@ export function DealershipDetail({
           )}
         </div>
       </div>
+
+      {/* CSI Add-Ons */}
+      <DealershipAddOns dealershipId={dealership.id} />
 
       {/* HQ info */}
       <div className="mb-6 grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:grid-cols-3">

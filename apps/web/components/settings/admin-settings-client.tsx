@@ -5,11 +5,13 @@ import { trpc } from "@/lib/trpc/react";
 import { SettingsTabs } from "@/components/settings/tabs";
 import { TextField, SaveBar } from "@/components/settings/field";
 import { ToggleRow } from "@/components/settings/toggle";
+import { AddOnsTab } from "@/components/settings/add-ons-tab";
 
 const TABS = [
   { key: "platform", label: "Platform" },
   { key: "integrations", label: "Integrations" },
   { key: "flags", label: "Feature Flags" },
+  { key: "addons", label: "Add-Ons" },
 ];
 
 const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
@@ -50,6 +52,7 @@ export function AdminSettingsClient() {
       {tab === "flags" && (
         <FlagsTab get={get} save={(v) => update.mutateAsync({ values: v })} pending={update.isPending} />
       )}
+      {tab === "addons" && <AddOnsTab />}
     </div>
   );
 }
