@@ -175,13 +175,9 @@ function checkRouterShapes() {
         }
       }
 
-      // ── useQuery() called without argument on parameterless procedures ────
-      // tRPC v11 requires useQuery({}) not useQuery() for void-input procedures
-      if (/\.useQuery\(\s*\)/.test(line) && /trpc\./.test(line)) {
-        errors.push(
-          `${rel}:${ln} — tRPC useQuery() called with no argument — pass '{}' for void-input procedures: ${line.trim()}`
-        );
-      }
+      // NOTE: useQuery() vs useQuery({}) depends on whether the router procedure
+      // has .input() defined. Void procedures use useQuery(), input procedures
+      // use useQuery({ ...args }). Do not blanket-check this — it varies per procedure.
     });
   }
 }
