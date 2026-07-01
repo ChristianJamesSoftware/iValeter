@@ -34,6 +34,12 @@ export const authRouter = router({
         });
       }
 
+      // Stamp last login time — used by inactive user reports
+      await ctx.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+
       return {
         userId: user.id,
         organisationId: user.organisationId,

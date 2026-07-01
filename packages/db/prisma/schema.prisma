@@ -191,6 +191,10 @@ model User {
   passwordResetToken     String?   @unique
   passwordResetExpiresAt DateTime?
 
+  // Activity tracking
+  lastLoginAt DateTime? // stamped on every successful login
+  archivedAt  DateTime? // set when user is archived (soft-delete)
+
   assignedBookings     Booking[]          @relation("AssignedValeter")
   createdBookings      Booking[]          @relation("CreatedBy")
   statusHistory        JobStatusHistory[]

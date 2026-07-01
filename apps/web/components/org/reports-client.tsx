@@ -6,8 +6,9 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 import { ValetTimingsClient } from "@/components/org/valet-timings-client";
+import { InactiveUsersClient } from "@/components/org/inactive-users-client";
 
-type ReportsTab = "summary" | "timings";
+type ReportsTab = "summary" | "timings" | "inactive";
 
 export function ReportsClient() {
   const [activeTab, setActiveTab] = useState<ReportsTab>("summary");
@@ -16,7 +17,7 @@ export function ReportsClient() {
     <div className="space-y-0">
       {/* Tab bar */}
       <div className="mb-6 flex gap-1 border-b border-[#D4D1CA]">
-        {(["summary", "timings"] as ReportsTab[]).map((tab) => (
+        {(["summary", "timings", "inactive"] as ReportsTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -27,13 +28,14 @@ export function ReportsClient() {
                 : "border-transparent text-[#7A7974] hover:text-[#28251D]",
             )}
           >
-            {tab === "summary" ? "Summary" : "Valet Timings"}
+            {tab === "summary" ? "Summary" : tab === "timings" ? "Valet Timings" : "Inactive Users"}
           </button>
         ))}
       </div>
 
       {activeTab === "summary" && <ReportsSummaryClient />}
       {activeTab === "timings" && <ValetTimingsClient />}
+      {activeTab === "inactive" && <InactiveUsersClient />}
     </div>
   );
 }

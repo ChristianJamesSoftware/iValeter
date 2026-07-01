@@ -19,6 +19,7 @@ import { messagesRouter } from "./routers/messages";
 import { overtimeRouter } from "./routers/overtime";
 import { hqRouter } from "./routers/hq";
 import { vehicleSizeRatesRouter } from "./routers/vehicle-size-rates";
+import { inactiveUsersRouter } from "./routers/inactive-users";
 
 export const appRouter = router({
   auth: authRouter,
@@ -41,6 +42,7 @@ export const appRouter = router({
   overtime: overtimeRouter,
   hq: hqRouter,
   vehicleSizeRates: vehicleSizeRatesRouter,
+  inactiveUsers: inactiveUsersRouter,
 });
 
 export type AppRouter = typeof appRouter;
