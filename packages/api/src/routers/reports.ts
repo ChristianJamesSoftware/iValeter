@@ -139,7 +139,6 @@ export const reportsRouter = router({
       const clockEvents = await ctx.prisma.clockEvent.findMany({
         where: {
           userId: { in: valeterIds },
-          organisationId: ctx.session.organisationId,
           ...(siteIdFilter ? { siteId: siteIdFilter } : {}),
           createdAt: { gte: input.dateFrom, lte: input.dateTo },
         },
