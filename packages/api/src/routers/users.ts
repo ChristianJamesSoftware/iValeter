@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Role } from "@ivaleter/db";
-import { router, protectedProcedure, orgAdminProcedure } from "../trpc";
+import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
 import { hashPassword } from "../auth";
 
 function startOfToday(): Date {
@@ -307,4 +307,22 @@ export const usersRouter = router({
         },
       });
     }),
+
+  /** Super admin: list ALL valeters across every org */
+  listAllValeters: superAdminProcedure
+    .input(z.object({ showInactive: z.boolean().default(false) }).optional())
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.user.findMany({
+        where: {
+          role: "valeter",
+          ...(input?.showInactive ? {} : { isActive: true }),
+        },
+        include: {
+          site: { select: { id: true, name: true } },
+          organisation: { select: { id: true, name: true } },
+        },
+        orderBy: [{ organisation: { name: "asc" } }, { firstName: "asc" }],
+      });
+    }),
 });
+// Note: appended below existing exports — router registration handles this via root.ts

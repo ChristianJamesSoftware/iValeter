@@ -6,6 +6,7 @@ const NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: "dashboard", section: "Platform" },
   { href: "/admin/dealerships", label: "Dealerships", icon: "building" },
   { href: "/admin/organisations", label: "Head Offices", icon: "building" },
+  { href: "/admin/team", label: "Valeting Team", icon: "team" },
 
   // Admin Tools
   { href: "/admin/impersonate", label: "Impersonate User", icon: "impersonate", section: "Admin Tools", accent: true },
