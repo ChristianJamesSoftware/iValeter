@@ -421,7 +421,6 @@ async function main() {
       data: {
         userId: valeterForSite.id,
         siteId: siteEntry.site.id,
-        organisationId: org.id,
         type: "CLOCK_IN",
         timestamp: shiftStart,
         createdAt: shiftStart,
@@ -431,7 +430,6 @@ async function main() {
       data: {
         userId: valeterForSite.id,
         siteId: siteEntry.site.id,
-        organisationId: org.id,
         type: "CLOCK_OUT",
         timestamp: shiftEnd,
         createdAt: shiftEnd,

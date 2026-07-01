@@ -161,6 +161,18 @@ function checkRouterShapes() {
         );
       }
 
+      // ── ClockEvent.organisationId doesn't exist on the model ─────────────
+      // Use user: { organisationId } relation filter instead
+      if (/clockEvent\.(?:create|findMany|findFirst|update|delete)/i.test(line)) {
+        // Check next 10 lines for a direct organisationId field (not via user:)
+        const block = lines.slice(i, i + 10).join("\n");
+        if (/organisationId/.test(block) && !/user\s*:\s*\{[^}]*organisationId/.test(block)) {
+          errors.push(
+            `${rel}:${ln} — ClockEvent has no 'organisationId' field — filter via 'user: { organisationId }' or 'site: { organisationId }' instead: ${line.trim()}`
+          );
+        }
+      }
+
       // ── PageHeader wrong prop name ────────────────────────────────
       // PageHeader only accepts subtitle=, not description=
       if (/<PageHeader[^>]*\bdescription=/.test(line)) {
