@@ -21,6 +21,7 @@ import { hqRouter } from "./routers/hq";
 import { vehicleSizeRatesRouter } from "./routers/vehicle-size-rates";
 import { inactiveUsersRouter } from "./routers/inactive-users";
 import { addOnsRouter } from "./routers/add-ons";
+import { valetLibraryRouter } from "./routers/valet-library";
 
 export const appRouter = router({
   auth: authRouter,
@@ -45,6 +46,7 @@ export const appRouter = router({
   vehicleSizeRates: vehicleSizeRatesRouter,
   inactiveUsers: inactiveUsersRouter,
   addOns: addOnsRouter,
+  valetLibrary: valetLibraryRouter,
 });
 
 export type AppRouter = typeof appRouter;

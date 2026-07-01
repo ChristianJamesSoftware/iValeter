@@ -977,3 +977,52 @@ model DealershipAddOn {
   @@unique([dealershipId, addOnId])
   @@index([dealershipId])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PLATFORM VALET TYPE LIBRARY
+// Master list managed by super admin; dealerships select from these
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ValetTypeTemplate {
+  id               String          @id @default(cuid())
+  name             String          @unique
+  description      String?
+  category         ServiceCategory @default(VALET)
+  defaultDurationMins Int          @default(60)
+  isActive         Boolean         @default(true)
+  sortOrder        Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PLATFORM RATE TEMPLATES
+// Master rate templates managed by super admin; dealerships select one
+// ─────────────────────────────────────────────────────────────────────────────
+
+model RateTemplate {
+  id           String   @id @default(cuid())
+  name         String   @unique   // e.g. "Standard Retail", "Premium Franchise"
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  lines RateTemplateLine[]
+}
+
+model RateTemplateLine {
+  id             String      @id @default(cuid())
+  templateId     String
+  template       RateTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  serviceTypeName String      // matches ValetTypeTemplate.name
+  basePricePence  Int
+  baseAllocMins   Int         @default(60)
+  pctSmall        Int         @default(-10)
+  pctMedium       Int         @default(0)
+  pctLarge        Int         @default(20)
+  pctXL           Int         @default(35)
+  pctVan          Int         @default(50)
+
+  @@unique([templateId, serviceTypeName])
+}

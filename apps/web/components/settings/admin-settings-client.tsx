@@ -7,6 +7,7 @@ import { TextField, SaveBar } from "@/components/settings/field";
 import { ToggleRow } from "@/components/settings/toggle";
 import { AddOnsTab } from "@/components/settings/add-ons-tab";
 import { ManagementTeamTab } from "@/components/settings/management-team-tab";
+import { ValetLibraryTab } from "@/components/settings/valet-library-tab";
 
 const TABS = [
   { key: "platform", label: "Platform" },
@@ -14,6 +15,7 @@ const TABS = [
   { key: "flags", label: "Feature Flags" },
   { key: "addons", label: "Add-Ons" },
   { key: "team", label: "Management Team" },
+  { key: "library", label: "Valet Library" },
 ];
 
 const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
@@ -56,6 +58,7 @@ export function AdminSettingsClient() {
       )}
       {tab === "addons" && <AddOnsTab />}
       {tab === "team" && <ManagementTeamTab />}
+      {tab === "library" && <ValetLibraryTab />}
     </div>
   );
 }

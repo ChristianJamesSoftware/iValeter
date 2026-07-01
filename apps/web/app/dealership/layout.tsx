@@ -7,6 +7,7 @@ const NAV: NavItem[] = [
   { href: "/dealership/bookings/new", label: "New Booking", icon: "new" },
   { href: "/dealership/bookings", label: "Bookings", icon: "bookings" },
   { href: "/dealership/reports", label: "Reports", icon: "reports" },
+  { href: "/dealership/team", label: "Team", icon: "team" },
   { href: "/dealership/support", label: "Support", icon: "support" },
 ];
 

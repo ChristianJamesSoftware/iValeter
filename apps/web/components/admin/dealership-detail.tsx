@@ -232,7 +232,7 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
         />
       )}
       {activeTab === "valetTypes" && <ValetTypesTab serviceTypes={allServiceTypes} sites={d.sites} dealershipId={d.id} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
-      {activeTab === "rates"      && <VehicleRatesTab rates={allRates} onSaved={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
+      {activeTab === "rates"      && <VehicleRatesTab rates={allRates} sites={d.sites} onSaved={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "team"       && <TeamTab members={allTeam} sites={d.sites} organisationId={d.organisation?.id ?? ""} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "valeters"    && <ValetersTab valeters={allValeters} />}
       {activeTab === "addons"     && <DealershipAddOns dealershipId={d.id} />}
@@ -415,102 +415,134 @@ function ValetTypesTab({ serviceTypes, sites, dealershipId, onAdded }: {
   dealershipId: string;
   onAdded: () => void;
 }) {
-  const [showAdd, setShowAdd] = useState(false);
-  const [name, setName] = useState("");
-  const [duration, setDuration] = useState("");
-  const add = trpc.dealerships.addServiceType.useMutation({
-    onSuccess: () => { setShowAdd(false); setName(""); setDuration(""); onAdded(); },
-  });
+  const [durations, setDurations] = useState<Record<string, number>>({});
+  const templates = trpc.valetLibrary.listValetTypes.useQuery();
+  const activate = trpc.valetLibrary.activateValetTypeForDealership.useMutation({ onSuccess: onAdded });
+  const deactivate = trpc.valetLibrary.deactivateValetTypeForDealership.useMutation({ onSuccess: onAdded });
 
-  const inputCls = "h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
+  const activeNames = new Set(serviceTypes.map((s) => s.name));
+  const available = templates.data ?? [];
+  const inputCls = "h-8 rounded border border-slate-200 bg-white px-2 text-xs outline-none focus:border-slate-400";
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <div>
-          <h2 className="font-bold text-slate-900">
-            Valet Types
-            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{serviceTypes.length}</span>
-          </h2>
-          <p className="mt-0.5 text-xs text-slate-400">Service types configured for this dealership.</p>
-        </div>
-        <button onClick={() => setShowAdd(!showAdd)} className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700">
-          <PlusCircle className="h-4 w-4" /> Add type
-        </button>
+      <div className="border-b border-slate-100 px-5 py-4">
+        <h2 className="font-bold text-slate-900">
+          Valet Types
+          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{serviceTypes.length} active</span>
+        </h2>
+        <p className="mt-0.5 text-xs text-slate-400">
+          Select from the platform valet type library. Tick to activate for this dealership, untick to deactivate.
+        </p>
       </div>
 
-      {showAdd && (
-        <div className="border-b border-slate-100 bg-slate-50 p-5">
-          <div className="flex items-end gap-3">
-            <div>
-              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Full Valet" className={`${inputCls} w-48`} />
-            </div>
-            <div>
-              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Duration (mins)</label>
-              <input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="60" className={`${inputCls} w-28`} />
-            </div>
-            <button
-              disabled={!name.trim() || !duration || add.isPending}
-              onClick={() => add.mutate({ dealershipId, name: name.trim(), durationMins: parseInt(duration) })}
-              className="h-9 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
-            >
-              {add.isPending ? "Adding…" : "Add"}
-            </button>
-            <button onClick={() => setShowAdd(false)} className="h-9 rounded-lg border border-slate-200 px-3 text-sm text-slate-600 hover:bg-white">Cancel</button>
-          </div>
-          {add.error && <p className="mt-2 text-xs text-red-500">{add.error.message}</p>}
+      {templates.isLoading ? (
+        <p className="px-5 py-8 text-center text-sm text-slate-400">Loading library...</p>
+      ) : available.length === 0 ? (
+        <p className="px-5 py-12 text-center text-sm text-slate-400">
+          No valet types in the library yet. Go to <strong>Settings &rarr; Valet Library</strong> to add them first.
+        </p>
+      ) : (
+        <div className="divide-y divide-slate-50">
+          {available.map((t) => {
+            const isActive = activeNames.has(t.name);
+            const existing = serviceTypes.find((s) => s.name === t.name);
+            return (
+              <div key={t.id} className={`flex flex-wrap items-center gap-4 px-5 py-3 ${isActive ? "" : "opacity-60"}`}>
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-slate-900"
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      activate.mutate({ dealershipId, templateId: t.id, durationMins: durations[t.id] });
+                    } else {
+                      deactivate.mutate({ dealershipId, name: t.name });
+                    }
+                  }}
+                />
+                <div className="flex-1 min-w-[160px]">
+                  <span className="font-medium text-slate-900 text-sm">{t.name}</span>
+                  {t.description && <span className="ml-2 text-xs text-slate-400">{t.description}</span>}
+                </div>
+                {!isActive && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">Duration:</span>
+                    <input
+                      type="number"
+                      placeholder={String(t.defaultDurationMins)}
+                      className={inputCls}
+                      style={{ width: 64 }}
+                      value={durations[t.id] ?? ""}
+                      onChange={(e) => setDurations((d) => ({ ...d, [t.id]: parseInt(e.target.value) || t.defaultDurationMins }))}
+                    />
+                    <span className="text-xs text-slate-400">min</span>
+                  </div>
+                )}
+                {isActive && (
+                  <span className="text-xs text-slate-400">{existing ? `${existing.durationMins} min` : ""}</span>
+                )}
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                }`}>
+                  {isActive ? "Active" : "Inactive"}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {serviceTypes.length === 0 && !showAdd && (
-        <p className="px-5 py-16 text-center text-sm text-slate-400">No valet types yet. Click “Add type” to create one.</p>
-      )}
-
-      {sites.map((site) => {
-        const siteServiceTypes = site.departments.flatMap((dept) => dept.serviceTypes);
-        if (siteServiceTypes.length === 0) return null;
-        return (
-          <div key={site.id}>
-            <div className="border-b border-slate-100 bg-slate-50 px-5 py-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{site.name}</p>
-            </div>
-            {site.departments.map((dept) => dept.serviceTypes.length > 0 && (
-              <div key={dept.id}>
-                <div className="border-b border-slate-50 px-5 py-1.5">
-                  <p className="text-xs font-semibold text-slate-400">{dept.name}</p>
+      {serviceTypes.length > 0 && (
+        <div className="border-t border-slate-100">
+          {sites.map((site) => {
+            const hasST = site.departments.some((d) => d.serviceTypes.length > 0);
+            if (!hasST) return null;
+            return (
+              <div key={site.id}>
+                <div className="border-b border-slate-100 bg-slate-50 px-5 py-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{site.name}</p>
                 </div>
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr>
-                      <th className={TH}>Service Type</th>
-                      <th className={TH}>Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dept.serviceTypes.map((st) => (
-                      <tr key={st.id} className="hover:bg-slate-50/50">
-                        <td className={`${TD} font-medium text-slate-900`}>{st.name}</td>
-                        <td className={TD}>{st.durationMins} mins</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {site.departments.map((dept) => dept.serviceTypes.length > 0 && (
+                  <div key={dept.id}>
+                    <div className="border-b border-slate-50 px-5 py-1.5">
+                      <p className="text-xs font-semibold text-slate-400">{dept.name}</p>
+                    </div>
+                    <table className="w-full text-left text-sm">
+                      <thead><tr><th className={TH}>Service Type</th><th className={TH}>Duration</th></tr></thead>
+                      <tbody>
+                        {dept.serviceTypes.map((st) => (
+                          <tr key={st.id} className="hover:bg-slate-50/50">
+                            <td className={`${TD} font-medium text-slate-900`}>{st.name}</td>
+                            <td className={TD}>{st.durationMins} min</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Vehicle Rates tab ───────────────────────────────────────────────────────
 
-function VehicleRatesTab({ rates, onSaved }: { rates: (VehicleSizeRate & { siteName: string })[]; onSaved: () => void }) {
+function VehicleRatesTab({ rates, sites, onSaved }: { rates: (VehicleSizeRate & { siteName: string })[]; sites: SiteRow[]; onSaved: () => void }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<VehicleSizeRate>>({});
+  const [templateSiteId, setTemplateSiteId] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [overwrite, setOverwrite] = useState(false);
 
+  const rateTemplates = trpc.valetLibrary.listRateTemplates.useQuery();
+  const applyTemplate = trpc.valetLibrary.applyRateTemplate.useMutation({
+    onSuccess: (res) => { onSaved(); setSelectedTemplateId(""); alert(`Applied ${res.applied} rate(s) from template.`); },
+  });
   const upsert = trpc.vehicleSizeRates.superAdminUpsert.useMutation({ onSuccess: () => { setEditId(null); onSaved(); } });
 
   function startEdit(r: VehicleSizeRate & { siteName: string }) {
@@ -550,6 +582,41 @@ function VehicleRatesTab({ rates, onSaved }: { rates: (VehicleSizeRate & { siteN
         <h2 className="font-bold text-slate-900">Vehicle Rates</h2>
         <p className="mt-0.5 text-xs text-slate-400">Click Edit on a row to set base price, allocation time, and size modifiers.</p>
       </div>
+
+      {/* Apply rate template */}
+      <div className="border-b border-slate-100 bg-slate-50 px-5 py-3">
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Apply Rate Template</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={templateSiteId}
+            onChange={(e) => setTemplateSiteId(e.target.value)}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+          >
+            <option value="">Select site...</option>
+            {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <select
+            value={selectedTemplateId}
+            onChange={(e) => setSelectedTemplateId(e.target.value)}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+          >
+            <option value="">Select template...</option>
+            {(rateTemplates.data ?? []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+            <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} className="accent-slate-900" />
+            Overwrite existing
+          </label>
+          <button
+            onClick={() => applyTemplate.mutate({ siteId: templateSiteId, templateId: selectedTemplateId, overwrite })}
+            disabled={!templateSiteId || !selectedTemplateId || applyTemplate.isPending}
+            className="h-9 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
+          >
+            {applyTemplate.isPending ? "Applying..." : "Apply template"}
+          </button>
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[800px] text-left text-sm">
           <thead>

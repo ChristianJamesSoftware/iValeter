@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Role } from "@ivaleter/db";
-import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
+import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure, dealershipProcedure } from "../trpc";
 import { hashPassword } from "../auth";
 
 function startOfToday(): Date {
@@ -538,6 +538,125 @@ export const usersRouter = router({
   deactivateManagementUser: superAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.user.update({
+        where: { id: input.id },
+        data: { isActive: false, archivedAt: new Date() },
+      });
+    }),
+
+
+  /** Dealership: list users on their own site (for customer-side user management) */
+  listDealershipUsers: dealershipProcedure
+    .query(async ({ ctx }) => {
+      const session = ctx.session!;
+      // Find which dealership this user belongs to via their site
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: session.userId },
+        include: { site: { include: { dealership: true } } },
+      });
+      if (!user?.site?.dealership)
+        throw new TRPCError({ code: "FORBIDDEN", message: "No dealership found for this user" });
+
+      const dealership = user.site.dealership;
+      const siteIds = await ctx.prisma.site.findMany({
+        where: { dealershipId: dealership.id },
+        select: { id: true },
+      });
+
+      return ctx.prisma.user.findMany({
+        where: {
+          siteId: { in: siteIds.map((s) => s.id) },
+          role: "dealership_user",
+          isActive: true,
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          mobile: true,
+          jobTitle: true,
+          isActive: true,
+          createdAt: true,
+          lastLoginAt: true,
+          site: { select: { id: true, name: true } },
+        },
+        orderBy: { firstName: "asc" },
+      });
+    }),
+
+  /** Dealership: add a user to their own dealership */
+  addDealershipUser: dealershipProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        password: z.string().min(6),
+        siteId: z.string(),
+        jobTitle: z.string().optional(),
+        mobile: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const session = ctx.session!;
+      // Verify siteId belongs to caller's dealership
+      const callerUser = await ctx.prisma.user.findUnique({
+        where: { id: session.userId },
+        include: { site: { include: { dealership: { include: { sites: { select: { id: true } } } } } } },
+      });
+      const allowedSiteIds = callerUser?.site?.dealership?.sites.map((s) => s.id) ?? [];
+      if (!allowedSiteIds.includes(input.siteId))
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can only add users to your own dealership's sites" });
+
+      const existing = await ctx.prisma.user.findUnique({
+        where: { email: input.email.toLowerCase().trim() },
+      });
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "A user with this email already exists" });
+
+      const site = await ctx.prisma.site.findUnique({
+        where: { id: input.siteId },
+        select: { organisationId: true },
+      });
+      if (!site) throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+
+      return ctx.prisma.user.create({
+        data: {
+          organisationId: site.organisationId,
+          siteId: input.siteId,
+          email: input.email.toLowerCase().trim(),
+          firstName: input.firstName.trim(),
+          lastName: input.lastName.trim(),
+          passwordHash: hashPassword(input.password),
+          role: "dealership_user",
+          jobTitle: input.jobTitle ?? null,
+          mobile: input.mobile ?? null,
+          payId: generatePayId(input.firstName, input.lastName),
+        },
+      });
+    }),
+
+  /** Dealership: remove (deactivate) a user from their own dealership */
+  removeDealershipUser: dealershipProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = ctx.session!;
+      // Verify target user belongs to same dealership
+      const callerUser = await ctx.prisma.user.findUnique({
+        where: { id: session.userId },
+        include: { site: { include: { dealership: { include: { sites: { select: { id: true } } } } } } },
+      });
+      const allowedSiteIds = callerUser?.site?.dealership?.sites.map((s) => s.id) ?? [];
+
+      const target = await ctx.prisma.user.findUnique({
+        where: { id: input.id },
+        select: { siteId: true, role: true },
+      });
+      if (!target || !allowedSiteIds.includes(target.siteId ?? ""))
+        throw new TRPCError({ code: "FORBIDDEN", message: "You cannot remove this user" });
+      if (target.role !== "dealership_user")
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can only remove dealership users" });
+
       return ctx.prisma.user.update({
         where: { id: input.id },
         data: { isActive: false, archivedAt: new Date() },
