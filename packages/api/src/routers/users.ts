@@ -33,6 +33,7 @@ export const usersRouter = router({
         where: {
           organisationId: ctx.session.organisationId,
           role: Role.valeter,
+          isActive: true,
           ...(input?.siteId ? { siteId: input.siteId } : {}),
         },
         include: { site: { select: { id: true, name: true } } },
@@ -78,6 +79,7 @@ export const usersRouter = router({
       return ctx.prisma.user.findMany({
         where: {
           organisationId: ctx.session.organisationId,
+          isActive: true,
           ...(input?.role ? { role: input.role } : {}),
         },
         include: { site: { select: { name: true } } },

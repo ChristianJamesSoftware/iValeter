@@ -5,7 +5,7 @@ import { router, protectedProcedure, orgAdminProcedure } from "../trpc";
 export const sitesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.prisma.site.findMany({
-      where: { organisationId: ctx.session.organisationId },
+      where: { organisationId: ctx.session.organisationId, isActive: true },
       include: {
         departments: {
           include: { serviceTypes: { where: { isActive: true } } },
