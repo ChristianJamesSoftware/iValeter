@@ -120,9 +120,8 @@ export const reportsRouter = router({
           organisationId: ctx.session.organisationId,
           ...(siteIdFilter ? { siteId: siteIdFilter } : {}),
           status: "COMPLETED",
-          completedAt: { not: null },
+          completedAt: { not: null, gte: input.dateFrom, lte: input.dateTo },
           assignedToId: { not: null },
-          readyByTime: { gte: input.dateFrom, lte: input.dateTo },
         },
         include: {
           serviceType: {
