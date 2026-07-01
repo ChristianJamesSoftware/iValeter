@@ -82,7 +82,7 @@ export function ComplianceCalendar({
   const { data: managers } = trpc.audits.listAccountManagers.useQuery(undefined, {
     initialData: initialManagers as never,
   });
-  const { data: upcoming } = trpc.audits.upcoming.useQuery({});
+  const { data: upcoming } = trpc.audits.upcoming.useQuery();
 
   const schedule = trpc.audits.schedule.useMutation({
     onSuccess: () => {

@@ -28,7 +28,7 @@ export function OvertimeRequestClient() {
   const [done, setDone] = useState(false);
 
   const utils = trpc.useUtils();
-  const { data: requests } = trpc.overtime.myRequests.useQuery({});
+  const { data: requests } = trpc.overtime.myRequests.useQuery();
   const submitMut = trpc.overtime.request.useMutation({
     onSuccess: () => {
       setDone(true);

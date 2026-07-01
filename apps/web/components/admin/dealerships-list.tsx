@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc/react";
 
 export function DealershipsList() {
   const [showForm, setShowForm] = useState(false);
-  const query = trpc.dealerships.list.useQuery({});
+  const query = trpc.dealerships.list.useQuery();
 
   if (query.isLoading) {
     return <p className="text-slate-400">Loading…</p>;
