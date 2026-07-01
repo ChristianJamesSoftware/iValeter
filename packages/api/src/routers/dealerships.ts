@@ -91,16 +91,18 @@ export const dealershipsRouter = router({
     }),
 
   /** Super-admin: list ALL dealerships across all head offices */
-  listAll: superAdminProcedure.query(async ({ ctx }) => {
-    return ctx.prisma.dealership.findMany({
-      where: { isActive: true },
-      include: {
-        organisation: { select: { id: true, name: true } },
-        _count: { select: { sites: true } },
-      },
-      orderBy: [{ organisation: { name: "asc" } }, { name: "asc" }],
-    });
-  }),
+  listAll: superAdminProcedure
+    .input(z.object({ showInactive: z.boolean().default(false) }).optional())
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.dealership.findMany({
+        where: input?.showInactive ? undefined : { isActive: true },
+        include: {
+          organisation: { select: { id: true, name: true } },
+          _count: { select: { sites: true } },
+        },
+        orderBy: [{ organisation: { name: "asc" } }, { name: "asc" }],
+      });
+    }),
 
   /** Super-admin: create a dealership under a specific head office */
   createForHeadOffice: superAdminProcedure
