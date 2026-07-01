@@ -9,6 +9,7 @@
  *   I (8) = PAY ID (always blank — to be added manually)
  *
  * Run from packages/db:
+ *   npm install xlsx   # one-time, not in lockfile
  *   npx tsx prisma/import-valeters.ts
  */
 

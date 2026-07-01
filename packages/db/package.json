@@ -21,15 +21,13 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.1.0",
-    "xlsx": "^0.18.5"
+    "@prisma/client": "^6.1.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^2.4.3",
     "prisma": "^6.1.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "bcryptjs": "^2.4.3",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/xlsx": "^0.0.36"
+    "typescript": "^5.7.2"
   }
 }
