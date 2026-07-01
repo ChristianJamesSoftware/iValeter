@@ -1,13 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Power } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
 export function HeadOfficesList() {
+  const [showInactive, setShowInactive] = useState(false);
   const utils = trpc.useUtils();
-  const query = trpc.organisations.list.useQuery();
+  const query = trpc.organisations.list.useQuery({ showInactive });
 
   const toggleActive = trpc.organisations.setActive.useMutation({
     onSuccess: () => utils.organisations.list.invalidate(),
@@ -18,19 +20,39 @@ export function HeadOfficesList() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-5 py-4">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <h2 className="text-base font-bold text-slate-900">
           Head Offices
           <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
             {orgs.length}
           </span>
         </h2>
+
+        {/* Active / All toggle */}
+        <div className="flex items-center rounded-lg border border-slate-200 p-0.5 text-xs font-semibold">
+          <button
+            onClick={() => setShowInactive(false)}
+            className={cn(
+              "rounded-md px-3 py-1.5 transition",
+              !showInactive ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-700",
+            )}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => setShowInactive(true)}
+            className={cn(
+              "rounded-md px-3 py-1.5 transition",
+              showInactive ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-700",
+            )}
+          >
+            All
+          </button>
+        </div>
       </div>
 
       {orgs.length === 0 ? (
-        <p className="px-5 py-16 text-center text-sm text-slate-400">
-          No head offices yet.
-        </p>
+        <p className="px-5 py-16 text-center text-sm text-slate-400">No head offices yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -46,7 +68,10 @@ export function HeadOfficesList() {
               {orgs.map((o) => (
                 <tr
                   key={o.id}
-                  className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50"
+                  className={cn(
+                    "border-b border-slate-50 last:border-0 hover:bg-slate-50/50",
+                    !o.isActive && "opacity-50",
+                  )}
                 >
                   <td className="px-5 py-4 font-bold text-slate-900">
                     <Link

@@ -14,8 +14,11 @@ const featureInput = z.object({
 });
 
 export const organisationsRouter = router({
-  list: superAdminProcedure.query(async ({ ctx }) => {
+  list: superAdminProcedure
+    .input(z.object({ showInactive: z.boolean().default(false) }).optional())
+    .query(async ({ ctx, input }) => {
     const orgs = await ctx.prisma.organisation.findMany({
+      where: input?.showInactive ? undefined : { isActive: true },
       include: { _count: { select: { sites: true, users: true } } },
       orderBy: { createdAt: "desc" },
     });
