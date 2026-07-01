@@ -91,7 +91,7 @@ export const reportsRouter = router({
         })),
       };
     }),
-}
+
   /**
    * Actual valet durations estimated from ClockEvent pairs.
    * Groups by service type and vehicle size.
