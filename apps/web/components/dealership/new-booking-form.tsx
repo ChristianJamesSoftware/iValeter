@@ -196,10 +196,10 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
           <div className="space-y-2">
             {/* UK rear number plate — yellow, GB badge, dealer name */}
             <div style={{ background: "#F5C500", border: "2px solid #333", borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
-              {/* Main plate row */}
-              <div className="relative flex items-stretch">
-                {/* GB badge — full-height blue column */}
-                <div style={{ background: "#003399", width: 52, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px 5px" }}>
+              {/* Main plate row — position:relative so reg input can span full width */}
+              <div style={{ position: "relative", display: "flex", alignItems: "stretch", height: 80 }}>
+                {/* GB badge — sits in the top-left, does NOT push reg off-centre */}
+                <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 52, background: "#003399", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px 5px", zIndex: 1 }}>
                   <svg width="36" height="24" viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block" }}>
                     <rect width="60" height="40" fill="#012169"/>
                     <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" strokeWidth="10"/>
@@ -210,10 +210,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                   </svg>
                   <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: "0.04em", color: "#F5C500", fontFamily: "'Arial Black', Arial, sans-serif", lineHeight: 1 }}>GB</span>
                 </div>
-                {/* Reg input + status */}
-                <div style={{ flex: 1, display: "flex", alignItems: "center", paddingLeft: 4, paddingRight: 4 }}>
-                  {/* Left spacer mirrors status icon width — keeps reg optically centred */}
-                  <div style={{ width: 24, flexShrink: 0 }} />
+                {/* Reg input — absolutely spans full plate width so text-align:center is truly centred */}
                 <input
                   value={vehicleReg}
                   onChange={(e) => {
@@ -245,7 +242,9 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                   placeholder="AB12 CDE"
                   maxLength={8}
                   style={{
-                    flex: 1,
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
                     background: "transparent",
                     border: "none",
                     outline: "none",
@@ -254,20 +253,19 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                     fontWeight: 900,
                     letterSpacing: "0.1em",
                     color: "#1a1a1a",
-                    height: 64,
                     fontFamily: "'Charles Wright', 'Arial Black', Arial, sans-serif",
+                    zIndex: 0,
                   }}
                 />
-                {/* Status indicator */}
-                <div style={{ width: 24, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {/* Status indicator — top-right corner */}
+                <div style={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}>
                   {dvlaStatus === "loading" && <svg className="h-4 w-4 animate-spin text-slate-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
                   {dvlaStatus === "found" && <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
                   {dvlaStatus === "error" && <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>}
                 </div>
-                </div>{/* end reg+status wrapper */}
               </div>
-              {/* Dealer name strip — bottom of plate */}
-              <div style={{ background: "#1a1a1a", padding: "3px 8px", display: "flex", justifyContent: "center" }}>
+              {/* Customer name strip — full width so text-align:center is centred across the whole plate */}
+              <div style={{ background: "#1a1a1a", padding: "3px 8px", textAlign: "center" }}>
                 <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.25em", color: "white", textTransform: "uppercase" }}>
                   {customerName.trim() || site?.name || "iValeter"}
                 </span>
