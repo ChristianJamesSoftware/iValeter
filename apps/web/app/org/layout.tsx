@@ -20,12 +20,6 @@ const NAV: NavItem[] = [
     icon: "reports",
     section: "Reporting",
   },
-  {
-    href: "/org/settings",
-    label: "Settings",
-    icon: "settings",
-    section: "System",
-  },
 ];
 
 export default function OrgLayout({
