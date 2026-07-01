@@ -268,4 +268,83 @@ export const dealershipsRouter = router({
       };
     });
   }),
+
+  // ─── Contact Log (Notes) ────────────────────────────────────────────────────
+
+  /** List all contact log notes for a dealership — SA and management only */
+  listNotes: superAdminProcedure
+    .input(z.object({ dealershipId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.dealershipNote.findMany({
+        where: { dealershipId: input.dealershipId },
+        include: {
+          createdBy: { select: { firstName: true, lastName: true } },
+        },
+        orderBy: { contactDate: "desc" },
+      });
+    }),
+
+  /** Add a new contact log note */
+  addNote: superAdminProcedure
+    .input(
+      z.object({
+        dealershipId: z.string(),
+        contactDate: z.string(), // ISO date string
+        contactName: z.string().min(1, "Contact name required"),
+        regards: z.string().min(1, "Subject required"),
+        agreed: z.string().min(1, "Outcome required"),
+        followUpDate: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.dealershipNote.create({
+        data: {
+          dealershipId: input.dealershipId,
+          contactDate: new Date(input.contactDate),
+          contactName: input.contactName.trim(),
+          regards: input.regards.trim(),
+          agreed: input.agreed.trim(),
+          followUpDate: input.followUpDate ? new Date(input.followUpDate) : null,
+          createdByUserId: ctx.session.userId,
+          updatedAt: new Date(),
+        },
+        include: {
+          createdBy: { select: { firstName: true, lastName: true } },
+        },
+      });
+    }),
+
+  /** Update an existing note */
+  updateNote: superAdminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        contactDate: z.string().optional(),
+        contactName: z.string().min(1).optional(),
+        regards: z.string().min(1).optional(),
+        agreed: z.string().min(1).optional(),
+        followUpDate: z.string().nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, followUpDate, contactDate, ...rest } = input;
+      return ctx.prisma.dealershipNote.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(contactDate && { contactDate: new Date(contactDate) }),
+          ...(followUpDate !== undefined && {
+            followUpDate: followUpDate ? new Date(followUpDate) : null,
+          }),
+          updatedAt: new Date(),
+        },
+      });
+    }),
+
+  /** Delete a note */
+  deleteNote: superAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.dealershipNote.delete({ where: { id: input.id } });
+    }),
 });

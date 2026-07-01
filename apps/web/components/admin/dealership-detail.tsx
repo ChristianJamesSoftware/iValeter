@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ValeterCardModal } from "@/components/admin/valeter-card-modal";
 import {
   Building2, MapPin, Phone, Mail, User, PlusCircle, X,
-  FileText, Users, Layers, Wrench, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2,
+  FileText, Users, Layers, Wrench, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2, StickyNote, Trash2, ChevronDown, ChevronUp, CalendarDays,
 } from "lucide-react";
 import { DealershipAddOns } from "@/components/admin/dealership-addons";
 import { trpc } from "@/lib/trpc/react";
@@ -57,6 +57,7 @@ const TABS = [
   { id: "valeters",      label: "Valeters",            icon: Car },
   { id: "addons",        label: "Add-Ons",             icon: Beaker },
   { id: "instructions",  label: "Special Instructions", icon: FileText },
+  { id: "notes",         label: "Contact Log",          icon: StickyNote },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -236,6 +237,7 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
       {activeTab === "team"       && <TeamTab members={allTeam} sites={d.sites} organisationId={d.organisation?.id ?? ""} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "valeters"    && <ValetersTab valeters={allValeters} />}
       {activeTab === "addons"     && <DealershipAddOns dealershipId={d.id} />}
+      {activeTab === "notes" && <ContactLogTab dealershipId={d.id} />}
       {activeTab === "instructions" && (
         <InstructionsTab
           value={d.specialInstructions}
@@ -847,6 +849,273 @@ function ValetersTab({ valeters }: { valeters: (TeamMember & { siteName: string 
 }
 
 // ─── Special Instructions tab ─────────────────────────────────────────────────
+
+// ─── Contact Log tab ─────────────────────────────────────────────────────────
+
+interface NoteFormData {
+  contactDate: string;
+  contactName: string;
+  regards: string;
+  agreed: string;
+  followUpDate: string;
+}
+
+const EMPTY_FORM: NoteFormData = {
+  contactDate: new Date().toISOString().split("T")[0] ?? "",
+  contactName: "",
+  regards: "",
+  agreed: "",
+  followUpDate: "",
+};
+
+function ContactLogTab({ dealershipId }: { dealershipId: string }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState<NoteFormData>(EMPTY_FORM);
+  const [editForm, setEditForm] = useState<NoteFormData>(EMPTY_FORM);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const utils = trpc.useUtils();
+  const notes = trpc.dealerships.listNotes.useQuery({ dealershipId });
+  const addNote = trpc.dealerships.addNote.useMutation({
+    onSuccess: () => {
+      utils.dealerships.listNotes.invalidate({ dealershipId });
+      setShowAdd(false);
+      setForm(EMPTY_FORM);
+    },
+  });
+  const updateNote = trpc.dealerships.updateNote.useMutation({
+    onSuccess: () => {
+      utils.dealerships.listNotes.invalidate({ dealershipId });
+      setEditId(null);
+    },
+  });
+  const deleteNote = trpc.dealerships.deleteNote.useMutation({
+    onSuccess: () => utils.dealerships.listNotes.invalidate({ dealershipId }),
+  });
+
+  const list = notes.data ?? [];
+
+  const fmtDate = (d: Date | string) =>
+    new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="font-bold text-slate-900">Contact Log</h2>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Record every conversation with the dealership — who was spoken to, what was discussed, and what was agreed.
+          </p>
+        </div>
+        <button
+          onClick={() => { setShowAdd(true); setEditId(null); }}
+          className="flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+        >
+          <PlusCircle className="h-4 w-4" /> Add note
+        </button>
+      </div>
+
+      {/* Add form */}
+      {showAdd && (
+        <NoteForm
+          form={form}
+          onChange={(k, v) => setForm((f) => ({ ...f, [k]: v }))}
+          onSave={() => addNote.mutate({ dealershipId, ...form, followUpDate: form.followUpDate || undefined })}
+          onCancel={() => { setShowAdd(false); setForm(EMPTY_FORM); }}
+          saving={addNote.isPending}
+          error={addNote.error?.message}
+        />
+      )}
+
+      {/* Notes list */}
+      {notes.isLoading ? (
+        <p className="py-8 text-center text-sm text-slate-400">Loading…</p>
+      ) : list.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-14 text-center">
+          <StickyNote className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+          <p className="text-sm text-slate-400">No contact log entries yet. Add your first note above.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {list.map((note) => (
+            <div key={note.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+              {/* Note header — always visible */}
+              <button
+                type="button"
+                onClick={() => setExpandedId(expandedId === note.id ? null : note.id)}
+                className="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                  <CalendarDays className="h-5 w-5 text-slate-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-slate-900">{fmtDate(note.contactDate)}</span>
+                    {note.followUpDate && (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                        Follow-up {fmtDate(note.followUpDate)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 truncate text-sm text-slate-500">
+                    <span className="font-medium text-slate-700">{note.contactName}</span>
+                    {" — "}{note.regards}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {note.createdBy && (
+                    <span className="hidden text-xs text-slate-400 sm:block">
+                      Added by {note.createdBy.firstName} {note.createdBy.lastName}
+                    </span>
+                  )}
+                  {expandedId === note.id ? (
+                    <ChevronUp className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                  )}
+                </div>
+              </button>
+
+              {/* Expanded detail */}
+              {expandedId === note.id && (
+                <div className="border-t border-slate-100 px-5 pb-5 pt-4">
+                  {editId === note.id ? (
+                    <NoteForm
+                      form={editForm}
+                      onChange={(k, v) => setEditForm((f) => ({ ...f, [k]: v }))}
+                      onSave={() => updateNote.mutate({ id: note.id, ...editForm, followUpDate: editForm.followUpDate || null })}
+                      onCancel={() => setEditId(null)}
+                      saving={updateNote.isPending}
+                      inline
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      <NoteField label="Spoken to" value={note.contactName} />
+                      <NoteField label="Regards" value={note.regards} />
+                      <NoteField label="What was agreed" value={note.agreed} multiline />
+                      {note.followUpDate && (
+                        <NoteField label="Follow-up date" value={fmtDate(note.followUpDate)} />
+                      )}
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={() => {
+                            setEditId(note.id);
+                            setEditForm({
+                              contactDate: new Date(note.contactDate).toISOString().split("T")[0] ?? "",
+                              contactName: note.contactName,
+                              regards: note.regards,
+                              agreed: note.agreed,
+                              followUpDate: note.followUpDate
+                                ? (new Date(note.followUpDate).toISOString().split("T")[0] ?? "")
+                                : "",
+                            });
+                          }}
+                          className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" /> Edit
+                        </button>
+                        <button
+                          onClick={() => deleteNote.mutate({ id: note.id })}
+                          disabled={deleteNote.isPending}
+                          className="flex h-8 items-center gap-1.5 rounded-lg border border-red-100 px-3 text-xs font-semibold text-red-500 transition hover:bg-red-50 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NoteField({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
+  return (
+    <div>
+      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+      {multiline ? (
+        <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 leading-relaxed">{value}</p>
+      ) : (
+        <p className="mt-1 text-sm text-slate-800">{value}</p>
+      )}
+    </div>
+  );
+}
+
+function NoteForm({
+  form,
+  onChange,
+  onSave,
+  onCancel,
+  saving,
+  error,
+  inline,
+}: {
+  form: NoteFormData;
+  onChange: (k: keyof NoteFormData, v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  error?: string;
+  inline?: boolean;
+}) {
+  const wrapper = inline ? "" : "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
+  const inputCls = "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
+  const canSave = form.contactDate && form.contactName.trim() && form.regards.trim() && form.agreed.trim();
+
+  return (
+    <div className={wrapper}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Date of contact *</label>
+          <input type="date" className={inputCls} value={form.contactDate} onChange={(e) => onChange("contactDate", e.target.value)} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Who was spoken to *</label>
+          <input className={inputCls} value={form.contactName} onChange={(e) => onChange("contactName", e.target.value)} placeholder="e.g. John Smith — Head of Business" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-slate-600">Regards / subject *</label>
+          <input className={inputCls} value={form.regards} onChange={(e) => onChange("regards", e.target.value)} placeholder="e.g. New contract pricing, staffing levels, complaint…" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-slate-600">What was agreed / outcome *</label>
+          <textarea
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+            rows={4}
+            value={form.agreed}
+            onChange={(e) => onChange("agreed", e.target.value)}
+            placeholder="Summarise what was discussed and what actions were agreed…"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Follow-up date <span className="text-slate-400">(optional)</span></label>
+          <input type="date" className={inputCls} value={form.followUpDate} onChange={(e) => onChange("followUpDate", e.target.value)} />
+        </div>
+      </div>
+      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+      <div className="mt-4 flex gap-2">
+        <button
+          onClick={onSave}
+          disabled={saving || !canSave}
+          className="h-9 rounded-lg bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save Note"}
+        </button>
+        <button onClick={onCancel} className="h-9 rounded-lg border border-slate-200 px-4 text-sm text-slate-500 hover:bg-slate-50">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function InstructionsTab({
   value, onSave, saving,

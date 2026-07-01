@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { ValetTimingsClient } from "@/components/org/valet-timings-client";
 import { InactiveUsersClient } from "@/components/org/inactive-users-client";
 
-type ReportsTab = "summary" | "timings" | "inactive";
+type ReportsTab = "summary" | "timings" | "inactive" | "daysInPrep";
 
 export function ReportsClient() {
   const [activeTab, setActiveTab] = useState<ReportsTab>("summary");
@@ -17,7 +17,7 @@ export function ReportsClient() {
     <div className="space-y-0">
       {/* Tab bar */}
       <div className="mb-6 flex gap-1 border-b border-[#D4D1CA]">
-        {(["summary", "timings", "inactive"] as ReportsTab[]).map((tab) => (
+        {(["summary", "timings", "inactive", "daysInPrep"] as ReportsTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -28,7 +28,7 @@ export function ReportsClient() {
                 : "border-transparent text-[#7A7974] hover:text-[#28251D]",
             )}
           >
-            {tab === "summary" ? "Summary" : tab === "timings" ? "Valet Timings" : "Inactive Users"}
+            {tab === "summary" ? "Summary" : tab === "timings" ? "Valet Timings" : tab === "inactive" ? "Inactive Users" : "Days in Prep"}
           </button>
         ))}
       </div>
@@ -36,6 +36,7 @@ export function ReportsClient() {
       {activeTab === "summary" && <ReportsSummaryClient />}
       {activeTab === "timings" && <ValetTimingsClient />}
       {activeTab === "inactive" && <InactiveUsersClient />}
+      {activeTab === "daysInPrep" && <DaysInPrepClient />}
     </div>
   );
 }
@@ -269,6 +270,114 @@ function ReportsSummaryClient() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DaysInPrepClient() {
+  const [siteFilter, setSiteFilter] = useState<string>("all");
+
+  const sitesQuery = trpc.sites.list.useQuery();
+  const reportQuery = trpc.reports.daysInPrep.useQuery({
+    siteId: siteFilter === "all" ? undefined : siteFilter,
+  });
+
+  const sites = sitesQuery.data ?? [];
+  const data = reportQuery.data;
+
+  return (
+    <div>
+      <PageHeader title="Days in Prep" subtitle="How long completed vehicles spend in the prep process" />
+
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        {sites.length > 1 && (
+          <select
+            value={siteFilter}
+            onChange={(e) => setSiteFilter(e.target.value)}
+            className="h-9 rounded-lg border border-line bg-white px-3 text-sm text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+          >
+            <option value="all">All Sites</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {reportQuery.isLoading && (
+        <div className="flex items-center justify-center py-24 text-slate">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      )}
+
+      {data && (
+        <div className="space-y-6">
+          {/* KPI strip */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[
+              { label: "Avg Days", value: data.avgDaysInPrep !== null ? `${data.avgDaysInPrep}d` : "—", color: "text-navy" },
+              { label: "Fastest", value: data.fastestDays !== null ? `${data.fastestDays}d` : "—", color: "text-emerald-600" },
+              { label: "Slowest", value: data.slowestDays !== null ? `${data.slowestDays}d` : "—", color: "text-amber-600" },
+              { label: "Total Completed", value: String(data.totalCompleted), color: "text-navy" },
+            ].map((kpi) => (
+              <div key={kpi.label} className="rounded-xl border border-line bg-white p-5">
+                <p className={cn("text-2xl font-bold", kpi.color)}>{kpi.value}</p>
+                <p className="mt-1 text-xs uppercase tracking-wide text-slate">{kpi.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Table */}
+          {data.bookings.length > 0 && (
+            <div className="rounded-xl border border-line bg-white">
+              <div className="border-b border-line px-5 py-3">
+                <h2 className="font-semibold text-navy">Completions — slowest first</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-line bg-offwhite text-xs uppercase text-slate">
+                    <tr>
+                      <th className="px-5 py-2.5 text-left">Reg</th>
+                      <th className="px-5 py-2.5 text-left">Customer</th>
+                      <th className="px-5 py-2.5 text-left">Site</th>
+                      <th className="px-5 py-2.5 text-left">Dept</th>
+                      <th className="px-5 py-2.5 text-right">Booked</th>
+                      <th className="px-5 py-2.5 text-right">Completed</th>
+                      <th className="px-5 py-2.5 text-right">Days</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...data.bookings]
+                      .sort((a, b) => (b.daysInPrep ?? 0) - (a.daysInPrep ?? 0))
+                      .map((row) => (
+                      <tr key={row.id} className="border-b border-line last:border-0">
+                        <td className="px-5 py-3 font-mono font-semibold text-navy">{row.vehicleReg}</td>
+                        <td className="px-5 py-3 text-slate">{row.customerName}</td>
+                        <td className="px-5 py-3 text-slate">{row.site.name}</td>
+                        <td className="px-5 py-3 text-slate">{row.department.name}</td>
+                        <td className="px-5 py-3 text-right text-slate">{new Date(row.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
+                        <td className="px-5 py-3 text-right text-slate">{row.completedAt ? new Date(row.completedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : "—"}</td>
+                        <td className={cn(
+                          "px-5 py-3 text-right font-bold",
+                          (row.daysInPrep ?? 0) > 5 ? "text-amber-600" : "text-navy"
+                        )}>
+                          {row.daysInPrep ?? "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {data.bookings.length === 0 && (
+            <div className="rounded-xl border border-line bg-white py-16 text-center">
+              <p className="text-slate">No completed bookings found for the selected filters.</p>
             </div>
           )}
         </div>

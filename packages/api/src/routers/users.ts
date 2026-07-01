@@ -379,6 +379,7 @@ export const usersRouter = router({
         isActive: z.boolean().optional(),
         workingDays: z.array(z.string()).optional(),
         contractedHours: z.number().nullable().optional(),
+        saturdayHalfDay: z.boolean().optional(),
         dailyRate: z.number().nullable().optional(),
         dailyDeductions: z.number().nullable().optional(),
         startDate: z.string().nullable().optional(),
@@ -660,6 +661,60 @@ export const usersRouter = router({
       return ctx.prisma.user.update({
         where: { id: input.id },
         data: { isActive: false, archivedAt: new Date() },
+      });
+    }),
+
+
+  /** Super admin: list all accidents for a valeter */
+  listAccidents: superAdminProcedure
+    .input(z.object({ valeterId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.valeterAccident.findMany({
+        where: { valeterId: input.valeterId },
+        orderBy: { incidentDate: "desc" },
+      });
+    }),
+
+  /** Super admin: add a new accident record */
+  addAccident: superAdminProcedure
+    .input(z.object({
+      valeterId: z.string(),
+      incidentDate: z.string(),
+      vehicleReg: z.string().min(1),
+      description: z.string().min(1),
+      excessAmount: z.number().default(1000),
+      weeklyDeduction: z.number().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.valeterAccident.create({
+        data: {
+          valeterId: input.valeterId,
+          incidentDate: new Date(input.incidentDate),
+          vehicleReg: input.vehicleReg.toUpperCase().trim(),
+          description: input.description,
+          excessAmount: input.excessAmount,
+          weeklyDeduction: input.weeklyDeduction ?? null,
+        },
+      });
+    }),
+
+  /** Super admin: update deduction / settle an accident */
+  updateAccidentDeduction: superAdminProcedure
+    .input(z.object({
+      id: z.string(),
+      totalDeducted: z.number().optional(),
+      weeklyDeduction: z.number().nullable().optional(),
+      settled: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      return ctx.prisma.valeterAccident.update({
+        where: { id },
+        data: {
+          ...(data.totalDeducted !== undefined && { totalDeducted: data.totalDeducted }),
+          ...(data.weeklyDeduction !== undefined && { weeklyDeduction: data.weeklyDeduction ?? null }),
+          ...(data.settled !== undefined && { settled: data.settled }),
+        },
       });
     }),
 

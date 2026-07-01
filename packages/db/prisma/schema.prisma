@@ -68,6 +68,7 @@ model Dealership {
 
   sites            Site[]
   dealershipAddOns DealershipAddOn[]
+  notes            DealershipNote[]
 
   @@index([organisationId])
 }
@@ -181,6 +182,7 @@ model User {
   // Schedule (set by head office)
   workingDays      String[]  // e.g. ["MON","TUE","WED","THU","FRI"]
   contractedHours  Float?    // daily contracted hours, e.g. 8.0
+  saturdayHalfDay  Boolean   @default(false)
 
   // Dealership team field
   jobTitle String?
@@ -204,6 +206,7 @@ model User {
 
   assignedBookings     Booking[]          @relation("AssignedValeter")
   createdBookings      Booking[]          @relation("CreatedBy")
+  dealershipNotes      DealershipNote[]   @relation("DealershipNoteCreatedBy")
   statusHistory        JobStatusHistory[]
   holidayRequests      HolidayRequest[]
   leaveAllowance       LeaveAllowance?
@@ -220,6 +223,7 @@ model User {
   messagesSent         Message[]               @relation("MessageFrom")
   messagesReceived     Message[]               @relation("MessageTo")
   overtimeRequests     OvertimeRequest[]
+  accidents            ValeterAccident[]   @relation("ValeterAccidents")
 
   @@index([organisationId])
   @@index([siteId])
@@ -329,6 +333,14 @@ model Booking {
 
   // Do Not Clean flag — customer has requested vehicle is NOT cleaned
   doNotClean         Boolean @default(false)
+
+  // Budget limit — alert booker if job cost exceeds this
+  budgetLimit Float? // £ amount, set at booking time
+
+  // Vehicle parking pin — valeter drops GPS pin when parking completed car
+  parkingLat        Float?
+  parkingLng        Float?
+  parkingConfirmedAt DateTime?
 
   // Customer review note
   customerReviewNote String?
@@ -1038,4 +1050,56 @@ model RateTemplateLine {
   pctVan          Int         @default(50)
 
   @@unique([templateId, serviceTypeName])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEALERSHIP CONTACT LOG
+// CRM-style notes: date, who was spoken to, what it regards, what was agreed
+// Accessible by super_admin and management roles
+// ─────────────────────────────────────────────────────────────────────────────
+
+model DealershipNote {
+  id           String   @id @default(cuid())
+  dealershipId String
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+
+  contactDate  DateTime  // Date of the contact/conversation
+  contactName  String    // Who was spoken to (e.g. "John Smith — Head of Business")
+  regards      String    // Subject / what it regards
+  agreed       String    @db.Text // What was agreed / outcome
+  followUpDate DateTime? // Optional follow-up date
+
+  createdByUserId String?
+  createdBy        User?   @relation("DealershipNoteCreatedBy", fields: [createdByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealershipId])
+  @@index([contactDate])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VALETER ACCIDENT RECORDS
+// Each accident: vehicle damaged, £1000 excess per vehicle, weekly deduction
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ValeterAccident {
+  id           String   @id @default(cuid())
+  valeterId    String
+  valeter      User     @relation("ValeterAccidents", fields: [valeterId], references: [id])
+
+  incidentDate DateTime
+  vehicleReg   String
+  description  String   @db.Text
+  excessAmount Float    @default(1000) // £1000 per vehicle
+  weeklyDeduction Float? // agreed weekly deduction amount (£)
+  totalDeducted   Float  @default(0)   // running total deducted so far
+  settled         Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([valeterId])
+  @@index([incidentDate])
 }

@@ -133,6 +133,10 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
   const readyByTime = combineDateAndTime(bookingDate, bookingTime);
   const [isPriority, setIsPriority] = useState(false);
   const [doNotClean, setDoNotClean] = useState(false);
+  const [budgetLimit, setBudgetLimit] = useState("");
+  const [overrideDuplicate, setOverrideDuplicate] = useState(false);
+  const dupTimerRef = React.useRef<ReturnType<typeof setTimeout>|null>(null);
+  const [dupCheckReg, setDupCheckReg] = useState("");
   const [includeInspection, setIncludeInspection] = useState(false);
   const [includeFreshScent, setIncludeFreshScent] = useState(false);
   const [includePaintProtection, setIncludePaintProtection] = useState(false);
@@ -168,6 +172,12 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
     },
   );
 
+  // Duplicate check — fires debounced 500ms when vehicleReg >= 3 chars
+  const dupQuery = trpc.bookings.checkDuplicate.useQuery(
+    { vehicleReg: dupCheckReg, siteId },
+    { enabled: dupCheckReg.length >= 3 && !!siteId },
+  );
+
   function onSiteChange(id: string) {
     setSiteId(id);
     const s = sites.find((x) => x.id === id);
@@ -181,6 +191,8 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
     setServiceTypeId(d?.serviceTypes[0]?.id ?? "");
   }
 
+  const hasDuplicate = !!(dupQuery.data && !overrideDuplicate);
+
   const canSubmit =
     siteId &&
     departmentId &&
@@ -188,7 +200,8 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
     vehicleReg.trim() &&
     customerName.trim() &&
     readyByTime &&
-    !create.isPending;
+    !create.isPending &&
+    !hasDuplicate;
 
   return (
     <div className="rounded-xl border border-line bg-white p-6">
@@ -219,6 +232,13 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                     setVehicleReg(val);
                     setDvlaStatus("idle");
                     setVehicleMake(""); setVehicleModel(""); setVehicleColour("");
+                    setOverrideDuplicate(false);
+                    if (dupTimerRef.current) clearTimeout(dupTimerRef.current);
+                    dupTimerRef.current = setTimeout(() => {
+                      const clean = val.replace(/\s/g, "");
+                      if (clean.length >= 3) setDupCheckReg(clean);
+                      else setDupCheckReg("");
+                    }, 500);
                     if (dvlaTimerRef.current) clearTimeout(dvlaTimerRef.current);
                     const clean = val.replace(/\s/g, "");
                     if (clean.length >= 5) {
@@ -402,6 +422,31 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
           </div>
         )}
 
+        {/* ── Duplicate booking warning ─────────────────────────── */}
+        {dupQuery.data && !overrideDuplicate && (
+          <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+              <div className="flex-1">
+                <p className="font-semibold text-amber-900">Active job already exists for {dupQuery.data.vehicleReg}</p>
+                <p className="mt-1 text-sm text-amber-800">
+                  Site: {dupQuery.data.site?.name ?? "—"} · Status: {dupQuery.data.status} · Booked: {new Date(dupQuery.data.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                </p>
+                <p className="mt-1 text-sm text-amber-700">This may be a demo or cleaning vehicle.</p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOverrideDuplicate(true)}
+                    className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800"
+                  >
+                    Continue anyway
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={() => setIsPriority((v) => !v)}
@@ -472,6 +517,21 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
               : "Customer has requested no cleaning on this vehicle"}
           </p>
         </button>
+
+        {/* ---- Budget limit ---- */}
+        <div>
+          <label className="mb-1 block text-sm font-medium text-navy">Budget limit (£) <span className="font-normal text-slate">(optional)</span></label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={budgetLimit}
+            onChange={(e) => setBudgetLimit(e.target.value)}
+            placeholder="e.g. 150.00"
+            className="h-12 w-full rounded-lg border border-line bg-white px-4 text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+          />
+          <p className="mt-1 text-xs text-slate">Optional — you&apos;ll be alerted if the job exceeds this amount</p>
+        </div>
 
         {/* ---- Vehicle inspection ---- */}
         <button
@@ -733,6 +793,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
               photographyPackage: includePhotography ? photographyPackage : null,
               vehicleSize: vehicleSize || undefined,
               doNotClean,
+              budgetLimit: budgetLimit ? parseFloat(budgetLimit) : null,
             })
           }
           className="h-14 w-full rounded-lg bg-cyan font-heading text-lg font-bold text-navy transition hover:bg-cyan-600 disabled:opacity-60"

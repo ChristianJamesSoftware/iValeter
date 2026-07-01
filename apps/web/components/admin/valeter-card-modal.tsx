@@ -3,12 +3,12 @@
 import { useState } from "react";
 import {
   X, User, Calendar, Banknote, Building2, Shield,
-  Eye, EyeOff, CheckCircle2, AlertCircle, Check, Edit2, Power,
+  Eye, EyeOff, CheckCircle2, AlertCircle, Check, Edit2, Power, AlertTriangle, Plus,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
-type Tab = "overview" | "schedule" | "pay" | "bank" | "access";
+type Tab = "overview" | "schedule" | "pay" | "bank" | "access" | "accidents";
 
 const DAY_LABELS: Record<string, string> = {
   MON: "Mon", TUE: "Tue", WED: "Wed",
@@ -51,11 +51,12 @@ export function ValeterCardModal({ valeterUid, onClose }: { valeterUid: string; 
   });
 
   const tabs = [
-    { id: "overview" as Tab, label: "Overview",     icon: <User className="h-3.5 w-3.5" /> },
-    { id: "schedule" as Tab, label: "Schedule",     icon: <Calendar className="h-3.5 w-3.5" /> },
-    { id: "pay"      as Tab, label: "Pay",          icon: <Banknote className="h-3.5 w-3.5" /> },
-    { id: "bank"     as Tab, label: "Bank Details", icon: <Building2 className="h-3.5 w-3.5" /> },
-    { id: "access"   as Tab, label: "Login Access", icon: <Shield className="h-3.5 w-3.5" /> },
+    { id: "overview"  as Tab, label: "Overview",     icon: <User className="h-3.5 w-3.5" /> },
+    { id: "schedule"  as Tab, label: "Schedule",     icon: <Calendar className="h-3.5 w-3.5" /> },
+    { id: "pay"       as Tab, label: "Pay",          icon: <Banknote className="h-3.5 w-3.5" /> },
+    { id: "bank"      as Tab, label: "Bank Details", icon: <Building2 className="h-3.5 w-3.5" /> },
+    { id: "access"    as Tab, label: "Login Access", icon: <Shield className="h-3.5 w-3.5" /> },
+    { id: "accidents" as Tab, label: "Accidents",    icon: <AlertTriangle className="h-3.5 w-3.5" /> },
   ];
 
   return (
@@ -149,6 +150,11 @@ export function ValeterCardModal({ valeterUid, onClose }: { valeterUid: string; 
               {/* ── Bank ── */}
               {activeTab === "bank" && (
                 <BankTab valeter={valeter} update={(data) => update.mutate({ id: valeterUid, ...data })} saving={update.isPending} />
+              )}
+
+              {/* ── Accidents ── */}
+              {activeTab === "accidents" && (
+                <AccidentsTab valeterId={valeterUid} />
               )}
 
               {/* ── Login Access ── */}
@@ -306,15 +312,19 @@ function ScheduleTab({ valeter, update, saving }: { valeter: ValeterData; update
   const [editing, setEditing] = useState(false);
   const [days, setDays] = useState<string[]>(valeter.workingDays ?? []);
   const [hours, setHours] = useState(valeter.contractedHours?.toString() ?? "");
+  const [saturdayHalfDay, setSaturdayHalfDay] = useState(valeter.saturdayHalfDay ?? false);
 
   function save() {
-    update({ workingDays: days, contractedHours: hours ? parseFloat(hours) : null });
+    update({ workingDays: days, contractedHours: hours ? parseFloat(hours) : null, saturdayHalfDay });
     setEditing(false);
   }
 
   function toggleDay(d: string) {
     setDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
   }
+
+  const activeDays = editing ? days : (valeter.workingDays ?? []);
+  const satIsActive = activeDays.includes("SAT");
 
   return (
     <div>
@@ -329,24 +339,40 @@ function ScheduleTab({ valeter, update, saving }: { valeter: ValeterData; update
           <label className={LABEL}>Working days</label>
           <div className="mt-1.5 flex gap-1.5">
             {ALL_DAYS.map((d) => {
-              const active = (editing ? days : valeter.workingDays ?? []).includes(d);
+              const active = activeDays.includes(d);
+              const isSat = d === "SAT";
               return (
-                <button
-                  key={d}
-                  onClick={() => editing && toggleDay(d)}
-                  disabled={!editing}
-                  className={cn(
-                    "flex h-9 w-10 items-center justify-center rounded-lg text-xs font-semibold transition",
-                    active ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400",
-                    editing && !active && "hover:bg-slate-200 cursor-pointer",
-                    !editing && "cursor-default",
+                <div key={d} className="flex flex-col items-center gap-1">
+                  <button
+                    onClick={() => editing && toggleDay(d)}
+                    disabled={!editing}
+                    className={cn(
+                      "flex h-9 w-10 items-center justify-center rounded-lg text-xs font-semibold transition",
+                      active ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400",
+                      editing && !active && "hover:bg-slate-200 cursor-pointer",
+                      !editing && "cursor-default",
+                    )}
+                  >
+                    {DAY_LABELS[d]}
+                  </button>
+                  {isSat && active && (editing ? saturdayHalfDay : valeter.saturdayHalfDay) && (
+                    <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700">½day</span>
                   )}
-                >
-                  {DAY_LABELS[d]}
-                </button>
+                </div>
               );
             })}
           </div>
+          {satIsActive && editing && (
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={saturdayHalfDay}
+                onChange={(e) => setSaturdayHalfDay(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              Saturday is a half day
+            </label>
+          )}
         </div>
         {editing ? (
           <div>
@@ -354,7 +380,12 @@ function ScheduleTab({ valeter, update, saving }: { valeter: ValeterData; update
             <input type="number" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="e.g. 8" className={`${INPUT} max-w-[120px]`} />
           </div>
         ) : (
-          <Row label="Contracted hours" value={valeter.contractedHours != null ? `${valeter.contractedHours}h/day` : null} />
+          <>
+            <Row label="Contracted hours" value={valeter.contractedHours != null ? `${valeter.contractedHours}h/day` : null} />
+            {(valeter.workingDays ?? []).includes("SAT") && (
+              <Row label="Saturday" value={valeter.saturdayHalfDay ? "Half day" : "Full day"} />
+            )}
+          </>
         )}
         <Row label="Last login" value={fmtDate(valeter.lastLoginAt)} />
       </div>
@@ -457,6 +488,150 @@ function BankTab({ valeter, update, saving }: { valeter: ValeterData; update: (d
       ) : (
         <div className="space-y-3">
           {fields.map(({ key, label }) => <Row key={key} label={label} value={(valeter as Record<string, unknown>)[key] as string | null} mono />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── Accidents tab ────────────────────────────────────────────────────────────
+
+function AccidentsTab({ valeterId }: { valeterId: string }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    incidentDate: new Date().toISOString().slice(0, 10),
+    vehicleReg: "",
+    description: "",
+    excessAmount: 1000,
+    weeklyDeduction: "",
+  });
+
+  const utils = trpc.useUtils();
+  const { data: accidents, isLoading } = trpc.users.listAccidents.useQuery({ valeterId });
+
+  const addAccident = trpc.users.addAccident.useMutation({
+    onSuccess: () => {
+      utils.users.listAccidents.invalidate({ valeterId });
+      setShowForm(false);
+      setForm({ incidentDate: new Date().toISOString().slice(0, 10), vehicleReg: "", description: "", excessAmount: 1000, weeklyDeduction: "" });
+    },
+  });
+
+  const updateDeduction = trpc.users.updateAccidentDeduction.useMutation({
+    onSuccess: () => utils.users.listAccidents.invalidate({ valeterId }),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-slate-900">Accident &amp; Damage Records</h3>
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Incident
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-amber-700">New Incident</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL}>Incident date</label>
+              <input type="date" value={form.incidentDate} onChange={(e) => setForm((p) => ({ ...p, incidentDate: e.target.value }))} className={INPUT} />
+            </div>
+            <div>
+              <label className={LABEL}>Vehicle reg</label>
+              <input type="text" value={form.vehicleReg} onChange={(e) => setForm((p) => ({ ...p, vehicleReg: e.target.value.toUpperCase() }))} placeholder="AB12 CDE" className={INPUT} />
+            </div>
+            <div className="col-span-2">
+              <label className={LABEL}>Description</label>
+              <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={3} placeholder="Describe the damage..." className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400" />
+            </div>
+            <div>
+              <label className={LABEL}>Excess amount (£)</label>
+              <input type="number" value={form.excessAmount} onChange={(e) => setForm((p) => ({ ...p, excessAmount: parseFloat(e.target.value) || 1000 }))} className={INPUT} />
+            </div>
+            <div>
+              <label className={LABEL}>Weekly deduction (£)</label>
+              <input type="number" value={form.weeklyDeduction} onChange={(e) => setForm((p) => ({ ...p, weeklyDeduction: e.target.value }))} placeholder="Optional" className={INPUT} />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => addAccident.mutate({
+                valeterId,
+                incidentDate: form.incidentDate,
+                vehicleReg: form.vehicleReg,
+                description: form.description,
+                excessAmount: form.excessAmount,
+                weeklyDeduction: form.weeklyDeduction ? parseFloat(form.weeklyDeduction) : null,
+              })}
+              disabled={addAccident.isPending || !form.vehicleReg || !form.description}
+              className="rounded-lg bg-amber-700 px-4 py-2 text-xs font-semibold text-white transition hover:bg-amber-800 disabled:opacity-50"
+            >
+              {addAccident.isPending ? "Saving…" : "Save Incident"}
+            </button>
+            <button onClick={() => setShowForm(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+              Cancel
+            </button>
+          </div>
+          {addAccident.error && <p className="text-xs text-red-500">{addAccident.error.message}</p>}
+        </div>
+      )}
+
+      {isLoading && <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-16 animate-pulse rounded-lg bg-slate-50" />)}</div>}
+
+      {!isLoading && (!accidents || accidents.length === 0) && (
+        <div className="rounded-xl border border-slate-100 bg-slate-50 py-10 text-center">
+          <AlertTriangle className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+          <p className="text-sm text-slate-400">No accidents recorded</p>
+        </div>
+      )}
+
+      {accidents && accidents.length > 0 && (
+        <div className="space-y-3">
+          {accidents.map((acc) => (
+            <div key={acc.id} className="rounded-xl border border-slate-100 bg-white p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-slate-900 px-2.5 py-1 font-mono text-xs font-bold text-white">{acc.vehicleReg}</span>
+                  <span className="text-sm font-semibold text-slate-700">{new Date(acc.incidentDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                </div>
+                <span className={cn(
+                  "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
+                  acc.settled ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                )}>
+                  {acc.settled ? "Settled" : "Outstanding"}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-slate-600">{acc.description}</p>
+              <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+                <div>
+                  <p className="font-bold uppercase tracking-wider text-slate-400">Excess</p>
+                  <p className="mt-0.5 font-semibold text-slate-700">£{acc.excessAmount.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="font-bold uppercase tracking-wider text-slate-400">Weekly ded.</p>
+                  <p className="mt-0.5 font-semibold text-slate-700">{acc.weeklyDeduction != null ? `£${acc.weeklyDeduction.toFixed(2)}` : "—"}</p>
+                </div>
+                <div>
+                  <p className="font-bold uppercase tracking-wider text-slate-400">Deducted</p>
+                  <p className="mt-0.5 font-semibold text-slate-700">£{acc.totalDeducted.toFixed(2)}</p>
+                </div>
+              </div>
+              {!acc.settled && (
+                <button
+                  onClick={() => updateDeduction.mutate({ id: acc.id, settled: true })}
+                  className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                >
+                  Mark Settled
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

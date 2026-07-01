@@ -9,8 +9,7 @@ const NAV: NavItem[] = [
   { href: "/admin/team", label: "Valeting Team", icon: "team" },
 
   // Admin Tools
-  { href: "/admin/impersonate", label: "Impersonate User", icon: "impersonate", section: "Admin Tools", accent: true },
-  { href: "/admin/quote-builder", label: "Quote Builder", icon: "quote" },
+  { href: "/admin/quote-builder", label: "Quote Builder", icon: "quote", section: "Admin Tools" },
 
   // Finance
   { href: "/admin/attendance", label: "Attendance", icon: "attendance", section: "Finance" },
@@ -23,7 +22,8 @@ const NAV: NavItem[] = [
   { href: "/admin/reports", label: "Reports", icon: "reports", section: "Reporting" },
 
   // System
-  { href: "/admin/settings", label: "Settings", icon: "settings", section: "System" },
+  { href: "/admin/impersonate", label: "Impersonate User", icon: "impersonate", accent: true, section: "System" },
+  { href: "/admin/settings", label: "Settings", icon: "settings" },
 ];
 
 export default function AdminLayout({

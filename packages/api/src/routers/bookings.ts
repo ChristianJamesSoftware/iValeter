@@ -114,7 +114,12 @@ export const bookingsRouter = router({
       if (!booking) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
       }
-      return booking;
+
+      const daysInPrep = booking.completedAt
+        ? Math.ceil((booking.completedAt.getTime() - booking.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+        : Math.ceil((Date.now() - booking.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+
+      return { ...booking, daysInPrep };
     }),
 
   create: dealershipProcedure
@@ -138,6 +143,7 @@ export const bookingsRouter = router({
         photographyPackage: z.enum(["standard", "premium", "full"]).nullish(),
         vehicleSize: z.enum(["SMALL", "MEDIUM", "LARGE", "XL", "VAN"]).optional(),
         doNotClean: z.boolean().default(false),
+        budgetLimit: z.number().positive().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -178,6 +184,7 @@ export const bookingsRouter = router({
           photographyPackage: input.photographyPackage ?? null,
           vehicleSize: input.vehicleSize,
           doNotClean: input.doNotClean,
+          budgetLimit: input.budgetLimit ?? null,
           createdById: ctx.session.userId,
           status: BookingStatus.PENDING,
         },
@@ -510,6 +517,50 @@ export const bookingsRouter = router({
       });
 
       return updated;
+    }),
+
+  /** Valeter: drop GPS pin for parking location */
+  confirmParking: protectedProcedure
+    .input(z.object({
+      bookingId: z.string(),
+      lat: z.number(),
+      lng: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id: input.bookingId, ...scopeFor(ctx.session) },
+      });
+      if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+      return ctx.prisma.booking.update({
+        where: { id: input.bookingId },
+        data: {
+          parkingLat: input.lat,
+          parkingLng: input.lng,
+          parkingConfirmedAt: new Date(),
+        },
+      });
+    }),
+
+  /** Check for duplicate active booking by vehicleReg in the same org */
+  checkDuplicate: dealershipProcedure
+    .input(z.object({ vehicleReg: z.string().min(1), siteId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const existing = await ctx.prisma.booking.findFirst({
+        where: {
+          vehicleReg: input.vehicleReg.toUpperCase().trim(),
+          organisationId: ctx.session.organisationId,
+          status: { notIn: ["COMPLETED", "CANCELLED"] },
+        },
+        select: {
+          id: true,
+          vehicleReg: true,
+          customerName: true,
+          status: true,
+          site: { select: { name: true } },
+          createdAt: true,
+        },
+      });
+      return existing ?? null;
     }),
 
   /**

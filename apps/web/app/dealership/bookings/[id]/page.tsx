@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, MapPin } from "lucide-react";
 import { TRPCError } from "@trpc/server";
 import { getServerApi } from "@/lib/trpc/server";
 import { formatTime } from "@/lib/utils";
@@ -56,6 +56,19 @@ export default async function DealershipBookingDetail({
         <Detail label="Ready by" value={formatTime(booking.readyByTime)} />
         <Detail label="Site" value={booking.site.name} />
         <Detail label="Department" value={booking.department.name} />
+        {booking.parkingLat != null && booking.parkingLng != null && (
+          <div className="sm:col-span-2">
+            <p className="text-xs uppercase tracking-wide text-slate">Parking Location</p>
+            <a
+              href={`https://maps.google.com/?q=${booking.parkingLat},${booking.parkingLng}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 text-sm text-cyan-600 hover:underline mt-0.5 font-medium"
+            >
+              <MapPin className="h-4 w-4" /> View parking location
+            </a>
+          </div>
+        )}
       </section>
 
       <section>

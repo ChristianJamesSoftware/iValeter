@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { dealershipProcedure, orgAdminProcedure, router } from "../trpc";
+// orgAdminProcedure used for daysInPrep below
 import type { Prisma } from "@ivaleter/db";
 
 /**
@@ -292,5 +293,57 @@ export const reportsRouter = router({
       }
 
       return Array.from(map.values());
+    }),
+
+  /**
+   * Days in Prep report — how long each completed booking took from creation to completion.
+   */
+  daysInPrep: orgAdminProcedure
+    .input(z.object({
+      siteId: z.string().optional(),
+      from: z.date().optional(),
+      to: z.date().optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const bookings = await ctx.prisma.booking.findMany({
+        where: {
+          organisationId: ctx.session.organisationId,
+          ...(input.siteId && { siteId: input.siteId }),
+          ...(input.from && { createdAt: { gte: input.from } }),
+          ...(input.to && { createdAt: { lte: input.to } }),
+          status: "COMPLETED",
+          completedAt: { not: null },
+        },
+        select: {
+          id: true,
+          vehicleReg: true,
+          customerName: true,
+          createdAt: true,
+          completedAt: true,
+          site: { select: { name: true } },
+          department: { select: { name: true } },
+          serviceType: { select: { name: true } },
+        },
+        orderBy: { completedAt: "desc" },
+      });
+
+      const withDays = bookings.map((b) => ({
+        ...b,
+        daysInPrep: b.completedAt
+          ? Math.ceil((b.completedAt.getTime() - b.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+          : null,
+      }));
+
+      const avgDays = withDays.length > 0
+        ? withDays.reduce((sum, b) => sum + (b.daysInPrep ?? 0), 0) / withDays.length
+        : 0;
+
+      return {
+        bookings: withDays,
+        avgDaysInPrep: Math.round(avgDays * 10) / 10,
+        totalCompleted: withDays.length,
+        fastestDays: withDays.length > 0 ? Math.min(...withDays.map((b) => b.daysInPrep ?? 999)) : null,
+        slowestDays: withDays.length > 0 ? Math.max(...withDays.map((b) => b.daysInPrep ?? 0)) : null,
+      };
     }),
 });

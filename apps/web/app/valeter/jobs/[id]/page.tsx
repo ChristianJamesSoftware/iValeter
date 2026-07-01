@@ -18,6 +18,8 @@ import { JobStatusBadge } from "@/components/brand/job-status-badge";
 import { PriorityBadge } from "@/components/brand/priority-badge";
 import { SLATimer } from "@/components/brand/sla-timer";
 import { JobStatusAction } from "@/components/valeter/job-status-action";
+import { JobPhotosClient } from "@/components/valeter/job-photos-client";
+import { ParkingPinClient } from "@/components/valeter/parking-pin-client";
 
 export const dynamic = "force-dynamic";
 
@@ -167,6 +169,31 @@ export default async function ValeterJobDetail({
             includeFreshScent: booking.includeFreshScent,
             paintProtectionTier: booking.paintProtectionTier,
           }}
+        />
+
+        {/* Budget limit badge */}
+        {booking.budgetLimit != null && (
+          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <span className="text-lg">💰</span>
+            <p className="text-sm font-semibold text-amber-800">
+              Budget limit: £{booking.budgetLimit.toFixed(2)} — alert if job cost exceeds this
+            </p>
+          </div>
+        )}
+
+        {/* Before/After Photos */}
+        <JobPhotosClient
+          bookingId={booking.id}
+          status={booking.status}
+        />
+
+        {/* Parking pin */}
+        <ParkingPinClient
+          bookingId={booking.id}
+          status={booking.status}
+          parkingLat={booking.parkingLat}
+          parkingLng={booking.parkingLng}
+          parkingConfirmedAt={booking.parkingConfirmedAt}
         />
 
         {booking.photographyPackage && (
