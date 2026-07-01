@@ -86,7 +86,7 @@ function ReportsSummaryClient() {
 
   const { from, to } = useMemo(() => dateRangeForPeriod(period), [period]);
 
-  const sitesQuery = trpc.sites.list.useQuery({});
+  const sitesQuery = trpc.sites.list.useQuery();
   const reportQuery = trpc.analytics.fullReport.useQuery({
     from: from.toISOString(),
     to: to.toISOString(),

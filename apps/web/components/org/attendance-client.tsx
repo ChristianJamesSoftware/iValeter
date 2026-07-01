@@ -41,7 +41,7 @@ export function AttendanceClient() {
   const [siteId, setSiteId] = useState("");
   const [department, setDepartment] = useState("");
 
-  const sites = trpc.sites.list.useQuery({});
+  const sites = trpc.sites.list.useQuery();
   const timesheets = trpc.timesheets.list.useQuery({
     weekStart: weekStart || undefined,
     siteId: siteId || undefined,

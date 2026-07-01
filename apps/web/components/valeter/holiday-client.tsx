@@ -14,7 +14,7 @@ const STATUS_STYLE = {
 
 export function HolidayClient() {
   const utils = trpc.useUtils();
-  const requests = trpc.holiday.myRequests.useQuery({});
+  const requests = trpc.holiday.myRequests.useQuery();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");

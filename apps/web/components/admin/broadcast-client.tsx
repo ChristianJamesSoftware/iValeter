@@ -30,7 +30,7 @@ export function BroadcastClient({ sites }: BroadcastClientProps) {
   const [lastSentCount, setLastSentCount] = useState<number | null>(null);
 
   const { data: sentMessages, refetch: refetchSent } =
-    trpc.messages.sent.useQuery({});
+    trpc.messages.sent.useQuery();
 
   const broadcastMutation = trpc.hq.broadcast.useMutation({
     onSuccess: (data) => {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { trpc } from "@/lib/trpc/react";
 
 export function OrganisationsList() {
-  const query = trpc.organisations.list.useQuery({});
+  const query = trpc.organisations.list.useQuery();
 
   if (query.isLoading) {
     return <p className="text-slate-400">Loading…</p>;

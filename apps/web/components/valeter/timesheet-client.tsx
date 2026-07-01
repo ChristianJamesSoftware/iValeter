@@ -17,7 +17,7 @@ function minsToHrs(mins: number) {
 }
 
 export function TimesheetClient() {
-  const { data, isLoading } = trpc.valeterTimesheets.myCurrentWeek.useQuery({});
+  const { data, isLoading } = trpc.valeterTimesheets.myCurrentWeek.useQuery();
   const submitMut = trpc.valeterTimesheets.submit.useMutation();
   const utils = trpc.useUtils();
   const [submitted, setSubmitted] = useState(false);

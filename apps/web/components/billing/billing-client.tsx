@@ -16,8 +16,8 @@ function formatDate(d: Date | string) {
 
 export function BillingClient() {
   const utils = trpc.useUtils();
-  const invoices = trpc.invoices.list.useQuery({});
-  const features = trpc.orgSettings.getFeatures.useQuery({});
+  const invoices = trpc.invoices.list.useQuery();
+  const features = trpc.orgSettings.getFeatures.useQuery();
   const xeroEnabled = features.data?.enabled.xero ?? false;
 
   const push = trpc.xero.pushInvoice.useMutation({
