@@ -18,6 +18,7 @@ import { valeterTimesheetsRouter } from "./routers/valeter-timesheets";
 import { messagesRouter } from "./routers/messages";
 import { overtimeRouter } from "./routers/overtime";
 import { hqRouter } from "./routers/hq";
+import { vehicleSizeRatesRouter } from "./routers/vehicle-size-rates";
 
 export const appRouter = router({
   auth: authRouter,
@@ -39,6 +40,7 @@ export const appRouter = router({
   messages: messagesRouter,
   overtime: overtimeRouter,
   hq: hqRouter,
+  vehicleSizeRates: vehicleSizeRatesRouter,
 });
 
 export type AppRouter = typeof appRouter;

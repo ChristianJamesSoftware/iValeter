@@ -136,6 +136,7 @@ export const bookingsRouter = router({
           .enum(["essential", "standard", "premium", "ultimate"])
           .nullish(),
         photographyPackage: z.enum(["standard", "premium", "full"]).nullish(),
+        vehicleSize: z.enum(["SMALL", "MEDIUM", "LARGE", "XL", "VAN"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -174,6 +175,7 @@ export const bookingsRouter = router({
           includeFreshScent: input.includeFreshScent,
           paintProtectionTier: input.paintProtectionTier ?? null,
           photographyPackage: input.photographyPackage ?? null,
+          vehicleSize: input.vehicleSize,
           createdById: ctx.session.userId,
           status: BookingStatus.PENDING,
         },
@@ -410,6 +412,7 @@ export const bookingsRouter = router({
         readyByTime: z.date().optional(),
         keyNumber: z.string().optional(),
         vehicleLocation: z.string().optional(),
+        vehicleSize: z.enum(["SMALL", "MEDIUM", "LARGE", "XL", "VAN"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -460,6 +463,7 @@ export const bookingsRouter = router({
           ...(fields.readyByTime && { readyByTime: fields.readyByTime }),
           ...(fields.keyNumber !== undefined && { keyNumber: fields.keyNumber }),
           ...(fields.vehicleLocation !== undefined && { vehicleLocation: fields.vehicleLocation }),
+          ...(fields.vehicleSize !== undefined && { vehicleSize: fields.vehicleSize }),
         },
         include: { serviceType: true, site: true, department: true },
       });

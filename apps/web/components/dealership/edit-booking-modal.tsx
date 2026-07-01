@@ -31,6 +31,7 @@ interface BookingToEdit {
   serviceType: { id: string; name: string };
   department: { id: string; name: string } | null;
   siteId: string;
+  vehicleSize?: string | null;
 }
 
 interface Props {
@@ -49,10 +50,14 @@ function toDatetimeLocal(isoStr: string): string {
 export function EditBookingModal({ booking, departments, onClose, onSaved }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  type VehicleSizeOption = "" | "SMALL" | "MEDIUM" | "LARGE" | "XL" | "VAN";
   const [vehicleReg, setVehicleReg] = useState(booking.vehicleReg);
   const [vehicleMake, setVehicleMake] = useState(booking.vehicleMake ?? "");
   const [vehicleModel, setVehicleModel] = useState(booking.vehicleModel ?? "");
   const [vehicleColour, setVehicleColour] = useState(booking.vehicleColour ?? "");
+  const [vehicleSize, setVehicleSize] = useState<VehicleSizeOption>(
+    (booking.vehicleSize as VehicleSizeOption | null) ?? "",
+  );
   const [customerName, setCustomerName] = useState(booking.customerName);
   const [readyByTime, setReadyByTime] = useState(toDatetimeLocal(booking.readyByTime));
   const [keyNumber, setKeyNumber] = useState(booking.keyNumber ?? "");
@@ -88,6 +93,7 @@ export function EditBookingModal({ booking, departments, onClose, onSaved }: Pro
       keyNumber: keyNumber || undefined,
       vehicleLocation: vehicleLocation || undefined,
       serviceTypeId,
+      vehicleSize: vehicleSize || undefined,
     });
   }
 
@@ -250,6 +256,25 @@ export function EditBookingModal({ booking, departments, onClose, onSaved }: Pro
                       {st.name} ({Math.round(st.durationMins / 60 * 10) / 10}h)
                     </option>
                   ))}
+                </select>
+              </div>
+
+              {/* Vehicle Size */}
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate">
+                  Vehicle Size
+                </label>
+                <select
+                  value={vehicleSize}
+                  onChange={(e) => setVehicleSize(e.target.value as VehicleSizeOption)}
+                  className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+                >
+                  <option value="">Select size…</option>
+                  <option value="SMALL">Small — e.g. Hatchback, City Car</option>
+                  <option value="MEDIUM">Medium — e.g. Saloon, Small SUV (baseline)</option>
+                  <option value="LARGE">Large — e.g. Estate, Large SUV</option>
+                  <option value="XL">XL — e.g. Large 4×4, Pickup</option>
+                  <option value="VAN">Van — e.g. Transit, Sprinter</option>
                 </select>
               </div>
 

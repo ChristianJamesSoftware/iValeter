@@ -111,6 +111,7 @@ model Site {
   customerInvoices CustomerInvoice[]
   audits           Audit[]
   weeklyReviews    WeeklyReview[]
+  vehicleSizeRates VehicleSizeRate[]
 
   @@index([organisationId])
 }
@@ -242,7 +243,8 @@ model ServiceType {
   isActive     Boolean         @default(true)
   nominalCode  String? // Xero nominal/account code for invoicing
 
-  bookings Booking[]
+  bookings         Booking[]
+  vehicleSizeRates VehicleSizeRate[]
 
   @@index([departmentId])
 }
@@ -308,6 +310,9 @@ model Booking {
   // Customer review note
   customerReviewNote String?
 
+  // Vehicle sizing for piece-work pricing
+  vehicleSize VehicleSize?
+
   statusHistory JobStatusHistory[]
   photos        JobPhoto[]
   complaints    Complaint[]
@@ -334,6 +339,14 @@ enum PriorityLevel {
   STANDARD
   PRIORITY
   URGENT
+}
+
+enum VehicleSize {
+  SMALL
+  MEDIUM
+  LARGE
+  XL
+  VAN
 }
 
 model JobStatusHistory {
@@ -824,6 +837,38 @@ model XeroNominalMapping {
   createdAt       DateTime @default(now())
 
   @@unique([organisationId, serviceTypeId])
+}
+
+// ─── Vehicle Size Rates ──────────────────────────────────────────────────────
+// Per-site, per-service-type size modifiers.
+// basePricePence / baseAllocMins come from ServiceType.chargeRate / durationMins
+// but sites can override the base and set % uplifts per size.
+// Medium is baseline (0%). SMALL is typically -10, LARGE +20, XL +35, VAN +50.
+
+model VehicleSizeRate {
+  id              String      @id @default(cuid())
+  siteId          String
+  site            Site        @relation(fields: [siteId], references: [id])
+  serviceTypeId   String
+  serviceType     ServiceType @relation(fields: [serviceTypeId], references: [id])
+
+  // Site-level base overrides (null = use ServiceType defaults)
+  basePricePence  Int?   // base price in pence for MEDIUM
+  baseAllocMins   Int?   // base allocation mins for MEDIUM
+
+  // % modifiers relative to MEDIUM baseline (can be negative)
+  pctSmall        Int    @default(-10)
+  pctMedium       Int    @default(0)
+  pctLarge        Int    @default(20)
+  pctXL           Int    @default(35)
+  pctVan          Int    @default(50)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([siteId, serviceTypeId])
+  @@index([siteId])
+  @@index([serviceTypeId])
 }
 
 // ─── Valeter Messaging ────────────────────────────────────────────────────────

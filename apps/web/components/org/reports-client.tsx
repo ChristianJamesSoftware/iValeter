@@ -5,6 +5,38 @@ import { AlertTriangle, CheckCircle2, Clock, TrendingUp, Loader2, FileDown } fro
 import { PageHeader } from "@/components/dashboard/page-header";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
+import { ValetTimingsClient } from "@/components/org/valet-timings-client";
+
+type ReportsTab = "summary" | "timings";
+
+export function ReportsClient() {
+  const [activeTab, setActiveTab] = useState<ReportsTab>("summary");
+
+  return (
+    <div className="space-y-0">
+      {/* Tab bar */}
+      <div className="mb-6 flex gap-1 border-b border-[#D4D1CA]">
+        {(["summary", "timings"] as ReportsTab[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px",
+              activeTab === tab
+                ? "border-[#01696F] text-[#01696F]"
+                : "border-transparent text-[#7A7974] hover:text-[#28251D]",
+            )}
+          >
+            {tab === "summary" ? "Summary" : "Valet Timings"}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "summary" && <ReportsSummaryClient />}
+      {activeTab === "timings" && <ValetTimingsClient />}
+    </div>
+  );
+}
 
 type Period = "today" | "week" | "month";
 
@@ -46,7 +78,7 @@ function fmtHours(mins: number) {
 
 const DAILY_CAP_MINS = 480; // 8 hours
 
-export function ReportsClient() {
+function ReportsSummaryClient() {
   const [period, setPeriod] = useState<Period>("week");
   const [siteFilter, setSiteFilter] = useState<string>("all");
 

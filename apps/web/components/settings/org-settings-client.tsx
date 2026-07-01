@@ -16,6 +16,7 @@ import { trpc } from "@/lib/trpc/react";
 import { SettingsTabs } from "@/components/settings/tabs";
 import { TextField } from "@/components/settings/field";
 import { cn } from "@/lib/utils";
+import { VehicleSizeRatesManager } from "@/components/org/vehicle-size-rates-manager";
 
 export function OrgSettingsClient() {
   const [tab, setTab] = useState("sites");
@@ -24,6 +25,7 @@ export function OrgSettingsClient() {
     { key: "sites", label: "Sites" },
     { key: "valeters", label: "Add Valeter" },
     { key: "customers", label: "Add Customer" },
+    { key: "rates", label: "Vehicle Rates" },
   ];
 
   return (
@@ -32,6 +34,59 @@ export function OrgSettingsClient() {
       {tab === "sites"     && <SitesTab />}
       {tab === "valeters"  && <AddValeterTab />}
       {tab === "customers" && <AddCustomerTab />}
+      {tab === "rates"     && <VehicleRatesTab />}
+    </div>
+  );
+}
+
+// ─── Vehicle Rates Tab ──────────────────────────────────────────────────────
+
+function VehicleRatesTab() {
+  const sitesQuery = trpc.sites.list.useQuery();
+  const sites = sitesQuery.data ?? [];
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+
+  const activeSiteId = selectedSiteId ?? sites[0]?.id ?? null;
+
+  if (sitesQuery.isLoading) return <LoadingSpinner />;
+
+  if (sites.length === 0) {
+    return (
+      <p className="text-sm text-[#7A7974] py-4">
+        No active sites found. Add a site first before configuring vehicle rates.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-sm text-[#7A7974] mb-3">
+          Set a base price and time allocation per service type, then configure the percentage
+          uplift for each vehicle size. These rates are used for piece-work pricing and daily
+          capacity planning.
+        </p>
+        {/* Site selector */}
+        {sites.length > 1 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {sites.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setSelectedSiteId(s.id)}
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                  activeSiteId === s.id
+                    ? "border-[#01696F] bg-[#01696F]/10 text-[#01696F]"
+                    : "border-[#D4D1CA] bg-white text-[#7A7974] hover:text-[#28251D]",
+                )}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {activeSiteId && <VehicleSizeRatesManager siteId={activeSiteId} />}
     </div>
   );
 }

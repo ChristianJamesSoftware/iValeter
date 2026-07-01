@@ -118,9 +118,11 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
   const [serviceTypeId, setServiceTypeId] = useState(
     sites[0]?.departments[0]?.serviceTypes[0]?.id ?? "",
   );
+  type VehicleSizeOption = "" | "SMALL" | "MEDIUM" | "LARGE" | "XL" | "VAN";
   const [vehicleReg, setVehicleReg] = useState("");
   const [vehicleMake, setVehicleMake] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
+  const [vehicleSize, setVehicleSize] = useState<VehicleSizeOption>("");
   const [vehicleColour, setVehicleColour] = useState("");
   const [dvlaStatus, setDvlaStatus] = useState<"idle"|"loading"|"found"|"error">("idle");
   const dvlaTimerRef = React.useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -334,6 +336,17 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                 {st.name} ({st.durationMins}m)
               </option>
             ))}
+          </Select>
+        </Field>
+
+        <Field label="Vehicle Size">
+          <Select value={vehicleSize} onChange={(v) => setVehicleSize(v as VehicleSizeOption)}>
+            <option value="">Select size…</option>
+            <option value="SMALL">Small — e.g. Hatchback, City Car</option>
+            <option value="MEDIUM">Medium — e.g. Saloon, Small SUV (baseline)</option>
+            <option value="LARGE">Large — e.g. Estate, Large SUV</option>
+            <option value="XL">XL — e.g. Large 4×4, Pickup</option>
+            <option value="VAN">Van — e.g. Transit, Sprinter</option>
           </Select>
         </Field>
 
@@ -675,6 +688,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                 ? paintProtectionTier
                 : null,
               photographyPackage: includePhotography ? photographyPackage : null,
+              vehicleSize: vehicleSize || undefined,
             })
           }
           className="h-14 w-full rounded-lg bg-cyan font-heading text-lg font-bold text-navy transition hover:bg-cyan-600 disabled:opacity-60"
