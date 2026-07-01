@@ -21,13 +21,26 @@ export const dealershipsRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
+      const isSuperAdmin = ctx.session.role === "super_admin";
       const d = await ctx.prisma.dealership.findFirst({
-        where: { id: input.id, organisationId: ctx.session.organisationId },
+        where: {
+          id: input.id,
+          ...(isSuperAdmin ? {} : { organisationId: ctx.session.organisationId }),
+        },
         include: {
+          organisation: { select: { id: true, name: true } },
           sites: {
             include: {
               departments: {
                 include: { serviceTypes: { where: { isActive: true } } },
+              },
+              users: {
+                where: { role: "valeter", isActive: true },
+                select: { id: true, firstName: true, lastName: true, role: true, payId: true, staffType: true, siteId: true },
+                orderBy: { firstName: "asc" },
+              },
+              vehicleSizeRates: {
+                include: { serviceType: { select: { id: true, name: true } } },
               },
               _count: { select: { bookings: true, users: true } },
             },
@@ -40,6 +53,33 @@ export const dealershipsRouter = router({
           message: "Dealership not found",
         });
       return d;
+    }),
+
+  /** Update dealership details including special instructions */
+  updateDetails: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).optional(),
+        address: z.string().optional(),
+        contactName: z.string().optional(),
+        contactEmail: z.string().optional(),
+        contactPhone: z.string().optional(),
+        specialInstructions: z.string().optional(),
+        isActive: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const isSuperAdmin = ctx.session.role === "super_admin";
+      const d = await ctx.prisma.dealership.findFirst({
+        where: {
+          id: input.id,
+          ...(isSuperAdmin ? {} : { organisationId: ctx.session.organisationId }),
+        },
+      });
+      if (!d) throw new TRPCError({ code: "NOT_FOUND", message: "Dealership not found" });
+      const { id, ...data } = input;
+      return ctx.prisma.dealership.update({ where: { id }, data });
     }),
 
   create: orgAdminProcedure

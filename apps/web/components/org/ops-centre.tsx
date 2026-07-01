@@ -67,19 +67,6 @@ export function OpsCentre({ sites, valeters }: { sites: SiteOpt[]; valeters: Val
     return map;
   }, [bookings.data]);
 
-  // Clock status — merge with valeter list
-  const clockMap = useMemo(() => {
-    const m = new Map<string, { isClockedIn: boolean; isLate: boolean; clockedInAt: string | null }>();
-    for (const c of clockQ.data ?? []) {
-      m.set(c.id, {
-        isClockedIn: c.isClockedIn,
-        isLate: c.isLate,
-        clockedInAt: c.clockedInAt ? new Date(c.clockedInAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : null,
-      });
-    }
-    return m;
-  }, [clockQ.data]);
-
   const lateValeters = (clockQ.data ?? []).filter((c) => c.isLate);
 
   return (
@@ -158,9 +145,9 @@ export function OpsCentre({ sites, valeters }: { sites: SiteOpt[]; valeters: Val
         <StatTile label="Avg Time"     value={minutesToHuman(stats.data?.avgTimeMins ?? 0)} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6">
         {/* Live job board */}
-        <div className="lg:col-span-3">
+        <div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {DEPARTMENTS.map((dept) => {
               const items = byDept.get(dept) ?? [];
@@ -209,46 +196,6 @@ export function OpsCentre({ sites, valeters }: { sites: SiteOpt[]; valeters: Val
             })}
           </div>
         </div>
-
-        {/* Valeter attendance sidebar */}
-        <aside>
-          <h3 className="mb-3 text-sm font-bold text-slate-900">Valeters</h3>
-          <div className="space-y-2">
-            {siteValeters.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-center text-xs text-slate-400">No valeters at this site</p>
-            ) : siteValeters.map((v) => {
-              const cs = clockMap.get(v.id);
-              const isClockedIn = cs?.isClockedIn ?? false;
-              const isLate = cs?.isLate ?? false;
-              const clockedAt = cs?.clockedInAt;
-              return (
-                <div
-                  key={v.id}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl border bg-white p-3 shadow-sm",
-                    isLate ? "border-red-200 bg-red-50/40" : isClockedIn ? "border-emerald-200" : "border-slate-100",
-                  )}
-                >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
-                    {initials(v.firstName, v.lastName)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900">{v.firstName} {v.lastName}</p>
-                    <p className="text-[10px] text-slate-400">
-                      {isClockedIn ? `In at ${clockedAt}` : isLate ? "Not on site — past 8:15" : "Not yet clocked in"}
-                    </p>
-                  </div>
-                  {/* Status dot */}
-                  <span className={cn(
-                    "h-2.5 w-2.5 shrink-0 rounded-full",
-                    isLate ? "bg-red-500" : isClockedIn ? "bg-emerald-500" : "bg-slate-300",
-                  )} title={isLate ? "Late" : isClockedIn ? "On site" : "Not clocked in"} />
-                  <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{v.jobsToday}</span>
-                </div>
-              );
-            })}
-          </div>
-        </aside>
       </div>
 
       {assignBookingId && (
