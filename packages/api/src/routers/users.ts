@@ -324,5 +324,46 @@ export const usersRouter = router({
         orderBy: [{ organisation: { name: "asc" } }, { firstName: "asc" }],
       });
     }),
+
+  /** Super admin: get a single valeter's full profile */
+  getValeterById: superAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findFirst({
+        where: { id: input.id, role: "valeter" },
+        include: {
+          site: { select: { id: true, name: true } },
+          organisation: { select: { id: true, name: true } },
+        },
+      });
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Valeter not found" });
+      return user;
+    }),
+
+  /** Super admin: set a valeter's password directly (no email required) */
+  setValeterPassword: superAdminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        password: z.string().min(6, "Password must be at least 6 characters"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findFirst({
+        where: { id: input.id, role: "valeter" },
+      });
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Valeter not found" });
+      await ctx.prisma.user.update({
+        where: { id: input.id },
+        data: {
+          passwordHash: hashPassword(input.password),
+          // clear any pending reset token so they can log in immediately
+          passwordResetToken: null,
+          passwordResetExpiresAt: null,
+          isActive: true,
+        },
+      });
+      return { ok: true };
+    }),
 });
-// Note: appended below existing exports — router registration handles this via root.ts
+// Note: router registration via root.ts

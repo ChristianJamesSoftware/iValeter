@@ -11,14 +11,18 @@ export const authRouter = router({
   login: publicProcedure
     .input(
       z.object({
-        email: z.string().email(),
+        // Accept email OR pay reference (payId) in the same field
+        email: z.string().min(1),
         password: z.string().min(1),
       }),
     )
     .mutation(async ({ ctx, input }): Promise<SessionPayload> => {
-      const user = await ctx.prisma.user.findUnique({
-        where: { email: input.email.toLowerCase().trim() },
-      });
+      const identifier = input.email.toLowerCase().trim();
+
+      // Try email first, then fall back to payId (pay reference)
+      const user =
+        (await ctx.prisma.user.findUnique({ where: { email: identifier } })) ??
+        (await ctx.prisma.user.findFirst({ where: { payId: identifier } }));
 
       if (!user || !user.isActive) {
         throw new TRPCError({

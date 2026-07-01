@@ -54,15 +54,15 @@ export function LoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
       <form action={formAction} className="space-y-4">
         <div>
           <label htmlFor="email" className={labelClass}>
-            Email
+            Email or Pay Reference
           </label>
           <input
             id="email"
             name="email"
-            type="email"
+            type="text"
             required
-            autoComplete="email"
-            placeholder="you@company.co.uk"
+            autoComplete="username"
+            placeholder="you@company.co.uk or ABCD.WXYZ"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className={inputClass}
