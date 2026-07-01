@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Clock, TrendingUp, TrendingDown, Minus, Loader2, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { trpc } from "@/lib/trpc/react";
@@ -97,7 +97,7 @@ function DonutChart({
   const total = slices.reduce((s, sl) => s + sl.count, 0);
 
   // Build arc paths from count proportions, coloured by size
-  const paths: JSX.Element[] = [];
+  const paths: React.JSX.Element[] = [];
   if (total > 0) {
     let angle = -Math.PI / 2; // start at top
     slices
