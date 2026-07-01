@@ -19,6 +19,7 @@ export interface BookingCardData {
   inspectionComplete?: boolean;
   includeFreshScent?: boolean;
   paintProtectionTier?: string | null;
+  assignedTo?: { firstName: string; lastName: string } | null;
 }
 
 export function BookingCard({
@@ -102,6 +103,14 @@ export function BookingCard({
           </span>
         )}
       </div>
+      {booking.assignedTo && (
+        <div className="mt-1.5 text-xs text-slate-400">
+          Valeter:{" "}
+          <span className="font-medium text-slate-600">
+            {booking.assignedTo.firstName} {booking.assignedTo.lastName}
+          </span>
+        </div>
+      )}
     </Link>
   );
 }

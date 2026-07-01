@@ -3,18 +3,11 @@
 import { useState } from "react";
 import type { BookingStatus } from "@ivaleter/db";
 import { trpc } from "@/lib/trpc/react";
-import { formatTime, cn } from "@/lib/utils";
-import { JobStatusBadge } from "@/components/brand/job-status-badge";
-import { PriorityBadge } from "@/components/brand/priority-badge";
+import { cn } from "@/lib/utils";
+import { BookingCard, type BookingCardData } from "@/components/brand/booking-card";
 
-interface Job {
-  id: string;
-  vehicleReg: string;
-  customerName: string;
-  status: BookingStatus;
-  isPriority: boolean;
+interface Job extends BookingCardData {
   readyByTime: string;
-  serviceType: { name: string };
   assignedTo: { firstName: string; lastName: string } | null;
 }
 
@@ -29,14 +22,14 @@ type Filter =
   | "CANCELLED";
 
 const TABS: { key: Filter; label: string }[] = [
-  { key: "ALL", label: "All" },
-  { key: "PRIORITY", label: "Priority" },
-  { key: "PENDING", label: "Pending" },
-  { key: "ASSIGNED", label: "Assigned" },
+  { key: "ALL",         label: "All" },
+  { key: "PRIORITY",    label: "Priority" },
+  { key: "PENDING",     label: "Pending" },
+  { key: "ASSIGNED",    label: "Assigned" },
   { key: "IN_PROGRESS", label: "In Progress" },
-  { key: "QC_CHECK", label: "QC Check" },
-  { key: "COMPLETED", label: "Completed" },
-  { key: "CANCELLED", label: "Cancelled" },
+  { key: "QC_CHECK",    label: "QC Check" },
+  { key: "COMPLETED",   label: "Completed" },
+  { key: "CANCELLED",   label: "Cancelled" },
 ];
 
 function queryInput(
@@ -59,6 +52,7 @@ export function DealershipBookingList({ initialJobs }: { initialJobs: Job[] }) {
 
   return (
     <div>
+      {/* Filter tabs */}
       <div className="mb-4 flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button
@@ -85,33 +79,13 @@ export function DealershipBookingList({ initialJobs }: { initialJobs: Job[] }) {
           No bookings in this view.
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {jobs.map((j) => (
-            <div
+            <BookingCard
               key={j.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white p-4"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-heading font-bold text-navy">
-                    {j.vehicleReg}
-                  </span>
-                  {j.isPriority && <PriorityBadge />}
-                </div>
-                <p className="truncate text-sm text-slate">
-                  {j.customerName} · {j.serviceType.name}
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <JobStatusBadge status={j.status} />
-                <span className="text-xs text-slate">
-                  {j.assignedTo
-                    ? `${j.assignedTo.firstName} ${j.assignedTo.lastName}`
-                    : "Unassigned"}{" "}
-                  · {formatTime(j.readyByTime)}
-                </span>
-              </div>
-            </div>
+              booking={j}
+              href={`/dealership/bookings/${j.id}`}
+            />
           ))}
         </div>
       )}
