@@ -123,9 +123,9 @@ export function ReportsDashboard({
             </button>
           ))}
         </div>
-        {data && data.bookings.length > 0 && (
+        {data && data.bookingsList.length > 0 && (
           <button
-            onClick={() => exportCsv(data.bookings)}
+            onClick={() => exportCsv(data.bookingsList)}
             className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
           >
             <Download className="h-3.5 w-3.5" />
