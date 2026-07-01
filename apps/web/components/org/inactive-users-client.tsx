@@ -265,8 +265,8 @@ export function InactiveUsersClient() {
   }>({ open: false, action: null, userId: "", userName: "" });
 
   // Queries
-  const valetersQuery = trpc.inactiveUsers.inactiveValeters.useQuery();
-  const clientsQuery = trpc.inactiveUsers.inactiveClients.useQuery();
+  const valetersQuery = trpc.inactiveUsers.inactiveValeters.useQuery({});
+  const clientsQuery = trpc.inactiveUsers.inactiveClients.useQuery({});
 
   const utils = trpc.useUtils();
 
