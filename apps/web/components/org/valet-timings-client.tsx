@@ -335,7 +335,7 @@ export function ValetTimingsClient() {
     <div className="space-y-6">
       <PageHeader
         title="Valet Timings"
-        description="Average actual time per valet type vs allocated, broken down by vehicle size."
+        subtitle="Average actual time per valet type vs allocated, broken down by vehicle size."
       />
 
       {/* Filters */}
