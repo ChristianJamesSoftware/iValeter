@@ -161,6 +161,14 @@ function checkRouterShapes() {
         );
       }
 
+      // ── PageHeader wrong prop name ────────────────────────────────
+      // PageHeader only accepts subtitle=, not description=
+      if (/<PageHeader[^>]*\bdescription=/.test(line)) {
+        errors.push(
+          `${rel}:${ln} — PageHeader has no 'description' prop — use 'subtitle' instead: ${line.trim()}`
+        );
+      }
+
       // ── Bare JSX namespace (React 19 removed global JSX) ─────────────────
       // Must use React.JSX.Element, not JSX.Element
       if (/(?<![a-zA-Z.])JSX\./.test(line) && !/React\.JSX\./.test(line) && !/\/\//.test(line.trimStart())) {
