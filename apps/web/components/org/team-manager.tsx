@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, X, Pencil, Trash2 } from "lucide-react";
+import { UserPlus, X, Pencil, Power } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -188,18 +188,15 @@ export function TeamManager({
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`${v.isActive ? "Deactivate" : "Reactivate"} ${v.firstName} ${v.lastName}?`)) {
-                              deactivate.mutate({ id: v.id, isActive: !v.isActive });
-                            }
-                          }}
+                          onClick={() => deactivate.mutate({ id: v.id, isActive: !v.isActive })}
                           aria-label={v.isActive ? "Deactivate valeter" : "Reactivate valeter"}
+                          title={v.isActive ? "Deactivate" : "Reactivate"}
                           className={cn(
                             "rounded-lg p-1.5 transition hover:bg-slate-100",
                             v.isActive ? "text-red-400 hover:text-red-600" : "text-emerald-500 hover:text-emerald-700",
                           )}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Power className="h-4 w-4" />
                         </button>
                       </div>
                     </td>

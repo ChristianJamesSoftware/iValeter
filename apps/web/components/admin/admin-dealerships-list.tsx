@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { Power } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
+import { cn } from "@/lib/utils";
 
 export function AdminDealershipsList() {
+  const utils = trpc.useUtils();
   const query = trpc.dealerships.listAll.useQuery();
+
+  const toggleActive = trpc.dealerships.update.useMutation({
+    onSuccess: () => utils.dealerships.listAll.invalidate(),
+  });
 
   if (query.isLoading) return <p className="text-slate-400">Loading…</p>;
   const dealerships = query.data ?? [];
@@ -74,9 +81,21 @@ export function AdminDealershipsList() {
                   </td>
                   <td className="px-5 py-4 text-slate-600">{d._count.sites}</td>
                   <td className="px-5 py-4">
-                    <span className={d.isActive ? BADGE_ACTIVE : BADGE_INACTIVE}>
-                      {d.isActive ? "Active" : "Inactive"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={d.isActive ? BADGE_ACTIVE : BADGE_INACTIVE}>
+                        {d.isActive ? "Active" : "Inactive"}
+                      </span>
+                      <button
+                        onClick={() => toggleActive.mutate({ id: d.id, isActive: !d.isActive })}
+                        title={d.isActive ? "Deactivate" : "Reactivate"}
+                        className={cn(
+                          "rounded-lg p-1.5 transition hover:bg-slate-100",
+                          d.isActive ? "text-red-400 hover:text-red-600" : "text-emerald-500 hover:text-emerald-700",
+                        )}
+                      >
+                        <Power className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

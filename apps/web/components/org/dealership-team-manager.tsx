@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, X } from "lucide-react";
+import { UserPlus, X, Power } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -23,8 +23,13 @@ const TH =
 
 export function DealershipTeamManager({ sites }: { sites: SiteOpt[] }) {
   const [showForm, setShowForm] = useState(false);
+  const utils = trpc.useUtils();
   const query = trpc.users.list.useQuery({ role: "dealership_user" });
   const staff = query.data ?? [];
+
+  const toggleActive = trpc.users.update.useMutation({
+    onSuccess: () => utils.users.list.invalidate(),
+  });
 
   return (
     <div>
@@ -92,16 +97,28 @@ export function DealershipTeamManager({ sites }: { sites: SiteOpt[] }) {
                       {u.site?.name ?? "—"}
                     </td>
                     <td className="px-5 py-4">
-                      <span
-                        className={cn(
-                          "rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-                          u.isActive
-                            ? "border-emerald-100 bg-emerald-50 text-emerald-700"
-                            : "border-slate-200 bg-slate-100 text-slate-500",
-                        )}
-                      >
-                        {u.isActive ? "Active" : "Inactive"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                            u.isActive
+                              ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+                              : "border-slate-200 bg-slate-100 text-slate-500",
+                          )}
+                        >
+                          {u.isActive ? "Active" : "Inactive"}
+                        </span>
+                        <button
+                          onClick={() => toggleActive.mutate({ id: u.id, isActive: !u.isActive })}
+                          title={u.isActive ? "Deactivate" : "Reactivate"}
+                          className={cn(
+                            "rounded-lg p-1.5 transition hover:bg-slate-100",
+                            u.isActive ? "text-red-400 hover:text-red-600" : "text-emerald-500 hover:text-emerald-700",
+                          )}
+                        >
+                          <Power className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

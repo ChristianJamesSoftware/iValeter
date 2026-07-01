@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { Power } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
+import { cn } from "@/lib/utils";
 
 export function HeadOfficesList() {
+  const utils = trpc.useUtils();
   const query = trpc.organisations.list.useQuery();
+
+  const toggleActive = trpc.organisations.setActive.useMutation({
+    onSuccess: () => utils.organisations.list.invalidate(),
+  });
 
   if (query.isLoading) return <p className="text-slate-400">Loading…</p>;
   const orgs = query.data ?? [];
@@ -52,9 +59,21 @@ export function HeadOfficesList() {
                   <td className="px-5 py-4 text-slate-600">{o.sitesCount}</td>
                   <td className="px-5 py-4 text-slate-500">—</td>
                   <td className="px-5 py-4">
-                    <span className={o.isActive ? BADGE_ACTIVE : BADGE_INACTIVE}>
-                      {o.isActive ? "Active" : "Inactive"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={o.isActive ? BADGE_ACTIVE : BADGE_INACTIVE}>
+                        {o.isActive ? "Active" : "Inactive"}
+                      </span>
+                      <button
+                        onClick={() => toggleActive.mutate({ id: o.id, isActive: !o.isActive })}
+                        title={o.isActive ? "Deactivate" : "Reactivate"}
+                        className={cn(
+                          "rounded-lg p-1.5 transition hover:bg-slate-100",
+                          o.isActive ? "text-red-400 hover:text-red-600" : "text-emerald-500 hover:text-emerald-700",
+                        )}
+                      >
+                        <Power className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

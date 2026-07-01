@@ -11,7 +11,7 @@
  */
 
 import { useState } from "react";
-import { CheckCircle2, Clock, Loader2, Plus, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, Plus, AlertTriangle, Power } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { SettingsTabs } from "@/components/settings/tabs";
 import { TextField } from "@/components/settings/field";
@@ -94,11 +94,16 @@ function VehicleRatesTab() {
 // ─── Sites Tab ────────────────────────────────────────────────────────────────
 
 function SitesTab() {
+  const utils = trpc.useUtils();
   const query = trpc.sites.list.useQuery();
   const [showRequest, setShowRequest] = useState(false);
   const [siteName, setSiteName] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  const toggleSite = trpc.sites.setActive.useMutation({
+    onSuccess: () => utils.sites.list.invalidate(),
+  });
 
   if (query.isLoading) return <LoadingSpinner />;
 
@@ -114,12 +119,24 @@ function SitesTab() {
             <p className="font-semibold text-navy">{s.name}</p>
             <p className="text-sm text-slate">{s.address ?? "No address"}</p>
           </div>
-          <span className={cn(
-            "rounded-full px-2.5 py-0.5 text-xs font-semibold",
-            s.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate",
-          )}>
-            {s.isActive ? "Active" : "Inactive"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "rounded-full px-2.5 py-0.5 text-xs font-semibold",
+              s.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate",
+            )}>
+              {s.isActive ? "Active" : "Inactive"}
+            </span>
+            <button
+              onClick={() => toggleSite.mutate({ id: s.id, isActive: !s.isActive })}
+              title={s.isActive ? "Deactivate site" : "Reactivate site"}
+              className={cn(
+                "rounded-lg p-1.5 transition hover:bg-slate-100",
+                s.isActive ? "text-red-400 hover:text-red-600" : "text-emerald-500 hover:text-emerald-700",
+              )}
+            >
+              <Power className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       ))}
 
