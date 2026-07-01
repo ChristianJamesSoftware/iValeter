@@ -89,6 +89,10 @@ export function HeadOfficeDetail({ headOffice }: { headOffice: HeadOfficeData })
           <div className="border-b border-slate-100 p-5">
             <AddDealershipForm
               headOfficeId={headOffice.id}
+              headOfficeName={headOffice.name}
+              headOfficeAddress={headOffice.address}
+              headOfficeContactEmail={headOffice.contactEmail}
+              headOfficeContactPhone={headOffice.contactPhone}
               pending={createDealership.isPending}
               error={createDealership.error?.message ?? null}
               onSubmit={(data) => createDealership.mutate({ ...data, organisationId: headOffice.id })}
@@ -145,23 +149,43 @@ export function HeadOfficeDetail({ headOffice }: { headOffice: HeadOfficeData })
 }
 
 function AddDealershipForm({
-  headOfficeId,
+  headOfficeId: _headOfficeId,
+  headOfficeName,
+  headOfficeAddress,
+  headOfficeContactEmail,
+  headOfficeContactPhone,
   pending,
   error,
   onSubmit,
   onCancel,
 }: {
   headOfficeId: string;
+  headOfficeName: string;
+  headOfficeAddress: string | null;
+  headOfficeContactEmail: string | null;
+  headOfficeContactPhone: string | null;
   pending: boolean;
   error: string | null;
   onSubmit: (data: { name: string; address?: string; contactName?: string; contactEmail?: string; contactPhone?: string }) => void;
   onCancel: () => void;
 }) {
+  const [sameAsHO, setSameAsHO] = useState(false);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
+
+  const handleSameToggle = () => {
+    const next = !sameAsHO;
+    setSameAsHO(next);
+    if (next) {
+      setName(headOfficeName);
+      setAddress(headOfficeAddress ?? "");
+      setContactEmail(headOfficeContactEmail ?? "");
+      setContactPhone(headOfficeContactPhone ?? "");
+    }
+  };
 
   return (
     <div>
@@ -171,6 +195,35 @@ function AddDealershipForm({
           <X className="h-5 w-5 text-slate" />
         </button>
       </div>
+
+      {/* Same as Head Office toggle */}
+      <button
+        type="button"
+        onClick={handleSameToggle}
+        className={cn(
+          "mb-4 flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition",
+          sameAsHO ? "border-cyan bg-cyan/5" : "border-line bg-offwhite hover:border-slate-300",
+        )}
+      >
+        <span
+          className={cn(
+            "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition",
+            sameAsHO ? "bg-cyan" : "bg-line",
+          )}
+        >
+          <span
+            className={cn(
+              "h-5 w-5 rounded-full bg-white shadow-sm transition",
+              sameAsHO && "translate-x-5",
+            )}
+          />
+        </span>
+        <div>
+          <span className="text-sm font-semibold text-navy">Head Office is also the Dealership</span>
+          <p className="mt-0.5 text-xs text-slate">Pre-fills details from the head office record</p>
+        </div>
+      </button>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Dealership name *" className={INPUT} autoFocus />
         <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" className={INPUT} />
@@ -192,7 +245,7 @@ function AddDealershipForm({
         })}
         className="mt-4 h-11 rounded-lg bg-cyan px-6 font-heading font-semibold text-navy transition hover:bg-cyan-600 disabled:opacity-60"
       >
-        {pending ? "Creating…" : "Create dealership"}
+        {pending ? "Creating\u2026" : "Create dealership"}
       </button>
     </div>
   );

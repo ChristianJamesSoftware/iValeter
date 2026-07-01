@@ -13,8 +13,8 @@ const NAV: NavItem[] = [
   { href: "/admin/quote-builder", label: "Quote Builder", icon: "quote" },
 
   // Finance
-  { href: "/admin/payroll", label: "Payroll", icon: "deductions", section: "Finance" },
-  { href: "/admin/attendance", label: "Attendance", icon: "attendance" },
+  { href: "/admin/attendance", label: "Attendance", icon: "attendance", section: "Finance" },
+  { href: "/admin/payroll", label: "Payroll", icon: "deductions" },
 
   // Messaging
   { href: "/admin/broadcast", label: "Broadcast", icon: "messaging", section: "Messaging" },

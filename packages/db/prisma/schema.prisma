@@ -327,6 +327,9 @@ model Booking {
   notifyPhone                String?
   completionNotificationSent Boolean @default(false)
 
+  // Do Not Clean flag — customer has requested vehicle is NOT cleaned
+  doNotClean         Boolean @default(false)
+
   // Customer review note
   customerReviewNote String?
 
@@ -983,16 +986,26 @@ model DealershipAddOn {
 // Master list managed by super admin; dealerships select from these
 // ─────────────────────────────────────────────────────────────────────────────
 
+enum ValetDepartmentType {
+  SALES
+  SERVICE
+  BODYSHOP
+  ALL
+}
+
 model ValetTypeTemplate {
-  id               String          @id @default(cuid())
-  name             String          @unique
+  id               String              @id @default(cuid())
+  name             String              @unique
+  valetCode        String?             @unique // Short internal code, e.g. "PD01"
+  nominalCode      String?             // Xero/accounting nominal code, e.g. "4001"
   description      String?
-  category         ServiceCategory @default(VALET)
-  defaultDurationMins Int          @default(60)
-  isActive         Boolean         @default(true)
-  sortOrder        Int             @default(0)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  category         ServiceCategory     @default(VALET)
+  departmentType   ValetDepartmentType @default(ALL) // Links to Sales, Service, Bodyshop, or All
+  defaultDurationMins Int              @default(60)
+  isActive         Boolean             @default(true)
+  sortOrder        Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

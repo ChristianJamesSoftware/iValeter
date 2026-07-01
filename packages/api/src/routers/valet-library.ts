@@ -9,6 +9,7 @@ import { z } from "zod";
 import { router, superAdminProcedure, protectedProcedure } from "../trpc";
 
 const SERVICE_CATEGORIES = ["VALET", "PAINT", "CLEANING", "OTHER"] as const;
+const DEPARTMENT_TYPES = ["SALES", "SERVICE", "BODYSHOP", "ALL"] as const;
 
 export const valetLibraryRouter = router({
   // ── Valet Type Templates ──────────────────────────────────────────────────
@@ -30,8 +31,11 @@ export const valetLibraryRouter = router({
     .input(
       z.object({
         name: z.string().min(1).max(100),
+        valetCode: z.string().max(20).optional(),
+        nominalCode: z.string().max(30).optional(),
         description: z.string().optional(),
         category: z.enum(SERVICE_CATEGORIES).default("VALET"),
+        departmentType: z.enum(DEPARTMENT_TYPES).default("ALL"),
         defaultDurationMins: z.number().int().min(1).max(600).default(60),
         sortOrder: z.number().int().default(0),
       }),
@@ -45,8 +49,11 @@ export const valetLibraryRouter = router({
       z.object({
         id: z.string(),
         name: z.string().min(1).max(100).optional(),
+        valetCode: z.string().max(20).nullable().optional(),
+        nominalCode: z.string().max(30).nullable().optional(),
         description: z.string().nullable().optional(),
         category: z.enum(SERVICE_CATEGORIES).optional(),
+        departmentType: z.enum(DEPARTMENT_TYPES).optional(),
         defaultDurationMins: z.number().int().min(1).max(600).optional(),
         sortOrder: z.number().int().optional(),
         isActive: z.boolean().optional(),

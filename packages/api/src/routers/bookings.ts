@@ -137,6 +137,7 @@ export const bookingsRouter = router({
           .nullish(),
         photographyPackage: z.enum(["standard", "premium", "full"]).nullish(),
         vehicleSize: z.enum(["SMALL", "MEDIUM", "LARGE", "XL", "VAN"]).optional(),
+        doNotClean: z.boolean().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -176,6 +177,7 @@ export const bookingsRouter = router({
           paintProtectionTier: input.paintProtectionTier ?? null,
           photographyPackage: input.photographyPackage ?? null,
           vehicleSize: input.vehicleSize,
+          doNotClean: input.doNotClean,
           createdById: ctx.session.userId,
           status: BookingStatus.PENDING,
         },

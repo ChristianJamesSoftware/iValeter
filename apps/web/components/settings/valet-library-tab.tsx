@@ -5,6 +5,7 @@ import { PlusCircle, Pencil, Power, ChevronDown, ChevronRight, PoundSterling, Cl
 import { trpc } from "@/lib/trpc/react";
 
 type Category = "VALET" | "PAINT" | "CLEANING" | "OTHER";
+type DeptType = "SALES" | "SERVICE" | "BODYSHOP" | "ALL";
 
 const CATEGORY_LABELS: Record<Category, string> = {
   VALET:   "Valet",
@@ -18,6 +19,20 @@ const CATEGORY_COLORS: Record<Category, string> = {
   PAINT:   "bg-purple-100 text-purple-700",
   CLEANING:"bg-amber-100 text-amber-700",
   OTHER:   "bg-green-100 text-green-700",
+};
+
+const DEPT_LABELS: Record<DeptType, string> = {
+  SALES:    "Sales",
+  SERVICE:  "Service",
+  BODYSHOP: "Bodyshop",
+  ALL:      "All",
+};
+
+const DEPT_COLORS: Record<DeptType, string> = {
+  SALES:    "bg-sky-100 text-sky-700",
+  SERVICE:  "bg-violet-100 text-violet-700",
+  BODYSHOP: "bg-orange-100 text-orange-700",
+  ALL:      "bg-slate-100 text-slate-600",
 };
 
 const inputCls = "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
@@ -56,14 +71,14 @@ export function ValetLibraryTab() {
 
 function ValetTypesSection() {
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", category: "VALET" as Category, defaultDurationMins: 60, sortOrder: 0 });
+  const [form, setForm] = useState({ name: "", valetCode: "", nominalCode: "", description: "", category: "VALET" as Category, departmentType: "ALL" as DeptType, defaultDurationMins: 60, sortOrder: 0 });
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<typeof form & { id: string } | null>(null);
 
   const utils = trpc.useUtils();
   const list = trpc.valetLibrary.listAllValetTypes.useQuery();
   const create = trpc.valetLibrary.createValetType.useMutation({
-    onSuccess: () => { utils.valetLibrary.listAllValetTypes.invalidate(); setShowAdd(false); setForm({ name: "", description: "", category: "VALET", defaultDurationMins: 60, sortOrder: 0 }); },
+    onSuccess: () => { utils.valetLibrary.listAllValetTypes.invalidate(); setShowAdd(false); setForm({ name: "", valetCode: "", nominalCode: "", description: "", category: "VALET", departmentType: "ALL", defaultDurationMins: 60, sortOrder: 0 }); },
   });
   const update = trpc.valetLibrary.updateValetType.useMutation({
     onSuccess: () => { utils.valetLibrary.listAllValetTypes.invalidate(); setEditId(null); },
@@ -112,9 +127,11 @@ function ValetTypesSection() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Name</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Code</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Nominal</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Dept</th>
                 <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Category</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Default Duration</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Description</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Duration</th>
                 <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -138,6 +155,19 @@ function ValetTypesSection() {
                   <tr key={t.id} className={`border-b border-slate-50 hover:bg-slate-50/50 ${!t.isActive ? "opacity-50" : ""}`}>
                     <td className="px-4 py-3 font-medium text-slate-900">{t.name}</td>
                     <td className="px-4 py-3">
+                      {(t as { valetCode?: string | null }).valetCode ? (
+                        <span className="font-mono text-xs font-bold text-slate-700">{(t as { valetCode?: string | null }).valetCode}</span>
+                      ) : <span className="text-xs text-slate-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {(t as { nominalCode?: string | null }).nominalCode ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${DEPT_COLORS[((t as { departmentType?: string }).departmentType ?? "ALL") as DeptType]}`}>
+                        {DEPT_LABELS[((t as { departmentType?: string }).departmentType ?? "ALL") as DeptType]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${CATEGORY_COLORS[t.category as Category]}`}>
                         {CATEGORY_LABELS[t.category as Category] ?? t.category}
                       </span>
@@ -152,7 +182,7 @@ function ValetTypesSection() {
                     <td className="px-4 py-3">
                       <div className="flex gap-1.5">
                         <button
-                          onClick={() => { setEditId(t.id); setEditForm({ id: t.id, name: t.name, description: t.description ?? "", category: t.category as Category, defaultDurationMins: t.defaultDurationMins, sortOrder: t.sortOrder }); }}
+                          onClick={() => { setEditId(t.id); setEditForm({ id: t.id, name: t.name, valetCode: (t as { valetCode?: string | null }).valetCode ?? "", nominalCode: (t as { nominalCode?: string | null }).nominalCode ?? "", description: t.description ?? "", category: t.category as Category, departmentType: ((t as { departmentType?: string }).departmentType ?? "ALL") as DeptType, defaultDurationMins: t.defaultDurationMins, sortOrder: t.sortOrder }); }}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -185,7 +215,7 @@ function TypeForm({
   error,
   inline,
 }: {
-  form: { name: string; description: string; category: Category; defaultDurationMins: number; sortOrder: number };
+  form: { name: string; valetCode: string; nominalCode: string; description: string; category: Category; departmentType: DeptType; defaultDurationMins: number; sortOrder: number };
   onChange: (k: string, v: string | number | Category) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -202,6 +232,22 @@ function TypeForm({
           <input className={inputCls} value={form.name} onChange={(e) => onChange("name", e.target.value)} placeholder="e.g. Full Valet" />
         </div>
         <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Valet Code</label>
+          <input className={inputCls} style={{ width: 110 }} value={form.valetCode} onChange={(e) => onChange("valetCode", e.target.value.toUpperCase())} placeholder="e.g. FV01" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Nominal Code</label>
+          <input className={inputCls} style={{ width: 110 }} value={form.nominalCode} onChange={(e) => onChange("nominalCode", e.target.value)} placeholder="e.g. 4001" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Department</label>
+          <select className={inputCls} style={{ width: 130 }} value={form.departmentType} onChange={(e) => onChange("departmentType", e.target.value as DeptType)}>
+            {(Object.entries(DEPT_LABELS) as [DeptType, string][]).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className="mb-1 block text-xs font-medium text-slate-600">Category</label>
           <select className={inputCls} style={{ width: 140 }} value={form.category} onChange={(e) => onChange("category", e.target.value as Category)}>
             {(Object.entries(CATEGORY_LABELS) as [Category, string][]).map(([k, v]) => (
@@ -210,7 +256,7 @@ function TypeForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Default duration (mins)</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Duration (mins)</label>
           <input type="number" className={inputCls} style={{ width: 120 }} value={form.defaultDurationMins} min={1} max={600} onChange={(e) => onChange("defaultDurationMins", parseInt(e.target.value) || 60)} />
         </div>
         <div className="flex-1 min-w-[160px]">

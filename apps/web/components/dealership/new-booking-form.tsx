@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ShieldCheck, Sparkles, Droplets, Camera } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Sparkles, Droplets, Camera, Ban } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -132,6 +132,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
   // Combined value used by allocation check and form submit
   const readyByTime = combineDateAndTime(bookingDate, bookingTime);
   const [isPriority, setIsPriority] = useState(false);
+  const [doNotClean, setDoNotClean] = useState(false);
   const [includeInspection, setIncludeInspection] = useState(false);
   const [includeFreshScent, setIncludeFreshScent] = useState(false);
   const [includePaintProtection, setIncludePaintProtection] = useState(false);
@@ -430,6 +431,48 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
           </span>
         </button>
 
+        {/* ---- Do Not Clean ---- */}
+        <button
+          type="button"
+          onClick={() => setDoNotClean((v) => !v)}
+          className={cn(
+            "w-full rounded-lg border-2 px-4 py-3 text-left transition",
+            doNotClean
+              ? "border-red-500 bg-red-50"
+              : "border-line bg-white",
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              className={cn(
+                "flex items-center gap-2 font-bold",
+                doNotClean ? "text-red-700" : "text-slate",
+              )}
+            >
+              <Ban className="h-5 w-5" />
+              {doNotClean ? "DO NOT CLEAN — Flag is ON" : "Do Not Clean this vehicle"}
+            </span>
+            <span
+              className={cn(
+                "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition",
+                doNotClean ? "bg-red-600" : "bg-line",
+              )}
+            >
+              <span
+                className={cn(
+                  "h-5 w-5 rounded-full bg-white transition",
+                  doNotClean && "translate-x-5",
+                )}
+              />
+            </span>
+          </div>
+          <p className={cn("mt-1 pl-7 text-sm", doNotClean ? "text-red-600 font-semibold" : "text-slate")}>
+            {doNotClean
+              ? "Valeters will see a red warning — this vehicle must not be washed"
+              : "Customer has requested no cleaning on this vehicle"}
+          </p>
+        </button>
+
         {/* ---- Vehicle inspection ---- */}
         <button
           type="button"
@@ -689,6 +732,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
                 : null,
               photographyPackage: includePhotography ? photographyPackage : null,
               vehicleSize: vehicleSize || undefined,
+              doNotClean,
             })
           }
           className="h-14 w-full rounded-lg bg-cyan font-heading text-lg font-bold text-navy transition hover:bg-cyan-600 disabled:opacity-60"

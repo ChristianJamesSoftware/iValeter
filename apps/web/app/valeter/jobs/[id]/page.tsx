@@ -9,6 +9,7 @@ import {
   Sparkles,
   Droplets,
   Camera,
+  Ban,
 } from "lucide-react";
 import { TRPCError } from "@trpc/server";
 import { getServerApi } from "@/lib/trpc/server";
@@ -75,6 +76,21 @@ export default async function ValeterJobDetail({
             />
           )}
         </div>
+        {booking.doNotClean && (
+          <div className="mt-4 flex items-center gap-3 rounded-xl border-2 border-red-500 bg-red-600 px-5 py-4">
+            <Ban className="h-7 w-7 shrink-0 text-white" />
+            <div>
+              <p className="font-heading text-base font-bold uppercase tracking-widest text-white">
+                DO NOT CLEAN THIS VEHICLE
+              </p>
+              <p className="mt-0.5 text-sm text-red-100">
+                The customer has requested this vehicle is NOT washed or cleaned.
+              </p>
+            </div>
+            <Ban className="ml-auto h-7 w-7 shrink-0 text-white" />
+          </div>
+        )}
+
         {(booking.includeFreshScent || booking.paintProtectionTier) && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {booking.includeFreshScent && (
