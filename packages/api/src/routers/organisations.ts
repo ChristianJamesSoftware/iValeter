@@ -166,6 +166,7 @@ export const organisationsRouter = router({
   /** Simple list of all head offices for dropdowns (super admin) */
   listAll: superAdminProcedure.query(async ({ ctx }) => {
     return ctx.prisma.organisation.findMany({
+      where: { isActive: true },
       select: { id: true, name: true, isActive: true },
       orderBy: { name: "asc" },
     });
@@ -233,7 +234,7 @@ export const organisationsRouter = router({
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.prisma.dealership.findMany({
-        where: { organisationId: input.id },
+        where: { organisationId: input.id, isActive: true },
         include: { _count: { select: { sites: true } } },
         orderBy: { name: "asc" },
       });

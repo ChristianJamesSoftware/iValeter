@@ -5,7 +5,7 @@ import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure } fr
 export const dealershipsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.prisma.dealership.findMany({
-      where: { organisationId: ctx.session.organisationId },
+      where: { organisationId: ctx.session.organisationId, isActive: true },
       include: {
         sites: {
           include: {
@@ -93,6 +93,7 @@ export const dealershipsRouter = router({
   /** Super-admin: list ALL dealerships across all head offices */
   listAll: superAdminProcedure.query(async ({ ctx }) => {
     return ctx.prisma.dealership.findMany({
+      where: { isActive: true },
       include: {
         organisation: { select: { id: true, name: true } },
         _count: { select: { sites: true } },
