@@ -224,6 +224,7 @@ model User {
   messagesReceived     Message[]               @relation("MessageTo")
   overtimeRequests     OvertimeRequest[]
   accidents            ValeterAccident[]   @relation("ValeterAccidents")
+  feedbackReplies      BroadcastFeedbackReply[] @relation("FeedbackReplies")
 
   @@index([organisationId])
   @@index([siteId])
@@ -1102,4 +1103,23 @@ model ValeterAccident {
 
   @@index([valeterId])
   @@index([incidentDate])
+}
+
+// ─── Smart Broadcast Feedback Replies ────────────────────────────────────────
+// Tracks replies to pulse/feedback broadcast templates
+// reply: "great" | "amazing" | "catchup"
+
+model BroadcastFeedbackReply {
+  id             String   @id @default(cuid())
+  organisationId String
+  messageId      String   // The original Message id sent to this user
+  fromUserId     String
+  fromUser       User     @relation("FeedbackReplies", fields: [fromUserId], references: [id])
+  reply          String   // "great" | "amazing" | "catchup"
+  siteId         String?
+  createdAt      DateTime @default(now())
+
+  @@index([organisationId])
+  @@index([fromUserId])
+  @@index([createdAt])
 }

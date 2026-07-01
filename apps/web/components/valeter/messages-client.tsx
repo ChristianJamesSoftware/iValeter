@@ -4,6 +4,22 @@ import { useState, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc/react";
 import { Send, MessageCircle, ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 
+const PULSE_TRIGGER = "How did this week go?";
+
+type FeedbackReply = "great" | "amazing" | "catchup";
+
+const REPLY_BUTTONS: { value: FeedbackReply; label: string }[] = [
+  { value: "great", label: "👍 Great" },
+  { value: "amazing", label: "🌟 Amazing" },
+  { value: "catchup", label: "📞 Let's catch up" },
+];
+
+const REPLY_LABELS: Record<FeedbackReply, string> = {
+  great: "Great",
+  amazing: "Amazing",
+  catchup: "Let's catch up",
+};
+
 function fmtTime(d: Date | string) {
   return new Date(d).toLocaleString("en-GB", {
     day: "numeric",
@@ -37,6 +53,10 @@ export function MessagesClient({ meUserId }: { meUserId: string }) {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Track feedback replies: messageId -> reply value
+  const [feedbackReplied, setFeedbackReplied] = useState<Record<string, FeedbackReply>>({});
+  // Track pending reply per message
+  const [feedbackPending, setFeedbackPending] = useState<Record<string, boolean>>({});
 
   const utils = trpc.useUtils();
   const { data: inbox, isLoading } = trpc.messages.inbox.useQuery(undefined, {
@@ -52,6 +72,15 @@ export function MessagesClient({ meUserId }: { meUserId: string }) {
       void utils.messages.inbox.invalidate();
     },
   });
+  const recordFeedback = trpc.hq.recordFeedbackReply.useMutation({
+    onSuccess: (_, variables) => {
+      setFeedbackReplied((prev) => ({ ...prev, [variables.messageId]: variables.reply }));
+      setFeedbackPending((prev) => ({ ...prev, [variables.messageId]: false }));
+    },
+    onError: (_, variables) => {
+      setFeedbackPending((prev) => ({ ...prev, [variables.messageId]: false }));
+    },
+  });
 
   // Mark all read on mount
   useEffect(() => {
@@ -60,6 +89,11 @@ export function MessagesClient({ meUserId }: { meUserId: string }) {
   }, []);
 
   const messages = inbox ?? [];
+
+  function handleFeedbackReply(messageId: string, reply: FeedbackReply) {
+    setFeedbackPending((prev) => ({ ...prev, [messageId]: true }));
+    recordFeedback.mutate({ messageId, reply });
+  }
 
   function handleReply(fromUserId: string) {
     setReplyTo(fromUserId);
@@ -95,28 +129,64 @@ export function MessagesClient({ meUserId }: { meUserId: string }) {
           </div>
         )}
 
-        {messages.map((msg) => (
-          <div key={msg.id} className="border-b border-white/5 px-5 py-4 last:border-0">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <p className="text-xs font-bold text-orange-400">
-                  {msg.fromUser.firstName} {msg.fromUser.lastName}
-                  <span className="ml-1 font-normal capitalize text-white/30">
-                    ({msg.fromUser.role.replace("_", " ")})
-                  </span>
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-white/80">{msg.body}</p>
-                <p className="mt-1 text-[10px] text-white/30">{fmtTime(msg.createdAt)}</p>
+        {messages.map((msg) => {
+          const isPulseMessage = msg.body.includes(PULSE_TRIGGER);
+          const replied = feedbackReplied[msg.id];
+          const isPending = feedbackPending[msg.id] ?? false;
+          return (
+            <div key={msg.id} className="border-b border-white/5 px-5 py-4 last:border-0">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-orange-400">
+                    {msg.fromUser.firstName} {msg.fromUser.lastName}
+                    <span className="ml-1 font-normal capitalize text-white/30">
+                      ({msg.fromUser.role.replace("_", " ")})
+                    </span>
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-white/80">{msg.body}</p>
+                  <p className="mt-1 text-[10px] text-white/30">{fmtTime(msg.createdAt)}</p>
+                </div>
               </div>
+
+              {/* Pulse feedback reply buttons */}
+              {isPulseMessage && (
+                <div className="mt-3">
+                  {replied ? (
+                    <p className="text-xs text-white/50">
+                      Replied:{" "}
+                      <span className="font-semibold text-orange-400">
+                        {REPLY_LABELS[replied]}
+                      </span>
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {REPLY_BUTTONS.map((btn) => (
+                        <button
+                          key={btn.value}
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => handleFeedbackReply(msg.id, btn.value)}
+                          className="rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-50"
+                        >
+                          {btn.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!isPulseMessage && (
+                <button
+                  onClick={() => handleReply(msg.fromUser.id)}
+                  className="mt-2 text-xs font-semibold text-orange-400 hover:underline"
+                >
+                  Reply
+                </button>
+              )}
             </div>
-            <button
-              onClick={() => handleReply(msg.fromUser.id)}
-              className="mt-2 text-xs font-semibold text-orange-400 hover:underline"
-            >
-              Reply
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Reply form */}

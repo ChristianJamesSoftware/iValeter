@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { router, orgAdminProcedure } from "../trpc";
+import { router, orgAdminProcedure, superAdminProcedure, protectedProcedure } from "../trpc";
+import type { Role } from "@ivaleter/db";
 
 function startOfToday(): Date {
   const d = new Date();
@@ -280,5 +281,104 @@ export const hqRouter = router({
         });
       }
       return { ok: true, sent: users.length };
+    }),
+
+  /** Send a smart template broadcast */
+  smartBroadcast: superAdminProcedure
+    .input(
+      z.object({
+        templateKey: z.enum(["weekly_pulse", "five_star_share", "csi_100"]),
+        // Audience: which roles to send to
+        roles: z.array(z.enum(["org_admin", "dealership_user", "management"])),
+        siteId: z.string().optional(),
+        // For five_star_share: inject the valeter name, reg, site name into template
+        variables: z.record(z.string()).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const TEMPLATES: Record<string, string> = {
+        weekly_pulse:
+          "How did this week go? Reply to let us know: Great | Amazing | Let's catch up",
+        five_star_share:
+          "⭐⭐⭐⭐⭐ Great news — {valeterName} just received a 5-star review on {vehicleReg} at {siteName}. Well done the team!",
+        csi_100:
+          "🏆 {siteName} just scored 100% CSI this week. Congratulations to the whole team — outstanding work!",
+      };
+
+      let body = TEMPLATES[input.templateKey] ?? "";
+      // Replace variables
+      if (input.variables) {
+        for (const [k, v] of Object.entries(input.variables)) {
+          body = body.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+        }
+      }
+
+      // Gather recipients
+      const where = {
+        organisationId: ctx.session.organisationId,
+        isActive: true,
+        role: { in: input.roles as Role[] },
+        ...(input.siteId ? { siteId: input.siteId } : {}),
+      };
+      const users = await ctx.prisma.user.findMany({
+        where,
+        select: { id: true },
+      });
+
+      if (users.length > 0) {
+        await ctx.prisma.message.createMany({
+          data: users.map((u) => ({
+            fromUserId: ctx.session.userId,
+            toUserId: u.id,
+            organisationId: ctx.session.organisationId,
+            body,
+          })),
+        });
+      }
+
+      return { ok: true, sent: users.length, body };
+    }),
+
+  /** Record a feedback reply from a valeter/manager */
+  recordFeedbackReply: protectedProcedure
+    .input(
+      z.object({
+        messageId: z.string(),
+        reply: z.enum(["great", "amazing", "catchup"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.broadcastFeedbackReply.create({
+        data: {
+          organisationId: ctx.session.organisationId,
+          messageId: input.messageId,
+          fromUserId: ctx.session.userId,
+          reply: input.reply,
+          siteId: ctx.session.siteId ?? null,
+        },
+      });
+    }),
+
+  /** List feedback replies (SA only) */
+  listFeedbackReplies: superAdminProcedure
+    .input(
+      z.object({
+        siteId: z.string().optional(),
+        from: z.date().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.broadcastFeedbackReply.findMany({
+        where: {
+          organisationId: ctx.session.organisationId,
+          ...(input.siteId ? { siteId: input.siteId } : {}),
+          ...(input.from ? { createdAt: { gte: input.from } } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        include: {
+          fromUser: { select: { firstName: true, lastName: true, role: true, site: { select: { name: true } } } },
+        },
+      });
     }),
 });
