@@ -296,6 +296,161 @@ export const reportsRouter = router({
     }),
 
   /**
+   * Manager Report — site-scoped KPIs for dealership site managers.
+   * Includes completed valets by department, today's capacity utilisation,
+   * 7-day over-allocation forecast, and a full booking list for CSV export.
+   */
+  managerReport: dealershipProcedure
+    .input(
+      z.object({
+        siteId: z.string(),
+        dateFrom: z.date(),
+        dateTo: z.date(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const DAILY_CAP = 480;
+
+      // D. Site info
+      const siteData = await ctx.prisma.site.findUnique({
+        where: { id: input.siteId },
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          dealership: { select: { name: true } },
+        },
+      });
+
+      const siteName = siteData?.name ?? "";
+      const siteAddress = siteData?.address ?? null;
+      const dealershipName = siteData?.dealership?.name ?? null;
+
+      // A. Valets completed (by department) in date range
+      const completedBookings = await ctx.prisma.booking.findMany({
+        where: {
+          organisationId: ctx.session.organisationId,
+          siteId: input.siteId,
+          status: "COMPLETED",
+          readyByTime: { gte: input.dateFrom, lte: input.dateTo },
+        },
+        include: {
+          serviceType: { select: { durationMins: true } },
+          department: { select: { id: true, name: true } },
+        },
+      });
+
+      const byDeptMap: Record<string, { deptName: string; completed: number; totalMins: number }> = {};
+      for (const b of completedBookings) {
+        const deptId = b.department.id;
+        if (!byDeptMap[deptId]) {
+          byDeptMap[deptId] = { deptName: b.department.name, completed: 0, totalMins: 0 };
+        }
+        const entry = byDeptMap[deptId]!;
+        entry.completed += 1;
+        entry.totalMins += b.serviceType.durationMins;
+      }
+      const byDepartment = Object.values(byDeptMap);
+      const totalCompleted = completedBookings.length;
+
+      // B. Today's daily hours utilised vs capacity
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const todayBookings = await ctx.prisma.booking.findMany({
+        where: {
+          organisationId: ctx.session.organisationId,
+          siteId: input.siteId,
+          status: { not: "CANCELLED" },
+          readyByTime: { gte: todayStart, lte: todayEnd },
+        },
+        include: { serviceType: { select: { durationMins: true } } },
+      });
+
+      const todayAllocMins = todayBookings.reduce((s, b) => s + b.serviceType.durationMins, 0);
+      const todayCapMins = DAILY_CAP;
+      const todayUtilPct = Math.min(Math.round((todayAllocMins / DAILY_CAP) * 100), 100);
+
+      // C. 7-day over-allocation forecast (next 7 days)
+      const forecastDays: Array<{
+        date: string;
+        allocMins: number;
+        capMins: number;
+        overAllocated: boolean;
+        utilPct: number;
+      }> = [];
+
+      for (let i = 0; i < 7; i++) {
+        const dayStart = new Date();
+        dayStart.setDate(dayStart.getDate() + i);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const dayBookings = await ctx.prisma.booking.findMany({
+          where: {
+            organisationId: ctx.session.organisationId,
+            siteId: input.siteId,
+            status: { not: "CANCELLED" },
+            readyByTime: { gte: dayStart, lte: dayEnd },
+          },
+          include: { serviceType: { select: { durationMins: true } } },
+        });
+
+        const allocMins = dayBookings.reduce((s, b) => s + b.serviceType.durationMins, 0);
+        forecastDays.push({
+          date: dayStart.toISOString().slice(0, 10),
+          allocMins,
+          capMins: DAILY_CAP,
+          overAllocated: allocMins > DAILY_CAP,
+          utilPct: Math.min(Math.round((allocMins / DAILY_CAP) * 100), 100),
+        });
+      }
+
+      // E. Booking list for CSV
+      const bookingsListRaw = await ctx.prisma.booking.findMany({
+        where: {
+          organisationId: ctx.session.organisationId,
+          siteId: input.siteId,
+          status: { not: "CANCELLED" },
+          readyByTime: { gte: input.dateFrom, lte: input.dateTo },
+        },
+        include: {
+          serviceType: { select: { name: true, durationMins: true } },
+          department: { select: { name: true } },
+        },
+        orderBy: { readyByTime: "asc" },
+      });
+
+      const bookingsList = bookingsListRaw.map((b) => ({
+        vehicleReg: b.vehicleReg,
+        customerName: b.customerName,
+        serviceType: b.serviceType.name,
+        department: b.department.name,
+        status: b.status as string,
+        durationMins: b.serviceType.durationMins,
+        readyByTime: b.readyByTime,
+      }));
+
+      return {
+        siteName,
+        siteAddress,
+        dealershipName,
+        dateFrom: input.dateFrom,
+        dateTo: input.dateTo,
+        totalCompleted,
+        byDepartment,
+        todayAllocMins,
+        todayCapMins,
+        todayUtilPct,
+        forecastDays,
+        bookingsList,
+      };
+    }),
+
+  /**
    * Days in Prep report — how long each completed booking took from creation to completion.
    */
   daysInPrep: orgAdminProcedure
