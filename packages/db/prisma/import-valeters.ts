@@ -1,17 +1,12 @@
 /**
  * Valeters XLSX Import
  * --------------------
- * Imports valeter User records from the internal spreadsheet.
- *
- * Source columns: Account (dealership), Sub-Contractor (name), Rate Per Day, PAY ID
- *
- * Rules:
- *  - Each valeter → User with role: valeter
- *  - Matched to a Site under the named Dealership (creates a default site if none exists yet)
- *  - payId column is BLANK in the source — left null, to be added manually later
- *  - dailyRate is stored from the spreadsheet
- *  - Valeters who appear under "FLOATERS" are created as staffType: SSS (multi-site)
- *  - Duplicate check by firstName+lastName+siteId — safe to re-run
+ * Source: valeters.xlsx
+ * Columns (0-indexed, starting from col C = index 2):
+ *   C (2) = Account (dealership name, only set on first row of a block)
+ *   D (3) = Sub-Contractor (valeter full name)
+ *   E (4) = Rate Per Day
+ *   I (8) = PAY ID (always blank — to be added manually)
  *
  * Run from packages/db:
  *   npx tsx prisma/import-valeters.ts
@@ -21,131 +16,107 @@ import { PrismaClient, StaffType } from '@prisma/client'
 import * as fs from 'fs'
 import * as XLSX from 'xlsx'
 import * as path from 'path'
-import * as crypto from 'crypto'
 import * as bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-// ── Spreadsheet → Dealership name fuzzy map ──────────────────────────────────
-// Keys are the exact names from the spreadsheet, values are substrings to
-// match against Dealership.name in the DB (case-insensitive contains).
+// ── Spreadsheet account name → Dealership name fragment to search in DB ──────
 const SHEET_TO_DEALERSHIP: Record<string, string> = {
   'Adventure Automotive':                          'Adventure Automotive',
   'Bicester Ford':                                 'Bicester Ford',
   'Buckingham Ford':                               'Buckingham Ford',
   'DLG Auto Services':                             'DLG Auto Services',
-  'Donalds Peterborough':                          'Donalds - Peterborough',
+  'Donalds Peterborough':                          'Donalds',
   'Elite Car Body':                                'Elite Car Body',
-  'FLOATERS':                                      'FLOATERS', // special — no site
-  'Free Spirit':                                   'Free Spirit Automotive',
-  'Graypaul Ferrari':                              'Graypaul Birmingham Ferrari',
+  'Free Spirit':                                   'Free Spirit',
+  'Graypaul Ferrari':                              'Graypaul',
   'Green Motion Car & Van Rental (Manchester)':    'Green Motion Car and Van Rental',
   'Green Motion Car & Van Rental BIRMINGHAM':      'Green Motion Birmingham',
-  'Green Motion Car & Van Rental EDGWARE':         'Green Motion Edgware Road',
+  'Green Motion Car & Van Rental EDGWARE':         'Green Motion Edgware',
   'Green Motion Car & Van Rental LUTON':           'Green Motion Luton',
   'Green Motion Car & Van Rental SOUTHEND':        'Green Motion Southend',
-  'Green Motion Car & Van Rental STANSTEAD':       'Envirocar Hire', // Stansted
-  'Johnson Hyundai Sutton Coldfield':              'Johnsons Cars Ltd - Hyundai Sutton',
-  'Johnsons Ford Tamworth':                        'Johnsons Cars Ltd - Ford Tamworth',
-  'Johnsons Honda Milton Keynes':                  'Johnsons Cars Ltd - Honda Milton Keynes',
-  'Johnsons Honda Oxford':                         'Johnsons Cars Ltd - Honda Oxford',
-  'Johnsons Honda Slough':                         'Johnsons Cars Ltd - Honda Slough',
-  'Johnsons Hyundai Cars Ltd (Coventry)':          'Johnsons Cars Ltd - Hyundai Coventry',
-  'Johnsons Hyundai Tamworth':                     'Johnsons Cars Ltd - Hyundai Tamworth',
-  'Johnsons Mazda Gloucester':                     'Johnsons Cars Ltd - Mazda Gloucester',
-  'Johnsons Mazda Oxford':                         'Johnsons Cars Ltd - Mazda Oxford',
-  'Johnsons Mazda Swindon':                        'Johnsons Cars Ltd - Mazda Swindon',
-  'Johnsons Volvo Solihul':                        'Johnsons Cars Ltd - Volvo Solihull',
-  'Listers Honda Northampton':                     'Listers Honda Northampton',
+  'Green Motion Car & Van Rental STANSTEAD':       'Envirocar',
+  'Johnson Hyundai Sutton Coldfield':              'Hyundai Sutton',
+  'Johnsons Ford Tamworth':                        'Ford Tamworth',
+  'Johnsons Honda Milton Keynes':                  'Honda Milton Keynes',
+  'Johnsons Honda Oxford':                         'Honda Oxford',
+  'Johnsons Honda Slough':                         'Honda Slough',
+  'Johnsons Hyundai Cars Ltd (Coventry)':          'Hyundai Coventry',
+  'Johnsons Hyundai Tamworth':                     'Hyundai Tamworth',
+  'Johnsons Mazda Gloucester':                     'Mazda Gloucester',
+  'Johnsons Mazda Oxford':                         'Mazda Oxford',
+  'Johnsons Mazda Swindon':                        'Mazda Swindon',
+  'Johnsons Volvo Solihul':                        'Volvo Solihull',
+  'Listers Honda Northampton':                     'Listers Honda',
   'NMJ Motorhouse':                                'NMJ Motorhouse',
   'Northampton Car Company':                       'Northampton Car Company',
   'Northridge Cars':                               'Northridge Cars',
   'Porsche Centre Silverston (Sytner)':            'Porsche Centre Silverstone',
   'RGR Garages (Cranfield) Ltd':                   'RGR Garages',
   'Rockingham Cars':                               'Rockingham Cars',
-  'Suzuki GB PLC':                                 'Suzuki GB PLC',
+  'Suzuki GB PLC':                                 'Suzuki GB',
   'Sycamore BMW':                                  'Sycamore BMW',
   'Urban Automotive Ltd Stony Stratford':          'Urban Automotive',
   'Urban Automotive Ltd Tongwell':                 'Urban Automotive',
-  'VCR':                                           'VCR - Vehicle Crash Repairs',
+  'VCR':                                           'VCR',
   'Wollaston BMW Main Branch (Bedford Road)':      'Wollaston BMW Northampton',
-  'Wollaston BMW Preparation Centre':              'Wollaston BMW Preparation Centre',
-}
-
-interface ValeterRow {
-  account: string
-  fullName: string
-  dailyRate: number | null
-  payId: string | null  // always null in source — to be added manually
-}
-
-function slugify(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  'Wollaston BMW Preparation Centre':              'Wollaston BMW Preparation',
 }
 
 function parseFullName(raw: string): { firstName: string; lastName: string } {
-  // Format in spreadsheet: "SURNAME Firstname" or "SURNAME FIRSTNAME"
   const parts = raw.trim().split(/\s+/)
   if (parts.length === 1) return { firstName: parts[0], lastName: '' }
-  // First token = surname (all caps), rest = first name
-  const lastName = parts[0]
+  const lastName  = parts[0]
   const firstName = parts.slice(1).join(' ')
   return { firstName, lastName }
 }
 
-async function findOrCreateSite(dealershipSheetName: string, orgId: string): Promise<string | null> {
-  if (dealershipSheetName === 'FLOATERS') return null // handled separately
+function isNameLike(val: unknown): boolean {
+  if (typeof val !== 'string') return false
+  const s = val.trim()
+  if (!s) return false
+  // Reject header row values and numeric-looking strings
+  if (['Account', 'Sub-Contractor', 'Rate Per Day', 'Sub rates', 'Sub days', 'Deduction Total', 'PAY ID'].includes(s)) return false
+  if (/^[\d.]+$/.test(s)) return false
+  // Must contain at least one letter
+  return /[a-zA-Z]/.test(s)
+}
 
-  const dealershipSearch = SHEET_TO_DEALERSHIP[dealershipSheetName] ?? dealershipSheetName
+async function findOrCreateSite(accountName: string, orgId: string): Promise<string | null> {
+  if (accountName === 'FLOATERS') return null
 
-  // Find matching dealership (case-insensitive contains)
+  const searchFragment = SHEET_TO_DEALERSHIP[accountName] ?? accountName
+
   const dealerships = await prisma.dealership.findMany({
-    where: {
-      name: { contains: dealershipSearch.split(' ')[0], mode: 'insensitive' },
-    },
+    where: { name: { contains: searchFragment.split(' ')[0], mode: 'insensitive' } },
     select: { id: true, name: true },
   })
 
-  // Pick best match (most words in common)
-  let bestMatch = dealerships[0]
+  let best = dealerships[0]
   if (dealerships.length > 1) {
-    const searchLower = dealershipSearch.toLowerCase()
-    bestMatch = dealerships.reduce((best, d) => {
-      const score = (s: string) => searchLower.split(' ').filter(w => s.toLowerCase().includes(w)).length
-      return score(d.name) > score(best.name) ? d : best
+    const lower = searchFragment.toLowerCase()
+    best = dealerships.reduce((b, d) => {
+      const score = (s: string) => lower.split(' ').filter(w => s.toLowerCase().includes(w)).length
+      return score(d.name) > score(b.name) ? d : b
     })
   }
 
-  if (!bestMatch) {
-    console.log(`   ⚠️  No dealership found for: ${dealershipSheetName} (search: ${dealershipSearch})`)
-    // Create a placeholder dealership + site so valeters aren't lost
+  if (!best) {
+    console.log(`   ⚠️  No dealership found for: "${accountName}" — creating placeholder`)
     const d = await prisma.dealership.create({
-      data: {
-        organisationId: orgId,
-        name: dealershipSheetName,
-        isActive: true,
-        xeroContactName: dealershipSheetName,
-      },
+      data: { organisationId: orgId, name: accountName, isActive: true, xeroContactName: accountName },
     })
-    bestMatch = d
-    console.log(`      → Created placeholder dealership: ${dealershipSheetName}`)
+    best = d
   }
 
-  // Find existing site under this dealership
-  const existingSite = await prisma.site.findFirst({
-    where: { dealershipId: bestMatch.id },
-    select: { id: true, name: true },
+  const existing = await prisma.site.findFirst({
+    where: { dealershipId: best.id },
+    select: { id: true },
   })
-  if (existingSite) return existingSite.id
+  if (existing) return existing.id
 
-  // Create a default site
   const site = await prisma.site.create({
-    data: {
-      organisationId: orgId,
-      dealershipId: bestMatch.id,
-      name: `${bestMatch.name} - Main`,
-      isActive: true,
-    },
+    data: { organisationId: orgId, dealershipId: best.id, name: `${best.name} - Main`, isActive: true },
   })
   console.log(`   🏗  Created default site: ${site.name}`)
   return site.id
@@ -162,43 +133,51 @@ async function main() {
     process.exit(1)
   }
 
-  // ── Parse XLSX ──────────────────────────────────────────────────────────────
   console.log('📂 Reading XLSX...')
-  const wb = XLSX.readFile(xlsxPath)
-  const ws = wb.Sheets[wb.SheetNames[0]]
-  const rawRows: (string | number | null)[][] = XLSX.utils.sheet_to_json(ws, {
+  const wb   = XLSX.readFile(xlsxPath)
+  const ws   = wb.Sheets[wb.SheetNames[0]]
+
+  // Use sheet_to_json with header:1 to get raw arrays, then parse manually
+  // We use column INDICES not header names to avoid misreads
+  const allRows: (string | number | null)[][] = XLSX.utils.sheet_to_json(ws, {
     header: 1,
     defval: null,
+    raw: true,
   })
 
-  // Build structured rows
+  interface ValeterRow { account: string; fullName: string; dailyRate: number | null }
   const rows: ValeterRow[] = []
   let currentAccount: string | null = null
 
-  for (const row of rawRows) {
-    const accountCell = row[2] as string | null  // col C
-    const nameCell    = row[3] as string | null  // col D
-    const rateCell    = row[4] as number | null  // col E
-    // col I (PAY ID) is always blank — intentionally not captured
+  for (const row of allRows) {
+    // xlsx strips leading empty cols — sheet starts at C1 so indices are 0-based from C:
+    // col C (0) = Account, col D (1) = Name, col E (2) = Rate Per Day
+    const colC = row[0]
+    const colD = row[1]
+    const colE = row[2]
 
-    if (accountCell && String(accountCell).trim() === 'Account') continue // header row
-    if (accountCell && String(accountCell).trim()) {
-      currentAccount = String(accountCell).trim()
+    // Skip header row
+    if (colC === 'Account') continue
+
+    // Update current account if col C has a valid dealership name
+    if (typeof colC === 'string' && isNameLike(colC)) {
+      currentAccount = colC.trim()
     }
-    if (nameCell && String(nameCell).trim() && currentAccount) {
+
+    // A valeter row has a name-like value in col D
+    if (isNameLike(colD as string) && currentAccount) {
       rows.push({
         account:   currentAccount,
-        fullName:  String(nameCell).trim(),
-        dailyRate: typeof rateCell === 'number' ? rateCell : null,
-        payId:     null, // always null — to be added manually
+        fullName:  String(colD).trim(),
+        dailyRate: typeof colE === 'number' ? colE : null,
       })
     }
   }
 
-  console.log(`   ${rows.length} valeter assignments across ${new Set(rows.map(r => r.account)).size} accounts\n`)
+  const accounts = new Set(rows.map(r => r.account))
+  console.log(`   ${rows.length} valeter assignments across ${accounts.size} accounts\n`)
 
-  // ── Get/create a root organisation for valeters (Total Valeting) ─────────
-  // Valeters need an organisationId — use existing "Total Valeting" org or first org
+  // Root org
   let rootOrg = await prisma.organisation.findFirst({
     where: { name: { contains: 'Total Valeting', mode: 'insensitive' } },
     select: { id: true, name: true },
@@ -207,42 +186,31 @@ async function main() {
     rootOrg = await prisma.organisation.findFirst({ select: { id: true, name: true } })
   }
   if (!rootOrg) {
-    rootOrg = await prisma.organisation.create({
-      data: { name: 'Total Valeting', slug: 'total-valeting' },
-    })
-    console.log('   🏢 Created root organisation: Total Valeting')
+    rootOrg = await prisma.organisation.create({ data: { name: 'Total Valeting', slug: 'total-valeting' } })
   }
   console.log(`   📎 Using organisation: ${rootOrg.name}\n`)
 
-  // ── Floaters site ─────────────────────────────────────────────────────────
+  // Floaters site
   let floatersSite = await prisma.site.findFirst({
     where: { name: { contains: 'Floaters', mode: 'insensitive' } },
     select: { id: true },
   })
   if (!floatersSite) {
     floatersSite = await prisma.site.create({
-      data: {
-        organisationId: rootOrg.id,
-        name: 'Floaters Pool',
-        isActive: true,
-      },
+      data: { organisationId: rootOrg.id, name: 'Floaters Pool', isActive: true },
     })
     console.log('   🏗  Created site: Floaters Pool')
   }
 
-  // ── Import valeters ────────────────────────────────────────────────────────
   let created = 0
   let skipped = 0
-  const siteCache = new Map<string, string>() // account → siteId
-
-  // Default hashed password — valeters will reset on first login
+  const siteCache = new Map<string, string>()
   const defaultPasswordHash = await bcrypt.hash('ChangeMe123!', 10)
 
   for (const row of rows) {
     const { firstName, lastName } = parseFullName(row.fullName)
     const isFloater = row.account === 'FLOATERS'
 
-    // Resolve site
     let siteId: string
     if (isFloater) {
       siteId = floatersSite!.id
@@ -251,17 +219,13 @@ async function main() {
         siteId = siteCache.get(row.account)!
       } else {
         const resolved = await findOrCreateSite(row.account, rootOrg!.id)
-        if (!resolved) {
-          console.log(`   ⚠️  Could not resolve site for: ${row.fullName} @ ${row.account}`)
-          skipped++
-          continue
-        }
+        if (!resolved) { skipped++; continue }
         siteCache.set(row.account, resolved)
         siteId = resolved
       }
     }
 
-    // Check duplicate: same first+last name at same site
+    // Duplicate check
     const exists = await prisma.user.findFirst({
       where: {
         firstName: { equals: firstName, mode: 'insensitive' },
@@ -271,19 +235,17 @@ async function main() {
       select: { id: true },
     })
     if (exists) {
-      console.log(`   ⏭  Duplicate skipped: ${row.fullName} @ ${row.account}`)
+      console.log(`   ⏭  Duplicate: ${row.fullName} @ ${row.account}`)
       skipped++
       continue
     }
 
-    // Generate a placeholder email (no real email in source data)
+    // Unique placeholder email
     const emailSlug = `${firstName}.${lastName}`.toLowerCase().replace(/[^a-z.]/g, '').replace(/\.+/g, '.')
-    const emailBase = `${emailSlug}@ivaleter.internal`
-    // Ensure uniqueness
-    let email = emailBase
-    let emailCounter = 1
+    let email = `${emailSlug}@ivaleter.internal`
+    let n = 1
     while (await prisma.user.findUnique({ where: { email }, select: { id: true } })) {
-      email = `${emailSlug}${emailCounter++}@ivaleter.internal`
+      email = `${emailSlug}${n++}@ivaleter.internal`
     }
 
     await prisma.user.create({
@@ -294,11 +256,11 @@ async function main() {
         passwordHash: defaultPasswordHash,
         firstName,
         lastName,
-        role:       'valeter',
-        staffType:  isFloater ? StaffType.SSS : StaffType.SITE,
-        isActive:   true,
-        dailyRate:  row.dailyRate,
-        payId:      null,  // to be added manually
+        role:      'valeter',
+        staffType: isFloater ? StaffType.SSS : StaffType.SITE,
+        isActive:  true,
+        dailyRate: row.dailyRate,
+        payId:     null,
       },
     })
 
@@ -310,10 +272,10 @@ async function main() {
   console.log('\n─────────────────────────────────────────')
   console.log(`✅ Valeters created:   ${created}`)
   console.log(`⏭  Skipped:           ${skipped}`)
-  console.log(`📍 Sites resolved:    ${siteCache.size} dealership sites`)
+  console.log(`📍 Sites resolved:    ${siteCache.size}`)
   console.log('─────────────────────────────────────────')
-  console.log('\n⚠️  All valeters created with placeholder email: firstname.lastname@ivaleter.internal')
-  console.log('   Default password: ChangeMe123! — update before going live.')
+  console.log('\n⚠️  Placeholder emails: firstname.lastname@ivaleter.internal')
+  console.log('   Default password: ChangeMe123! — update before go-live.')
   console.log('   PAY IDs are blank — add manually in the admin panel.')
 }
 
