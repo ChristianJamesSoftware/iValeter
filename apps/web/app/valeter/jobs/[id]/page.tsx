@@ -46,14 +46,10 @@ export default async function ValeterJobDetail({
     throw err;
   }
 
-  const durationMins =
-    booking.completedAt != null
-      ? Math.round(
-          (new Date(booking.completedAt).getTime() -
-            new Date(booking.createdAt).getTime()) /
-            60000,
-        )
-      : null;
+  // Duration: use serviceType allocated time.
+  // Do NOT calculate from createdAt — that measures booking age, not job duration.
+  // Actual clock-based duration is available in the Valet Timings report.
+  const allocatedMins = booking.serviceType.durationMins;
 
   return (
     <div>
@@ -138,14 +134,12 @@ export default async function ValeterJobDetail({
               {formatTime(booking.readyByTime)}
             </span>
           </div>
-          {booking.completedAt && (
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-sm text-slate">Completed in</span>
-              <span className="font-semibold text-success">
-                {minutesToHuman(durationMins ?? 0)}
-              </span>
-            </div>
-          )}
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-sm text-slate">Allocated time</span>
+            <span className="font-semibold text-navy">
+              {minutesToHuman(allocatedMins)}
+            </span>
+          </div>
         </section>
 
         <JobStatusAction

@@ -94,22 +94,9 @@ function ReportsSummaryClient() {
   const sites = sitesQuery.data ?? [];
   const data = reportQuery.data;
 
-  // Per-site allocation check against today (for flagging over-capacity sites)
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-
-  const allocationQueries = sites.map((site) =>
-    trpc.bookings.getDayAllocation.useQuery(
-      { siteId: site.id, date: todayStart, capacityMinsPerValeter: DAILY_CAP_MINS },
-      { enabled: sites.length > 0 },
-    )
-  );
-
-  const overCapacitySites = sites
-    .filter((_, i) => allocationQueries[i]?.data?.isOverAllocated)
-    .map((s) => s.name);
+  // Over-capacity alerting is handled by the Ops Centre page.
+  // Removed from Reports to avoid illegal hook-in-loop crash.
+  const overCapacitySites: string[] = [];
 
   function exportCsv() {
     if (!data) return;
@@ -229,40 +216,16 @@ function ReportsSummaryClient() {
                       <th className="px-5 py-2.5 text-left">Site</th>
                       <th className="px-5 py-2.5 text-right">Count</th>
                       <th className="px-5 py-2.5 text-right">Avg Time</th>
-                      <th className="px-5 py-2.5 text-center">Capacity</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.bySite.map((row: { name: string; count: number; avgMins: number }, i: number) => {
-                      const matchedSite = sites.find((s) => s.name === row.name);
-                      const allocIdx = matchedSite ? sites.indexOf(matchedSite) : -1;
-                      const allocData = allocIdx >= 0 ? allocationQueries[allocIdx]?.data : null;
-                      const isOver = allocData?.isOverAllocated ?? false;
-                      return (
-                        <tr key={row.name} className={cn("border-b border-line last:border-0", isOver && "bg-amber-50/40")}>
-                          <td className="px-5 py-3 font-medium text-navy">
-                            <span className="flex items-center gap-2">
-                              {row.name}
-                              {isOver && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" aria-label="Over capacity today" />}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 text-right text-slate">{row.count}</td>
-                          <td className="px-5 py-3 text-right text-slate">{row.avgMins ? `${row.avgMins}m` : "—"}</td>
-                          <td className="px-5 py-3 text-center">
-                            {allocData ? (
-                              <span className={cn(
-                                "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                                isOver
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-emerald-100 text-emerald-800",
-                              )}>
-                                {isOver ? "Over capacity" : "Within capacity"}
-                              </span>
-                            ) : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {data.bySite.map((row: { name: string; count: number; avgMins: number }) => (
+                      <tr key={row.name} className="border-b border-line last:border-0">
+                        <td className="px-5 py-3 font-medium text-navy">{row.name}</td>
+                        <td className="px-5 py-3 text-right text-slate">{row.count}</td>
+                        <td className="px-5 py-3 text-right text-slate">{row.avgMins ? `${row.avgMins}m` : "—"}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

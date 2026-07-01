@@ -58,15 +58,17 @@ export const analyticsRouter = router({
               status: BookingStatus.COMPLETED,
               completedAt: { not: null },
             },
-            select: { createdAt: true, completedAt: true },
+            select: { completedAt: true, serviceType: { select: { durationMins: true } } },
             take: 200,
             orderBy: { completedAt: "desc" },
           }),
         ]);
 
+      // Use serviceType.durationMins (allocated time) — NOT completedAt - createdAt.
+      // completedAt - createdAt measures booking age (hours before job was done), not duration.
       const durations = completedAll
         .filter((b) => b.completedAt)
-        .map((b) => (b.completedAt!.getTime() - b.createdAt.getTime()) / 60000);
+        .map((b) => b.serviceType.durationMins);
       const avgTimeMins =
         durations.length > 0
           ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
@@ -179,9 +181,11 @@ export const analyticsRouter = router({
         string,
         { name: string; totalMins: number; count: number; targetMins: number }
       >();
+      // All duration calculations use serviceType.durationMins (allocated time).
+      // completedAt - createdAt is WRONG — it measures booking age, not job duration.
       for (const b of completedWithTimes) {
         if (!b.completedAt) continue;
-        const mins = (b.completedAt.getTime() - b.createdAt.getTime()) / 60000;
+        const mins = b.serviceType.durationMins;
         const key = b.serviceTypeId;
         const existing = avgByType.get(key) ?? {
           name: b.serviceType.name,
@@ -201,7 +205,7 @@ export const analyticsRouter = router({
       >();
       for (const b of completedWithTimes) {
         if (!b.completedAt) continue;
-        const mins = (b.completedAt.getTime() - b.createdAt.getTime()) / 60000;
+        const mins = b.serviceType.durationMins;
         const existing = avgBySite.get(b.siteId) ?? {
           name: b.site.name,
           totalMins: 0,
@@ -219,12 +223,8 @@ export const analyticsRouter = router({
           ? Math.round(
               completedWithTimes
                 .filter((b) => b.completedAt)
-                .reduce(
-                  (acc, b) =>
-                    acc +
-                    (b.completedAt!.getTime() - b.createdAt.getTime()) / 60000,
-                  0,
-                ) / completedWithTimes.length,
+                .reduce((acc, b) => acc + b.serviceType.durationMins, 0) /
+                completedWithTimes.length,
             )
           : 0;
 
