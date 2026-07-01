@@ -34,7 +34,7 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
+export function LoginForm({ resetSuccess, dark }: { resetSuccess?: boolean; dark?: boolean }) {
   const [state, formAction] = useActionState(loginAction, initialState);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
