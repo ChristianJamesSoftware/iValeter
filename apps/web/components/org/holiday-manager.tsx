@@ -30,7 +30,7 @@ function daysUntil(dateStr: string): number {
 
 export function HolidayManager() {
   const utils = trpc.useUtils();
-  const requests = trpc.holiday.listRequests.useQuery();
+  const requests = trpc.holiday.listRequests.useQuery({});
   const [coverState, setCoverState] = useState<Record<string, CoverState>>({});
   const [coverInput, setCoverInput] = useState<Record<string, string>>({});
 

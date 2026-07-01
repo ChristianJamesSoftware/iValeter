@@ -317,7 +317,7 @@ export function ValetTimingsClient() {
 
   const { from, to } = useMemo(() => dateRangeForPeriod(period), [period]);
 
-  const sitesQuery = trpc.sites.list.useQuery();
+  const sitesQuery = trpc.sites.list.useQuery({});
   const timingsQuery = trpc.reports.valetTimings.useQuery({
     siteId: siteId === "all" ? undefined : siteId,
     dateFrom: from,

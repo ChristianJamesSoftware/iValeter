@@ -66,7 +66,7 @@ function downloadTimesheetCsv(ts: {
 }
 
 export function PayHistoryClient() {
-  const { data, isLoading } = trpc.valeterTimesheets.myHistory.useQuery();
+  const { data, isLoading } = trpc.valeterTimesheets.myHistory.useQuery({});
 
   if (isLoading) {
     return <div className="py-12 text-center text-sm text-white/50">Loading pay history…</div>;

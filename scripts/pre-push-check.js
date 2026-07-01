@@ -142,12 +142,44 @@ function checkRouterShapes() {
     const src = fs.readFileSync(file, "utf8");
     const lines = src.split("\n");
 
+    // ── Wrong tRPC import alias ───────────────────────────────────────────────
+    // Client components must use `trpc` from "@/lib/trpc/react", not `api` from "@/lib/trpc"
+    if (/from ["']@\/lib\/trpc["']/.test(src) && /trpc\.|api\./.test(src)) {
+      errors.push(
+        `${rel} — Wrong tRPC import: use 'import { trpc } from "@/lib/trpc/react"' not '@/lib/trpc'`
+      );
+    }
+
     lines.forEach((line, i) => {
       const ln = i + 1;
-      // Inline type annotations on .map() callbacks are a red flag — shape may drift from router
+
+      // ── Inline type annotations on .map() callbacks ───────────────────────
+      // Shape may drift from router return type
       if (/\.map\(\s*\([a-z]+\s*:\s*\{[^}]{20,}\}/.test(line)) {
         warnings.push(
           `${rel}:${ln} — Inline type annotation on .map() callback — verify shape matches router return type: ${line.trim().slice(0, 80)}…`
+        );
+      }
+
+      // ── Date fields typed as string in tRPC-facing interfaces ────────────
+      // Prisma/tRPC returns Date objects; typing them as string causes build failures.
+      // Pattern: inside an interface block, field typed as `string | null` or `string`
+      // where the field name contains a date hint (At, Date, On, Time, Expiry, Expires).
+      if (/^\s+\w*(At|Date|On|Time|Expiry|Expires|Born|Since)\w*\s*[?:].*:\s*string(\s*\|\s*null)?\s*;/.test(line)) {
+        // Only flag if we're inside an interface (look for 'interface' in surrounding context)
+        const contextSlice = lines.slice(Math.max(0, i - 15), i).join("\n");
+        if (/^(export\s+)?interface\s+/.test(contextSlice)) {
+          errors.push(
+            `${rel}:${ln} — Date field typed as 'string' — tRPC/Prisma returns Date objects. Use 'Date | null' or 'Date': ${line.trim()}`
+          );
+        }
+      }
+
+      // ── useQuery() called without argument on parameterless procedures ────
+      // tRPC v11 requires useQuery({}) not useQuery() for void-input procedures
+      if (/\.useQuery\(\s*\)/.test(line) && /trpc\./.test(line)) {
+        errors.push(
+          `${rel}:${ln} — tRPC useQuery() called with no argument — pass '{}' for void-input procedures: ${line.trim()}`
         );
       }
     });

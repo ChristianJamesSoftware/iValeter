@@ -22,7 +22,7 @@ const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
 
 export function AdminSettingsClient() {
   const [tab, setTab] = useState("platform");
-  const query = trpc.platform.get.useQuery();
+  const query = trpc.platform.get.useQuery({});
   const utils = trpc.useUtils();
   const update = trpc.platform.update.useMutation({
     onSuccess: () => utils.platform.get.invalidate(),
