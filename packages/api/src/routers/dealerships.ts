@@ -220,7 +220,9 @@ export const dealershipsRouter = router({
       include: {
         organisation: { select: { id: true, name: true } },
         sites: {
-          include: {
+          select: {
+            id: true,
+            name: true,
             users: {
               where: {
                 isActive: true,
@@ -244,17 +246,25 @@ export const dealershipsRouter = router({
     });
 
     return dealerships.map((d) => {
-      const allSiteUsers = d.sites.flatMap((s) => s.users);
-      const previewUser =
-        allSiteUsers.find((u) => u.role === "dealership_user") ??
-        allSiteUsers.find((u) => u.role === "org_admin") ??
-        null;
+      // Return each site with its preview user so the UI can offer a site picker
+      const sites = d.sites.map((s) => {
+        const previewUser =
+          s.users.find((u) => u.role === "dealership_user") ??
+          s.users.find((u) => u.role === "org_admin") ??
+          null;
+        return {
+          id: s.id,
+          name: s.name,
+          previewUser,
+        };
+      }).filter((s) => s.previewUser !== null); // only include sites that have a usable user
+
       return {
         id: d.id,
         name: d.name,
         organisationId: d.organisationId,
         organisationName: d.organisation.name,
-        previewUser,
+        sites,
       };
     });
   }),

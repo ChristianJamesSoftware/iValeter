@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ExternalLink, Search, Building2 } from "lucide-react";
+import { ExternalLink, Search, Building2, ChevronDown, ChevronRight, MapPin } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { startImpersonation } from "@/app/admin/impersonate/actions";
 import type { Role } from "@ivaleter/db";
@@ -16,12 +16,18 @@ interface PreviewUser {
   siteId: string | null;
 }
 
+interface SiteItem {
+  id: string;
+  name: string;
+  previewUser: PreviewUser | null;
+}
+
 interface DealershipItem {
   id: string;
   name: string;
   organisationId: string;
   organisationName: string;
-  previewUser: PreviewUser | null;
+  sites: SiteItem[];
 }
 
 interface Props {
@@ -30,8 +36,9 @@ interface Props {
 
 export function DealerPreviewClient({ dealerships }: Props) {
   const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
   const filtered = dealerships.filter((d) => {
     const q = query.toLowerCase();
@@ -49,27 +56,32 @@ export function DealerPreviewClient({ dealerships }: Props) {
     return acc;
   }, {});
 
-  function handlePreview(d: DealershipItem) {
-    if (!d.previewUser || pending) return;
-    setLoadingId(d.id);
+  function handlePreview(site: SiteItem, dealershipId: string) {
+    if (!site.previewUser || pending) return;
+    const key = `${dealershipId}-${site.id}`;
+    setLoadingKey(key);
     startTransition(async () => {
       await startImpersonation({
-        userId: d.previewUser!.id,
-        organisationId: d.previewUser!.organisationId,
-        siteId: d.previewUser!.siteId ?? null,
-        role: d.previewUser!.role as Role,
-        email: d.previewUser!.email,
-        firstName: d.previewUser!.firstName,
-        lastName: d.previewUser!.lastName,
+        userId: site.previewUser!.id,
+        organisationId: site.previewUser!.organisationId,
+        siteId: site.previewUser!.siteId ?? null,
+        role: site.previewUser!.role as Role,
+        email: site.previewUser!.email,
+        firstName: site.previewUser!.firstName,
+        lastName: site.previewUser!.lastName,
       });
     });
+  }
+
+  function toggleExpand(id: string) {
+    setExpanded((prev) => (prev === id ? null : id));
   }
 
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
         title="Preview Dealer View"
-        subtitle="Select a dealership to view the platform exactly as a dealer user sees it. A banner lets you exit at any time."
+        subtitle="Select a dealership and site to view the platform as a dealer user. A banner lets you switch or exit at any time."
       />
 
       {/* Search */}
@@ -103,78 +115,133 @@ export function DealerPreviewClient({ dealerships }: Props) {
 
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               {items.map((d, idx) => {
-                const hasUser = !!d.previewUser;
-                const isLoading = loadingId === d.id && pending;
+                const hasSites = d.sites.length > 0;
+                const singleSite = d.sites.length === 1 ? d.sites[0] : null;
+                const isExpanded = expanded === d.id;
+                const isLast = idx === items.length - 1;
 
                 return (
-                  <div
-                    key={d.id}
-                    className={`flex items-center justify-between px-4 py-3 ${
-                      idx !== items.length - 1
-                        ? "border-b border-slate-100"
-                        : ""
-                    }`}
-                  >
-                    {/* Name */}
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">
-                        {d.name}
-                      </p>
-                      {d.previewUser && (
-                        <p className="mt-0.5 text-xs text-slate-400">
-                          Preview as {d.previewUser.firstName}{" "}
-                          {d.previewUser.lastName}
-                        </p>
+                  <div key={d.id} className={!isLast ? "border-b border-slate-100" : ""}>
+                    {/* Dealership row */}
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{d.name}</p>
+                        {!hasSites && (
+                          <p className="mt-0.5 text-xs text-slate-400">No site users set up yet</p>
+                        )}
+                        {singleSite && (
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            {singleSite.name} — preview as {singleSite.previewUser!.firstName}{" "}
+                            {singleSite.previewUser!.lastName}
+                          </p>
+                        )}
+                        {d.sites.length > 1 && (
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            {d.sites.length} sites — pick one below
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Action */}
+                      {!hasSites && (
+                        <span className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs text-slate-400">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          No user
+                        </span>
                       )}
-                      {!d.previewUser && (
-                        <p className="mt-0.5 text-xs text-slate-400">
-                          No dealer user set up yet
-                        </p>
+
+                      {/* Single site — direct preview */}
+                      {singleSite && (() => {
+                        const key = `${d.id}-${singleSite.id}`;
+                        const isLoading = loadingKey === key && pending;
+                        return (
+                          <button
+                            onClick={() => handlePreview(singleSite, d.id)}
+                            disabled={isLoading || pending}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {isLoading ? (
+                              <>
+                                <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" />
+                                </svg>
+                                Loading…
+                              </>
+                            ) : (
+                              <>
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                Preview
+                              </>
+                            )}
+                          </button>
+                        );
+                      })()}
+
+                      {/* Multiple sites — expand/collapse */}
+                      {d.sites.length > 1 && (
+                        <button
+                          onClick={() => toggleExpand(d.id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          )}
+                          {isExpanded ? "Hide sites" : "Choose site"}
+                        </button>
                       )}
                     </div>
 
-                    {/* Action */}
-                    {hasUser ? (
-                      <button
-                        onClick={() => handlePreview(d)}
-                        disabled={isLoading || pending}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {isLoading ? (
-                          <>
-                            <svg
-                              className="h-3.5 w-3.5 animate-spin"
-                              viewBox="0 0 24 24"
-                              fill="none"
+                    {/* Site list (expanded, multi-site only) */}
+                    {d.sites.length > 1 && isExpanded && (
+                      <div className="border-t border-slate-100 bg-slate-50">
+                        {d.sites.map((site, sIdx) => {
+                          const key = `${d.id}-${site.id}`;
+                          const isLoading = loadingKey === key && pending;
+                          return (
+                            <div
+                              key={site.id}
+                              className={`flex items-center justify-between px-6 py-2.5 ${
+                                sIdx !== d.sites.length - 1 ? "border-b border-slate-100" : ""
+                              }`}
                             >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              />
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
-                              />
-                            </svg>
-                            Loading…
-                          </>
-                        ) : (
-                          <>
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            Preview
-                          </>
-                        )}
-                      </button>
-                    ) : (
-                      <span className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs text-slate-400">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        No user
-                      </span>
+                              <div className="flex items-center gap-2">
+                                <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                                <div>
+                                  <p className="text-xs font-medium text-slate-700">{site.name}</p>
+                                  {site.previewUser && (
+                                    <p className="text-xs text-slate-400">
+                                      Preview as {site.previewUser.firstName} {site.previewUser.lastName}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handlePreview(site, d.id)}
+                                disabled={isLoading || pending}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                              >
+                                {isLoading ? (
+                                  <>
+                                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" />
+                                    </svg>
+                                    Loading…
+                                  </>
+                                ) : (
+                                  <>
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                    Preview
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 );
