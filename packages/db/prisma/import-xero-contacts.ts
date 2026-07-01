@@ -119,7 +119,16 @@ async function main() {
       hoCache.set(hoName, existing.id)
       return existing.id
     }
-    const org = await prisma.organisation.create({ data: { name: hoName } })
+    const slug = hoName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    // Ensure slug uniqueness by appending a counter if needed
+    let finalSlug = slug
+    let slugCounter = 1
+    while (true) {
+      const slugExists = await prisma.organisation.findUnique({ where: { slug: finalSlug }, select: { id: true } })
+      if (!slugExists) break
+      finalSlug = `${slug}-${slugCounter++}`
+    }
+    const org = await prisma.organisation.create({ data: { name: hoName, slug: finalSlug } })
     hoCache.set(hoName, org.id)
     console.log(`   🏢 Head Office created: ${hoName}`)
     return org.id
