@@ -4,8 +4,11 @@ import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
+import { type inferRouterOutputs } from "@trpc/server";
 import superjson from "superjson";
 import type { AppRouter } from "@ivaleter/api";
+
+export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 export const trpc = createTRPCReact<AppRouter>();
 

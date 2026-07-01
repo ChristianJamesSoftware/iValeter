@@ -365,5 +365,93 @@ export const usersRouter = router({
       });
       return { ok: true };
     }),
+
+  /** Super admin: update any user (no org scope restriction) */
+  superAdminUpdate: superAdminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        firstName: z.string().min(1).optional(),
+        lastName: z.string().min(1).optional(),
+        mobile: z.string().nullable().optional(),
+        payId: z.string().nullable().optional(),
+        jobTitle: z.string().nullable().optional(),
+        isActive: z.boolean().optional(),
+        workingDays: z.array(z.string()).optional(),
+        contractedHours: z.number().nullable().optional(),
+        dailyRate: z.number().nullable().optional(),
+        dailyDeductions: z.number().nullable().optional(),
+        startDate: z.string().nullable().optional(),
+        contractComplete: z.boolean().optional(),
+        bankSortCode: z.string().nullable().optional(),
+        bankAccountNumber: z.string().nullable().optional(),
+        bankAccountName: z.string().nullable().optional(),
+        bankReference: z.string().nullable().optional(),
+        skills: z.array(z.string()).optional(),
+        siteId: z.string().nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, startDate, ...rest } = input;
+      const user = await ctx.prisma.user.findUnique({ where: { id } });
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      return ctx.prisma.user.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(startDate !== undefined
+            ? { startDate: startDate ? new Date(startDate) : null }
+            : {}),
+        },
+      });
+    }),
+
+  /** Super admin: create a user on any site/org (for adding site team members from dealership card) */
+  superAdminCreate: superAdminProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        password: z.string().min(6).optional(),
+        role: z.nativeEnum(Role),
+        organisationId: z.string(),
+        siteId: z.string().optional(),
+        mobile: z.string().optional(),
+        payId: z.string().optional(),
+        jobTitle: z.string().optional(),
+        dailyRate: z.number().optional(),
+        dailyDeductions: z.number().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.prisma.user.findUnique({
+        where: { email: input.email.toLowerCase().trim() },
+      });
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "A user with this email already exists" });
+      const { randomBytes } = await import("crypto");
+      const tempPassword = input.password ?? randomBytes(16).toString("hex");
+      const needsReset = !input.password;
+      const resetToken = needsReset ? randomBytes(32).toString("hex") : null;
+      const resetExpiry = needsReset ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null;
+      return ctx.prisma.user.create({
+        data: {
+          organisationId: input.organisationId,
+          email: input.email.toLowerCase().trim(),
+          firstName: input.firstName.trim(),
+          lastName: input.lastName.trim(),
+          passwordHash: hashPassword(tempPassword),
+          passwordResetToken: resetToken,
+          passwordResetExpiresAt: resetExpiry,
+          role: input.role,
+          siteId: input.siteId ?? null,
+          mobile: input.mobile ?? null,
+          payId: input.payId?.trim() || generatePayId(input.firstName, input.lastName),
+          jobTitle: input.jobTitle ?? null,
+          dailyRate: input.dailyRate ?? null,
+          dailyDeductions: input.dailyDeductions ?? null,
+        },
+      });
+    }),
 });
 // Note: router registration via root.ts

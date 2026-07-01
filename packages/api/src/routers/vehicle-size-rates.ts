@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { orgAdminProcedure, dealershipProcedure, router } from "../trpc";
+import { orgAdminProcedure, dealershipProcedure, superAdminProcedure, router } from "../trpc";
 
 /**
  * Vehicle size rate router.
@@ -96,6 +96,26 @@ export const vehicleSizeRatesRouter = router({
         create: { siteId, serviceTypeId, ...data },
         update: { ...data },
       });
+    }),
+
+  /** Super admin: upsert a rate by rate id (no org scope check — called from dealership card) */
+  superAdminUpsert: superAdminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        serviceTypeId: z.string(),
+        basePricePence: z.number().int().min(0).optional().nullable(),
+        baseAllocMins: z.number().int().min(1).optional().nullable(),
+        pctSmall: z.number().int().min(-100).max(200).optional(),
+        pctMedium: z.number().int().optional(),
+        pctLarge: z.number().int().min(-100).max(200).optional(),
+        pctXL: z.number().int().min(-100).max(200).optional(),
+        pctVan: z.number().int().min(-100).max(200).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, serviceTypeId: _st, ...data } = input;
+      return ctx.prisma.vehicleSizeRate.update({ where: { id }, data });
     }),
 
   /**

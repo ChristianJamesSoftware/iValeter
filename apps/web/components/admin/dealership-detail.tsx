@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ValeterCardModal } from "@/components/admin/valeter-card-modal";
 import {
   Building2, MapPin, Phone, Mail, User, PlusCircle, X,
   FileText, Users, Layers, Wrench, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2,
@@ -230,9 +231,9 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
           onSiteAdded={() => utils.dealerships.getById.invalidate({ id: d.id })}
         />
       )}
-      {activeTab === "valetTypes" && <ValetTypesTab serviceTypes={allServiceTypes} sites={d.sites} />}
-      {activeTab === "rates"      && <VehicleRatesTab rates={allRates} />}
-      {activeTab === "team"       && <TeamTab members={allTeam} />}
+      {activeTab === "valetTypes" && <ValetTypesTab serviceTypes={allServiceTypes} sites={d.sites} dealershipId={d.id} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
+      {activeTab === "rates"      && <VehicleRatesTab rates={allRates} onSaved={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
+      {activeTab === "team"       && <TeamTab members={allTeam} sites={d.sites} organisationId={d.organisation?.id ?? ""} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "valeters"    && <ValetersTab valeters={allValeters} />}
       {activeTab === "addons"     && <DealershipAddOns dealershipId={d.id} />}
       {activeTab === "instructions" && (
@@ -408,29 +409,66 @@ function SitesTab({
 
 // ─── Valet Types tab ─────────────────────────────────────────────────────────
 
-function ValetTypesTab({ serviceTypes, sites }: { serviceTypes: { id: string; name: string; durationMins: number }[]; sites: SiteRow[] }) {
-  if (serviceTypes.length === 0) {
-    return (
-      <div className="rounded-2xl border border-slate-100 bg-white px-5 py-16 text-center shadow-sm">
-        <p className="text-sm text-slate-400">No valet types configured yet. Add departments and service types to this dealership&apos;s sites.</p>
-      </div>
-    );
-  }
+function ValetTypesTab({ serviceTypes, sites, dealershipId, onAdded }: {
+  serviceTypes: { id: string; name: string; durationMins: number }[];
+  sites: SiteRow[];
+  dealershipId: string;
+  onAdded: () => void;
+}) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [name, setName] = useState("");
+  const [duration, setDuration] = useState("");
+  const add = trpc.dealerships.addServiceType.useMutation({
+    onSuccess: () => { setShowAdd(false); setName(""); setDuration(""); onAdded(); },
+  });
+
+  const inputCls = "h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-5 py-4">
-        <h2 className="font-bold text-slate-900">
-          Valet Types
-          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-            {serviceTypes.length}
-          </span>
-        </h2>
-        <p className="mt-0.5 text-xs text-slate-400">Service types configured across all sites for this dealership.</p>
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <h2 className="font-bold text-slate-900">
+            Valet Types
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{serviceTypes.length}</span>
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-400">Service types configured for this dealership.</p>
+        </div>
+        <button onClick={() => setShowAdd(!showAdd)} className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700">
+          <PlusCircle className="h-4 w-4" /> Add type
+        </button>
       </div>
 
+      {showAdd && (
+        <div className="border-b border-slate-100 bg-slate-50 p-5">
+          <div className="flex items-end gap-3">
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Name</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Full Valet" className={`${inputCls} w-48`} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Duration (mins)</label>
+              <input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="60" className={`${inputCls} w-28`} />
+            </div>
+            <button
+              disabled={!name.trim() || !duration || add.isPending}
+              onClick={() => add.mutate({ dealershipId, name: name.trim(), durationMins: parseInt(duration) })}
+              className="h-9 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
+            >
+              {add.isPending ? "Adding…" : "Add"}
+            </button>
+            <button onClick={() => setShowAdd(false)} className="h-9 rounded-lg border border-slate-200 px-3 text-sm text-slate-600 hover:bg-white">Cancel</button>
+          </div>
+          {add.error && <p className="mt-2 text-xs text-red-500">{add.error.message}</p>}
+        </div>
+      )}
+
+      {serviceTypes.length === 0 && !showAdd && (
+        <p className="px-5 py-16 text-center text-sm text-slate-400">No valet types yet. Click “Add type” to create one.</p>
+      )}
+
       {sites.map((site) => {
-        const siteServiceTypes = site.departments.flatMap((d) => d.serviceTypes);
+        const siteServiceTypes = site.departments.flatMap((dept) => dept.serviceTypes);
         if (siteServiceTypes.length === 0) return null;
         return (
           <div key={site.id}>
@@ -469,11 +507,39 @@ function ValetTypesTab({ serviceTypes, sites }: { serviceTypes: { id: string; na
 
 // ─── Vehicle Rates tab ───────────────────────────────────────────────────────
 
-function VehicleRatesTab({ rates }: { rates: (VehicleSizeRate & { siteName: string })[] }) {
+function VehicleRatesTab({ rates, onSaved }: { rates: (VehicleSizeRate & { siteName: string })[]; onSaved: () => void }) {
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<VehicleSizeRate>>({});
+
+  const upsert = trpc.vehicleSizeRates.superAdminUpsert.useMutation({ onSuccess: () => { setEditId(null); onSaved(); } });
+
+  function startEdit(r: VehicleSizeRate & { siteName: string }) {
+    setEditId(r.id);
+    setForm({
+      basePricePence: r.basePricePence,
+      baseAllocMins:  r.baseAllocMins,
+      pctSmall:  r.pctSmall,
+      pctMedium: r.pctMedium,
+      pctLarge:  r.pctLarge,
+      pctXL:     r.pctXL,
+      pctVan:    r.pctVan,
+    });
+  }
+
+  const numInput = (key: keyof typeof form, placeholder: string) => (
+    <input
+      type="number"
+      value={form[key]?.toString() ?? ""}
+      onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value === "" ? null : parseFloat(e.target.value) }))}
+      placeholder={placeholder}
+      className="h-8 w-20 rounded border border-slate-200 bg-white px-2 text-xs text-slate-900 outline-none focus:border-slate-400"
+    />
+  );
+
   if (rates.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-100 bg-white px-5 py-16 text-center shadow-sm">
-        <p className="text-sm text-slate-400">No vehicle size rates set yet. Configure rates per site in Platform Settings.</p>
+        <p className="text-sm text-slate-400">No vehicle size rates set yet. Add service types first, then rates will appear here.</p>
       </div>
     );
   }
@@ -482,37 +548,74 @@ function VehicleRatesTab({ rates }: { rates: (VehicleSizeRate & { siteName: stri
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-5 py-4">
         <h2 className="font-bold text-slate-900">Vehicle Rates</h2>
-        <p className="mt-0.5 text-xs text-slate-400">Base price + percentage modifiers by vehicle size across all sites.</p>
+        <p className="mt-0.5 text-xs text-slate-400">Click Edit on a row to set base price, allocation time, and size modifiers.</p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[700px] text-left text-sm">
+        <table className="w-full min-w-[800px] text-left text-sm">
           <thead>
             <tr>
               <th className={TH}>Site</th>
               <th className={TH}>Service Type</th>
-              <th className={TH}>Base Price</th>
-              <th className={TH}>Alloc (mins)</th>
-              <th className={TH}>Small</th>
-              <th className={TH}>Medium</th>
-              <th className={TH}>Large</th>
-              <th className={TH}>XL</th>
-              <th className={TH}>Van</th>
+              <th className={TH}>Base (£)</th>
+              <th className={TH}>Alloc (min)</th>
+              <th className={TH}>Small%</th>
+              <th className={TH}>Med%</th>
+              <th className={TH}>Large%</th>
+              <th className={TH}>XL%</th>
+              <th className={TH}>Van%</th>
+              <th className={TH}></th>
             </tr>
           </thead>
           <tbody>
-            {rates.map((r) => (
-              <tr key={r.id} className="hover:bg-slate-50/50">
-                <td className={`${TD} text-slate-500`}>{r.siteName}</td>
-                <td className={`${TD} font-medium text-slate-900`}>{r.serviceType.name}</td>
-                <td className={TD}>{pence(r.basePricePence)}</td>
-                <td className={TD}>{r.baseAllocMins ?? "—"}</td>
-                <td className={TD}>{pct(r.pctSmall)}</td>
-                <td className={TD}>{pct(r.pctMedium)}</td>
-                <td className={TD}>{pct(r.pctLarge)}</td>
-                <td className={TD}>{pct(r.pctXL)}</td>
-                <td className={TD}>{pct(r.pctVan)}</td>
-              </tr>
-            ))}
+            {rates.map((r) => {
+              const editing = editId === r.id;
+              return (
+                <tr key={r.id} className={cn("border-b border-slate-50 last:border-0", editing ? "bg-slate-50" : "hover:bg-slate-50/40")}>
+                  <td className={`${TD} text-slate-500 text-xs`}>{r.siteName}</td>
+                  <td className={`${TD} font-medium text-slate-900`}>{r.serviceType.name}</td>
+                  {editing ? (
+                    <>
+                      <td className={TD}>{numInput("basePricePence", "pence")}</td>
+                      <td className={TD}>{numInput("baseAllocMins", "mins")}</td>
+                      <td className={TD}>{numInput("pctSmall",  "0")}</td>
+                      <td className={TD}>{numInput("pctMedium", "0")}</td>
+                      <td className={TD}>{numInput("pctLarge",  "0")}</td>
+                      <td className={TD}>{numInput("pctXL",     "0")}</td>
+                      <td className={TD}>{numInput("pctVan",    "0")}</td>
+                      <td className={TD}>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => upsert.mutate({ id: r.id, serviceTypeId: r.serviceType.id, basePricePence: form.basePricePence ?? undefined, baseAllocMins: form.baseAllocMins ?? undefined, pctSmall: form.pctSmall ?? 0, pctMedium: form.pctMedium ?? 0, pctLarge: form.pctLarge ?? 0, pctXL: form.pctXL ?? 0, pctVan: form.pctVan ?? 0 })}
+                            disabled={upsert.isPending}
+                            className="rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+                          >
+                            {upsert.isPending ? "…" : "Save"}
+                          </button>
+                          <button onClick={() => setEditId(null)} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-500 hover:bg-white">
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className={TD}>{pence(r.basePricePence)}</td>
+                      <td className={TD}>{r.baseAllocMins ?? "—"}</td>
+                      <td className={TD}>{pct(r.pctSmall)}</td>
+                      <td className={TD}>{pct(r.pctMedium)}</td>
+                      <td className={TD}>{pct(r.pctLarge)}</td>
+                      <td className={TD}>{pct(r.pctXL)}</td>
+                      <td className={TD}>{pct(r.pctVan)}</td>
+                      <td className={TD}>
+                        <button onClick={() => startEdit(r)} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-500 hover:bg-slate-50">
+                          Edit
+                        </button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -522,49 +625,89 @@ function VehicleRatesTab({ rates }: { rates: (VehicleSizeRate & { siteName: stri
 
 // ─── Team tab ─────────────────────────────────────────────────────────────────
 
-function TeamTab({ members }: { members: (TeamMember & { siteName: string })[] }) {
+function TeamTab({ members, sites, organisationId, onAdded }: {
+  members: (TeamMember & { siteName: string })[];
+  sites: SiteRow[];
+  organisationId: string;
+  onAdded: () => void;
+}) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "", role: "dealership_user", siteId: "", jobTitle: "", mobile: "" });
+  const create = trpc.users.superAdminCreate.useMutation({
+    onSuccess: () => { setShowAdd(false); setForm({ firstName: "", lastName: "", email: "", password: "", role: "dealership_user", siteId: "", jobTitle: "", mobile: "" }); onAdded(); },
+  });
+
+  const inputCls = "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-5 py-4">
-        <h2 className="font-bold text-slate-900">
-          Team Members
-          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-            {members.length}
-          </span>
-        </h2>
-        <p className="mt-0.5 text-xs text-slate-400">Site staff and dealership users assigned to this dealership.</p>
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <h2 className="font-bold text-slate-900">
+            Site Team
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{members.length}</span>
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-400">Site staff and dealership users.</p>
+        </div>
+        <button
+          onClick={() => setShowAdd(!showAdd)}
+          className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+        >
+          <PlusCircle className="h-4 w-4" /> Add member
+        </button>
       </div>
 
-      {members.length === 0 ? (
-        <p className="px-5 py-16 text-center text-sm text-slate-400">No site team members assigned yet.</p>
+      {showAdd && (
+        <div className="border-b border-slate-100 p-5">
+          <p className="mb-3 font-semibold text-slate-900 text-sm">New team member</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">First name</label><input value={form.firstName} onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Last name</label><input value={form.lastName} onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Email</label><input type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Password</label><input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} placeholder="Min. 6 chars" className={inputCls} /></div>
+            <div><label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Role</label>
+              <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} className={inputCls}>
+                <option value="dealership_user">Dealership user</option>
+                <option value="org_admin">Org admin</option>
+              </select>
+            </div>
+            <div><label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Site</label>
+              <select value={form.siteId} onChange={(e) => setForm((p) => ({ ...p, siteId: e.target.value }))} className={inputCls}>
+                <option value="">— No site —</option>
+                {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div><label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Job title</label><input value={form.jobTitle} onChange={(e) => setForm((p) => ({ ...p, jobTitle: e.target.value }))} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Mobile</label><input value={form.mobile} onChange={(e) => setForm((p) => ({ ...p, mobile: e.target.value }))} className={inputCls} /></div>
+          </div>
+          {create.error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{create.error.message}</p>}
+          <div className="mt-4 flex gap-2">
+            <button
+              disabled={!form.firstName || !form.lastName || !form.email || create.isPending}
+              onClick={() => create.mutate({ firstName: form.firstName, lastName: form.lastName, email: form.email, password: form.password || undefined, role: form.role as "dealership_user" | "org_admin", organisationId, siteId: form.siteId || undefined, jobTitle: form.jobTitle || undefined, mobile: form.mobile || undefined })}
+              className="h-9 rounded-lg bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
+            >
+              {create.isPending ? "Creating…" : "Create member"}
+            </button>
+            <button onClick={() => setShowAdd(false)} className="h-9 rounded-lg border border-slate-200 px-4 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {members.length === 0 && !showAdd ? (
+        <p className="px-5 py-16 text-center text-sm text-slate-400">No site team members yet. Add one above.</p>
       ) : (
         <table className="w-full text-left text-sm">
-          <thead>
-            <tr>
-              <th className={TH}>Name</th>
-              <th className={TH}>Site</th>
-              <th className={TH}>Pay ID</th>
-              <th className={TH}>Staff Type</th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th className={TH}>Name</th><th className={TH}>Site</th><th className={TH}>Role</th><th className={TH}>Job title</th>
+          </tr></thead>
           <tbody>
             {members.map((m) => (
               <tr key={m.id} className="hover:bg-slate-50/50">
-                <td className={`${TD} font-medium text-slate-900`}>
-                  {m.firstName} {m.lastName}
-                </td>
+                <td className={`${TD} font-medium text-slate-900`}>{m.firstName} {m.lastName}</td>
                 <td className={TD}>{m.siteName}</td>
-                <td className={`${TD} font-mono text-xs`}>{m.payId ?? "—"}</td>
-                <td className={TD}>
-                  <span className={cn(
-                    "rounded-full px-2 py-0.5 text-xs font-semibold",
-                    m.staffType === "SSS"
-                      ? "bg-amber-50 text-amber-700"
-                      : "bg-slate-100 text-slate-600",
-                  )}>
-                    {m.staffType ?? "SITE"}
-                  </span>
-                </td>
+                <td className={TD}><span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">{m.role.replace("_", " ")}</span></td>
+                <td className={TD}>{m.staffType ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -577,54 +720,62 @@ function TeamTab({ members }: { members: (TeamMember & { siteName: string })[] }
 // ─── Valeters tab ────────────────────────────────────────────────────────────
 
 function ValetersTab({ valeters }: { valeters: (TeamMember & { siteName: string })[] }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-5 py-4">
-        <h2 className="font-bold text-slate-900">
-          Valeters
-          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-            {valeters.length}
-          </span>
-        </h2>
-        <p className="mt-0.5 text-xs text-slate-400">Valeters assigned to sites under this dealership.</p>
-      </div>
+    <>
+      {selectedId && <ValeterCardModal valeterUid={selectedId} onClose={() => setSelectedId(null)} />}
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-5 py-4">
+          <h2 className="font-bold text-slate-900">
+            Valeters
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+              {valeters.length}
+            </span>
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-400">Click a valeter to view or edit their card.</p>
+        </div>
 
-      {valeters.length === 0 ? (
-        <p className="px-5 py-16 text-center text-sm text-slate-400">No valeters assigned to this dealership yet.</p>
-      ) : (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr>
-              <th className={TH}>Name</th>
-              <th className={TH}>Site</th>
-              <th className={TH}>Pay Reference</th>
-              <th className={TH}>Staff Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {valeters.map((v) => (
-              <tr key={v.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
-                <td className={`${TD} font-medium text-slate-900`}>
-                  {v.firstName} {v.lastName}
-                </td>
-                <td className={TD}>{v.siteName}</td>
-                <td className={`${TD} font-mono text-xs text-slate-500`}>{v.payId ?? "—"}</td>
-                <td className={TD}>
-                  <span className={cn(
-                    "rounded-full px-2 py-0.5 text-xs font-semibold",
-                    v.staffType === "SSS"
-                      ? "bg-amber-50 text-amber-700"
-                      : "bg-slate-100 text-slate-600",
-                  )}>
-                    {v.staffType ?? "SITE"}
-                  </span>
-                </td>
+        {valeters.length === 0 ? (
+          <p className="px-5 py-16 text-center text-sm text-slate-400">No valeters assigned to this dealership yet.</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Name</th>
+                <th className={TH}>Site</th>
+                <th className={TH}>Pay Reference</th>
+                <th className={TH}>Staff Type</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+            </thead>
+            <tbody>
+              {valeters.map((v) => (
+                <tr
+                  key={v.id}
+                  onClick={() => setSelectedId(v.id)}
+                  className="cursor-pointer border-b border-slate-50 last:border-0 hover:bg-slate-50"
+                >
+                  <td className={`${TD} font-medium text-slate-900`}>
+                    {v.firstName} {v.lastName}
+                  </td>
+                  <td className={TD}>{v.siteName}</td>
+                  <td className={`${TD} font-mono text-xs text-slate-500`}>{v.payId ?? "—"}</td>
+                  <td className={TD}>
+                    <span className={cn(
+                      "rounded-full px-2 py-0.5 text-xs font-semibold",
+                      v.staffType === "SSS"
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-slate-100 text-slate-600",
+                    )}>
+                      {v.staffType ?? "SITE"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
   );
 }
 

@@ -318,6 +318,10 @@ model Booking {
   // Customer review note
   customerReviewNote String?
 
+  // Dealer quality score (1–5 stars) and feedback left on the job card
+  qualityScore Int?    // 1-5
+  qualityNote  String?
+
   // Vehicle sizing for piece-work pricing
   vehicleSize VehicleSize?
 

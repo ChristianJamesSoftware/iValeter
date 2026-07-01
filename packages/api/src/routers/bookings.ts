@@ -293,6 +293,35 @@ export const bookingsRouter = router({
     }),
 
   /**
+   * Dealer/org_admin: submit a quality score (1–5) and optional feedback note
+   * on any booking belonging to their organisation.
+   */
+  submitQuality: protectedProcedure
+    .input(
+      z.object({
+        bookingId: z.string(),
+        qualityScore: z.number().int().min(1).max(5),
+        qualityNote: z.string().max(1000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id: input.bookingId, ...scopeFor(ctx.session) },
+      });
+      if (!booking) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+      }
+      return ctx.prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          qualityScore: input.qualityScore,
+          qualityNote: input.qualityNote ?? null,
+        },
+        select: { id: true, qualityScore: true, qualityNote: true },
+      });
+    }),
+
+  /**
    * Photos for a booking. Dealership users only ever see photography-stage
    * photos — inspection photos are internal to the valeting company.
    */
