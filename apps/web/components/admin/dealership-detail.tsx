@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   Building2, MapPin, Phone, Mail, User, PlusCircle, X,
-  FileText, Users, Layers, Wrench, ClipboardList, Beaker, Edit2, Check,
+  FileText, Users, Layers, Wrench, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2,
 } from "lucide-react";
 import { DealershipAddOns } from "@/components/admin/dealership-addons";
 import { trpc } from "@/lib/trpc/react";
@@ -23,6 +23,7 @@ interface VehicleSizeRate {
 interface TeamMember {
   id: string; firstName: string; lastName: string;
   role: string; payId: string | null; staffType: string | null; siteId: string | null;
+  email: string; organisationId: string;
 }
 interface SiteRow {
   id: string; name: string; address: string | null;
@@ -47,12 +48,13 @@ interface DealershipData {
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "overview",      label: "Overview",         icon: FileText },
-  { id: "sites",         label: "Sites",             icon: Layers },
-  { id: "valetTypes",    label: "Valet Types",       icon: Wrench },
-  { id: "rates",         label: "Vehicle Rates",     icon: ClipboardList },
-  { id: "team",          label: "Team",              icon: Users },
-  { id: "addons",        label: "Add-Ons",           icon: Beaker },
+  { id: "overview",      label: "Overview",            icon: FileText },
+  { id: "sites",         label: "Sites",               icon: Layers },
+  { id: "valetTypes",    label: "Valet Types",         icon: Wrench },
+  { id: "rates",         label: "Vehicle Rates",       icon: ClipboardList },
+  { id: "team",          label: "Site Team",           icon: Users },
+  { id: "valeters",      label: "Valeters",            icon: Car },
+  { id: "addons",        label: "Add-Ons",             icon: Beaker },
   { id: "instructions",  label: "Special Instructions", icon: FileText },
 ] as const;
 
@@ -105,14 +107,17 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
     onSuccess: () => utils.dealerships.getById.invalidate({ id: d.id }),
   });
 
-  // All team members across all sites (deduplicated by user id)
-  const allTeam = Array.from(
+  // All users across all sites (deduplicated by user id)
+  const allUsers = Array.from(
     new Map(
       d.sites.flatMap((s) =>
         (s.users ?? []).map((u) => [u.id, { ...u, siteName: s.name }]),
       ),
     ).values(),
   );
+  // Split: site staff vs valeters
+  const allTeam = allUsers.filter((u) => u.role !== "valeter");
+  const allValeters = allUsers.filter((u) => u.role === "valeter");
 
   // All service types across all sites (deduplicated)
   const allServiceTypes = Array.from(
@@ -228,6 +233,7 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
       {activeTab === "valetTypes" && <ValetTypesTab serviceTypes={allServiceTypes} sites={d.sites} />}
       {activeTab === "rates"      && <VehicleRatesTab rates={allRates} />}
       {activeTab === "team"       && <TeamTab members={allTeam} />}
+      {activeTab === "valeters"    && <ValetersTab valeters={allValeters} />}
       {activeTab === "addons"     && <DealershipAddOns dealershipId={d.id} />}
       {activeTab === "instructions" && (
         <InstructionsTab
@@ -526,11 +532,11 @@ function TeamTab({ members }: { members: (TeamMember & { siteName: string })[] }
             {members.length}
           </span>
         </h2>
-        <p className="mt-0.5 text-xs text-slate-400">All active valeters assigned to sites under this dealership.</p>
+        <p className="mt-0.5 text-xs text-slate-400">Site staff and dealership users assigned to this dealership.</p>
       </div>
 
       {members.length === 0 ? (
-        <p className="px-5 py-16 text-center text-sm text-slate-400">No valeters assigned yet.</p>
+        <p className="px-5 py-16 text-center text-sm text-slate-400">No site team members assigned yet.</p>
       ) : (
         <table className="w-full text-left text-sm">
           <thead>
@@ -557,6 +563,60 @@ function TeamTab({ members }: { members: (TeamMember & { siteName: string })[] }
                       : "bg-slate-100 text-slate-600",
                   )}>
                     {m.staffType ?? "SITE"}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// ─── Valeters tab ────────────────────────────────────────────────────────────
+
+function ValetersTab({ valeters }: { valeters: (TeamMember & { siteName: string })[] }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-5 py-4">
+        <h2 className="font-bold text-slate-900">
+          Valeters
+          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+            {valeters.length}
+          </span>
+        </h2>
+        <p className="mt-0.5 text-xs text-slate-400">Valeters assigned to sites under this dealership.</p>
+      </div>
+
+      {valeters.length === 0 ? (
+        <p className="px-5 py-16 text-center text-sm text-slate-400">No valeters assigned to this dealership yet.</p>
+      ) : (
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr>
+              <th className={TH}>Name</th>
+              <th className={TH}>Site</th>
+              <th className={TH}>Pay Reference</th>
+              <th className={TH}>Staff Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {valeters.map((v) => (
+              <tr key={v.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+                <td className={`${TD} font-medium text-slate-900`}>
+                  {v.firstName} {v.lastName}
+                </td>
+                <td className={TD}>{v.siteName}</td>
+                <td className={`${TD} font-mono text-xs text-slate-500`}>{v.payId ?? "—"}</td>
+                <td className={TD}>
+                  <span className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-semibold",
+                    v.staffType === "SSS"
+                      ? "bg-amber-50 text-amber-700"
+                      : "bg-slate-100 text-slate-600",
+                  )}>
+                    {v.staffType ?? "SITE"}
                   </span>
                 </td>
               </tr>

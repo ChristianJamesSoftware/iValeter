@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Building2, PlusCircle, X } from "lucide-react";
+import { Building2, PlusCircle, X, Power } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/react";
+import { cn } from "@/lib/utils";
 
 interface HeadOfficeData {
   id: string;
@@ -19,9 +20,17 @@ export function HeadOfficeDetail({ headOffice }: { headOffice: HeadOfficeData })
   const router = useRouter();
   const utils = trpc.useUtils();
   const [showForm, setShowForm] = useState(false);
+  const [isActive, setIsActive] = useState(headOffice.isActive);
 
   const dealershipsQ = trpc.organisations.getDealerships.useQuery({ id: headOffice.id });
   const dealerships = dealershipsQ.data ?? [];
+
+  const setActive = trpc.organisations.setActive.useMutation({
+    onSuccess: (_, vars) => {
+      setIsActive(vars.isActive);
+      utils.organisations.list.invalidate();
+    },
+  });
 
   const createDealership = trpc.dealerships.createForHeadOffice.useMutation({
     onSuccess: async () => {
@@ -36,9 +45,20 @@ export function HeadOfficeDetail({ headOffice }: { headOffice: HeadOfficeData })
       <div className="mb-6 flex items-center gap-3">
         <Building2 className="h-6 w-6 text-cyan" />
         <h1 className="font-heading text-2xl font-bold text-navy">{headOffice.name}</h1>
-        <span className={headOffice.isActive ? BADGE_ACTIVE : BADGE_INACTIVE}>
-          {headOffice.isActive ? "Active" : "Inactive"}
+        <span className={isActive ? BADGE_ACTIVE : BADGE_INACTIVE}>
+          {isActive ? "Active" : "Inactive"}
         </span>
+        <button
+          onClick={() => setActive.mutate({ id: headOffice.id, isActive: !isActive })}
+          disabled={setActive.isPending}
+          title={isActive ? "Set inactive" : "Set active"}
+          className={cn(
+            "ml-1 rounded-lg p-1.5 transition hover:bg-slate-100 disabled:opacity-50",
+            isActive ? "text-red-400 hover:text-red-600" : "text-emerald-500 hover:text-emerald-700",
+          )}
+        >
+          <Power className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Info strip */}

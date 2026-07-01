@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ExternalLink } from "lucide-react";
 import { TRPCError } from "@trpc/server";
 import { getServerApi } from "@/lib/trpc/server";
 import { DealershipDetail } from "@/components/admin/dealership-detail";
+import { startImpersonation } from "@/app/admin/impersonate/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +24,54 @@ export default async function DealershipDetailPage({
     throw err;
   }
 
+  // Find a dealership_user or org_admin to impersonate for the preview
+  const allUsers = dealership.sites.flatMap((s) => s.users);
+  const previewUser =
+    allUsers.find((u) => u.role === "dealership_user") ??
+    allUsers.find((u) => u.role === "org_admin") ??
+    null;
+
+  const previewAction = previewUser
+    ? startImpersonation.bind(null, {
+        userId: previewUser.id,
+        organisationId: previewUser.organisationId,
+        siteId: previewUser.siteId ?? null,
+        role: previewUser.role as "dealership_user" | "org_admin",
+        email: previewUser.email,
+        firstName: previewUser.firstName,
+        lastName: previewUser.lastName,
+      })
+    : null;
+
   return (
     <div>
-      <Link
-        href="/admin/dealerships"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-slate hover:text-navy"
-      >
-        <ChevronLeft className="h-4 w-4" /> All dealerships
-      </Link>
+      <div className="mb-4 flex items-center justify-between">
+        <Link
+          href="/admin/dealerships"
+          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
+        >
+          <ChevronLeft className="h-4 w-4" /> All dealerships
+        </Link>
+
+        {/* Preview dealer view */}
+        {previewAction ? (
+          <form action={previewAction}>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Preview as {previewUser!.firstName}
+            </button>
+          </form>
+        ) : (
+          <span className="inline-flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs text-slate-400 cursor-not-allowed">
+            <ExternalLink className="h-3.5 w-3.5" />
+            No site user to preview as
+          </span>
+        )}
+      </div>
+
       <DealershipDetail
         dealership={{
           id: dealership.id,
@@ -63,6 +104,8 @@ export default async function DealershipDetailPage({
               payId: u.payId ?? null,
               staffType: u.staffType ?? null,
               siteId: u.siteId ?? null,
+              email: u.email,
+              organisationId: u.organisationId,
             })),
             vehicleSizeRates: s.vehicleSizeRates.map((r) => ({
               id: r.id,

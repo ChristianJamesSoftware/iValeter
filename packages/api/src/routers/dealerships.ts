@@ -35,8 +35,8 @@ export const dealershipsRouter = router({
                 include: { serviceTypes: { where: { isActive: true } } },
               },
               users: {
-                where: { role: "valeter", isActive: true },
-                select: { id: true, firstName: true, lastName: true, role: true, payId: true, staffType: true, siteId: true },
+                where: { isActive: true },
+                select: { id: true, firstName: true, lastName: true, role: true, payId: true, staffType: true, siteId: true, email: true, organisationId: true },
                 orderBy: { firstName: "asc" },
               },
               vehicleSizeRates: {
@@ -167,5 +167,46 @@ export const dealershipsRouter = router({
           contactPhone: input.contactPhone?.trim() ?? null,
         },
       });
+    }),
+
+  /**
+   * Super admin: add a valet type (service type) to every department
+   * across all sites belonging to a dealership.
+   */
+  addServiceType: superAdminProcedure
+    .input(
+      z.object({
+        dealershipId: z.string(),
+        name: z.string().min(1),
+        durationMins: z.number().int().min(1).max(600),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Resolve all departments under this dealership's sites
+      const dealership = await ctx.prisma.dealership.findUnique({
+        where: { id: input.dealershipId },
+        include: {
+          sites: { include: { departments: { select: { id: true } } } },
+        },
+      });
+      if (!dealership) throw new TRPCError({ code: "NOT_FOUND", message: "Dealership not found" });
+
+      const departments = dealership.sites.flatMap((s) => s.departments);
+      if (departments.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No departments exist on this dealership\u2019s sites. Add a site and department first.",
+        });
+      }
+
+      await ctx.prisma.serviceType.createMany({
+        data: departments.map((d) => ({
+          departmentId: d.id,
+          name: input.name.trim(),
+          durationMins: input.durationMins,
+        })),
+      });
+
+      return { ok: true, count: departments.length };
     }),
 });
