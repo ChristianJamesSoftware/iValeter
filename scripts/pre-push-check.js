@@ -161,6 +161,14 @@ function checkRouterShapes() {
         );
       }
 
+      // ── Bare JSX namespace (React 19 removed global JSX) ─────────────────
+      // Must use React.JSX.Element, not JSX.Element
+      if (/(?<![a-zA-Z.])JSX\./.test(line) && !/React\.JSX\./.test(line) && !/\/\//.test(line.trimStart())) {
+        errors.push(
+          `${rel}:${ln} — React 19: use 'React.JSX.Element' not 'JSX.Element' (global JSX namespace removed): ${line.trim()}`
+        );
+      }
+
       // ── Date fields typed as string in tRPC-facing interfaces ────────────
       // Prisma/tRPC returns Date objects; typing them as string causes build failures.
       // Pattern: inside an interface block, field typed as `string | null` or `string`

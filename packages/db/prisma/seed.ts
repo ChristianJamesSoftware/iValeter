@@ -74,6 +74,7 @@ function hoursFromNow(h: number): Date {
 
 async function main() {
   console.log("Clearing existing data...");
+  await prisma.clockEvent.deleteMany();
   await prisma.jobStatusHistory.deleteMany();
   await prisma.jobPhoto.deleteMany();
   await prisma.booking.deleteMany();
@@ -338,6 +339,104 @@ async function main() {
       });
       prev = to;
     }
+  }
+
+  // ── Historical completed bookings + clock events for Valet Timings report ──
+  console.log("Creating historical bookings and clock events...");
+
+  // Service types to rotate through for realistic variety
+  const historicalServiceTypeNames = ["Full Valet", "Mini Valet", "Showroom Prep", "Handover Detail"];
+  const vehicleSizes = ["SMALL", "MEDIUM", "LARGE", "XL", "VAN"] as const;
+
+  // 40 completed bookings spread over last 30 days across all sites
+  for (let i = 0; i < 40; i++) {
+    const daysAgo = 1 + (i % 28); // days 1–28 ago
+    const siteEntry = sites[i % sites.length]!;
+    const dept = siteEntry.departments[i % siteEntry.departments.length]!;
+    const valeterForSite = valeters.find((v) => v.siteId === siteEntry.site.id)
+      ?? valeters[i % valeters.length]!;
+    const dealershipUser = dealershipUsers[i % dealershipUsers.length]!;
+
+    const stName = historicalServiceTypeNames[i % historicalServiceTypeNames.length]!;
+    const serviceType = await prisma.serviceType.findFirst({
+      where: { departmentId: dept.id, name: stName },
+    });
+    if (!serviceType) continue;
+
+    // Booking time: completed between 9am–4pm on day daysAgo
+    const completedDate = new Date();
+    completedDate.setDate(completedDate.getDate() - daysAgo);
+    completedDate.setHours(9 + (i % 7), (i * 13) % 60, 0, 0);
+    const readyByTime = new Date(completedDate.getTime() + 30 * 60 * 1000);
+    const createdAt = new Date(completedDate.getTime() - 2 * 60 * 60 * 1000);
+
+    const vehicleSize = vehicleSizes[i % vehicleSizes.length]!;
+
+    const historicalBooking = await prisma.booking.create({
+      data: {
+        organisationId: org.id,
+        siteId: siteEntry.site.id,
+        departmentId: dept.id,
+        serviceTypeId: serviceType.id,
+        vehicleReg: `HX${daysAgo}${i} TST`,
+        vehicleMake: "Ford",
+        vehicleModel: "Focus",
+        vehicleColour: "White",
+        customerName: `Test Customer ${i + 1}`,
+        status: BookingStatus.COMPLETED,
+        isPriority: false,
+        readyByTime,
+        assignedToId: valeterForSite.id,
+        createdById: dealershipUser.id,
+        completedAt: completedDate,
+        vehicleSize,
+        createdAt,
+      },
+    });
+
+    // Add status history
+    for (const [from, to] of [
+      [BookingStatus.PENDING, BookingStatus.ASSIGNED],
+      [BookingStatus.ASSIGNED, BookingStatus.IN_PROGRESS],
+      [BookingStatus.IN_PROGRESS, BookingStatus.COMPLETED],
+    ] as const) {
+      await prisma.jobStatusHistory.create({
+        data: {
+          bookingId: historicalBooking.id,
+          userId: valeterForSite.id,
+          fromStatus: from,
+          toStatus: to,
+        },
+      });
+    }
+
+    // Clock events: CLOCK_IN at start of shift, CLOCK_OUT at end
+    // Shift covers the full day (8am–5pm) — duration slightly varied per day
+    const shiftStart = new Date(completedDate);
+    shiftStart.setHours(8, (i * 7) % 20, 0, 0); // 8:00–8:19 clock-in
+    const shiftDurationMins = 420 + (i % 60); // 7h–8h, varied
+    const shiftEnd = new Date(shiftStart.getTime() + shiftDurationMins * 60 * 1000);
+
+    await prisma.clockEvent.create({
+      data: {
+        userId: valeterForSite.id,
+        siteId: siteEntry.site.id,
+        organisationId: org.id,
+        type: "CLOCK_IN",
+        timestamp: shiftStart,
+        createdAt: shiftStart,
+      },
+    });
+    await prisma.clockEvent.create({
+      data: {
+        userId: valeterForSite.id,
+        siteId: siteEntry.site.id,
+        organisationId: org.id,
+        type: "CLOCK_OUT",
+        timestamp: shiftEnd,
+        createdAt: shiftEnd,
+      },
+    });
   }
 
   console.log("Creating holiday requests...");
