@@ -43,3 +43,9 @@ export async function stopImpersonation() {
   await clearImpersonationCookie();
   redirect("/admin/impersonate");
 }
+
+/** Clear impersonation and go back to the dealer preview selector. */
+export async function switchDealer() {
+  await clearImpersonationCookie();
+  redirect("/admin/dealer-preview");
+}
