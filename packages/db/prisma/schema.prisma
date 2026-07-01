@@ -947,6 +947,7 @@ model DealershipAddOn {
   dealershipId String
   addOnId      String
   enabled      Boolean  @default(false)
+  priceGbp     Float?   // price charged to this dealership; null = not set yet
   updatedAt    DateTime @updatedAt
 
   dealership Dealership @relation(fields: [dealershipId], references: [id])

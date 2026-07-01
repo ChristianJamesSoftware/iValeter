@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, superAdminProcedure, protectedProcedure } from "../trpc";
 
 export const addOnsRouter = router({
-  /** All add-ons in the global catalogue (super admin + any authenticated user for display) */
+  /** All add-ons in the global catalogue */
   list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.prisma.addOn.findMany({
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -56,12 +56,11 @@ export const addOnsRouter = router({
   delete: superAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Remove all dealership assignments first
       await ctx.prisma.dealershipAddOn.deleteMany({ where: { addOnId: input.id } });
       return ctx.prisma.addOn.delete({ where: { id: input.id } });
     }),
 
-  /** Get all add-ons for a specific dealership, with enabled status */
+  /** Get all add-ons for a specific dealership with enabled status + price */
   getForDealership: protectedProcedure
     .input(z.object({ dealershipId: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -75,23 +74,28 @@ export const addOnsRouter = router({
         }),
       ]);
 
-      const enabledSet = new Set(
-        assignments.filter((a) => a.enabled).map((a) => a.addOnId),
+      const assignmentMap = new Map(
+        assignments.map((a) => [a.addOnId, a]),
       );
 
-      return allAddOns.map((addon) => ({
-        ...addon,
-        enabled: enabledSet.has(addon.id),
-      }));
+      return allAddOns.map((addon) => {
+        const assignment = assignmentMap.get(addon.id);
+        return {
+          ...addon,
+          enabled:  assignment?.enabled ?? false,
+          priceGbp: assignment?.priceGbp ?? null,
+        };
+      });
     }),
 
-  /** Toggle an add-on on/off for a specific dealership */
+  /** Toggle an add-on on/off and optionally set price for a specific dealership */
   setForDealership: superAdminProcedure
     .input(
       z.object({
         dealershipId: z.string(),
-        addOnId: z.string(),
-        enabled: z.boolean(),
+        addOnId:      z.string(),
+        enabled:      z.boolean(),
+        priceGbp:     z.number().min(0).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -99,14 +103,45 @@ export const addOnsRouter = router({
         where: {
           dealershipId_addOnId: {
             dealershipId: input.dealershipId,
-            addOnId: input.addOnId,
+            addOnId:      input.addOnId,
           },
         },
-        update: { enabled: input.enabled },
+        update: {
+          enabled:  input.enabled,
+          ...(input.priceGbp !== undefined && { priceGbp: input.priceGbp }),
+        },
         create: {
           dealershipId: input.dealershipId,
-          addOnId: input.addOnId,
-          enabled: input.enabled,
+          addOnId:      input.addOnId,
+          enabled:      input.enabled,
+          priceGbp:     input.priceGbp ?? null,
+        },
+      });
+    }),
+
+  /** Update just the price for an enabled add-on (without toggling) */
+  setPriceForDealership: superAdminProcedure
+    .input(
+      z.object({
+        dealershipId: z.string(),
+        addOnId:      z.string(),
+        priceGbp:     z.number().min(0).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.dealershipAddOn.upsert({
+        where: {
+          dealershipId_addOnId: {
+            dealershipId: input.dealershipId,
+            addOnId:      input.addOnId,
+          },
+        },
+        update: { priceGbp: input.priceGbp },
+        create: {
+          dealershipId: input.dealershipId,
+          addOnId:      input.addOnId,
+          enabled:      false,
+          priceGbp:     input.priceGbp,
         },
       });
     }),
