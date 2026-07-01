@@ -139,27 +139,30 @@ export const reportsRouter = router({
         where: {
           userId: { in: valeterIds },
           ...(siteIdFilter ? { siteId: siteIdFilter } : {}),
-          createdAt: { gte: input.dateFrom, lte: input.dateTo },
+          timestamp: { gte: input.dateFrom, lte: input.dateTo },
         },
-        orderBy: { createdAt: "asc" },
+        orderBy: { timestamp: "asc" },
       });
 
       // Pair CLOCK_IN / CLOCK_OUT per valeter per day → total clocked mins
       const clockedMinsByUserDate = new Map<string, number>();
       const eventsByUserDate = new Map<string, typeof clockEvents>();
       for (const ev of clockEvents) {
-        const k = `${ev.userId}:${ev.createdAt.toISOString().slice(0, 10)}`;
+        // Key on timestamp date (the actual shift day), not createdAt
+        const k = `${ev.userId}:${ev.timestamp.toISOString().slice(0, 10)}`;
         if (!eventsByUserDate.has(k)) eventsByUserDate.set(k, []);
         eventsByUserDate.get(k)!.push(ev);
       }
       for (const [k, evs] of eventsByUserDate) {
         let pendingIn: Date | null = null;
         let total = 0;
-        for (const ev of evs) {
+        // Sort by timestamp to ensure correct pairing
+        const sorted = [...evs].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        for (const ev of sorted) {
           if (ev.type === "CLOCK_IN") {
-            pendingIn = ev.createdAt;
+            pendingIn = ev.timestamp;
           } else if (ev.type === "CLOCK_OUT" && pendingIn) {
-            const mins = Math.round((ev.createdAt.getTime() - pendingIn.getTime()) / 60000);
+            const mins = Math.round((ev.timestamp.getTime() - pendingIn.getTime()) / 60000);
             if (mins > 0 && mins < 720) total += mins;
             pendingIn = null;
           }
@@ -168,6 +171,7 @@ export const reportsRouter = router({
       }
 
       // Count bookings per valeter per day for pro-rata split
+      // Key must match the clock event key (timestamp date)
       const bookingsPerUserDate = new Map<string, number>();
       for (const b of completedBookings) {
         const k = `${b.assignedToId!}:${b.completedAt!.toISOString().slice(0, 10)}`;
