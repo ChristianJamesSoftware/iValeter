@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Send, Users, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Send, Users, Loader2, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -80,70 +81,56 @@ export function HqCommandCentre({ sites }: HqCommandCentreProps) {
 
   return (
     <div className="space-y-6">
-      {/* Live Alerts */}
+      {/* Live Alerts — compact summary only */}
       <section>
         <h2 className="mb-3 font-heading text-sm font-black uppercase tracking-wider text-slate-500">
           Live Alerts
         </h2>
         {displayAlerts.length === 0 ? (
-          <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" aria-label="All clear" />
-            <span className="text-sm font-semibold text-emerald-700">
-              All clear — no active alerts
-            </span>
+          <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-3.5">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span className="text-sm font-semibold text-emerald-700">All clear — no active alerts</span>
           </div>
         ) : (
-          <div className="space-y-2">
-            {displayAlerts.map((alert) => (
-              <div
-                key={alert.id}
+          <Link
+            href="/admin/reports"
+            className={cn(
+              "flex items-center gap-3 rounded-2xl border px-5 py-3.5 transition hover:opacity-90",
+              displayAlerts.some((a) => a.severity === "red")
+                ? "border-red-200 bg-red-50"
+                : "border-amber-200 bg-amber-50",
+            )}
+          >
+            <AlertTriangle
+              className={cn(
+                "h-4 w-4 shrink-0",
+                displayAlerts.some((a) => a.severity === "red") ? "text-red-500" : "text-amber-500",
+              )}
+            />
+            <div className="flex-1">
+              <span
                 className={cn(
-                  "flex items-start gap-3 rounded-2xl border p-4",
-                  alert.severity === "red"
-                    ? "border-red-100 bg-red-50"
-                    : "border-amber-100 bg-amber-50",
+                  "text-sm font-semibold",
+                  displayAlerts.some((a) => a.severity === "red") ? "text-red-900" : "text-amber-900",
                 )}
               >
-                <AlertTriangle
-                  className={cn(
-                    "mt-0.5 h-4 w-4 shrink-0",
-                    alert.severity === "red" ? "text-red-600" : "text-amber-600",
-                  )}
-                  aria-label={alert.severity === "red" ? "Critical alert" : "Warning"}
-                />
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={cn(
-                      "text-sm font-medium",
-                      alert.severity === "red" ? "text-red-900" : "text-amber-900",
-                    )}
-                  >
-                    {alert.message}
-                  </p>
-                  {alert.siteName && (
-                    <p
-                      className={cn(
-                        "mt-0.5 text-xs",
-                        alert.severity === "red" ? "text-red-600" : "text-amber-600",
-                      )}
-                    >
-                      {alert.siteName}
-                    </p>
-                  )}
-                </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wider",
-                    alert.severity === "red"
-                      ? "bg-red-200 text-red-800"
-                      : "bg-amber-200 text-amber-800",
-                  )}
-                >
-                  {alert.severity}
+                {displayAlerts.filter((a) => a.severity === "red").length > 0 && (
+                  <span className="mr-2 rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                    {displayAlerts.filter((a) => a.severity === "red").length} critical
+                  </span>
+                )}
+                {displayAlerts.filter((a) => a.severity === "amber").length > 0 && (
+                  <span className="mr-2 rounded-full bg-amber-400 px-2 py-0.5 text-xs font-bold text-white">
+                    {displayAlerts.filter((a) => a.severity === "amber").length} warning
+                  </span>
+                )}
+                <span className={cn(displayAlerts.some((a) => a.severity === "red") ? "text-red-700" : "text-amber-700")}>
+                  active {displayAlerts.length === 1 ? "alert" : "alerts"} — view in Reports
                 </span>
-              </div>
-            ))}
-          </div>
+              </span>
+            </div>
+            <ChevronRight className={cn("h-4 w-4 shrink-0", displayAlerts.some((a) => a.severity === "red") ? "text-red-400" : "text-amber-400")} />
+          </Link>
         )}
       </section>
 
