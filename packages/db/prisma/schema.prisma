@@ -60,8 +60,10 @@ model Dealership {
   contactName    String?
   contactEmail   String?
   contactPhone   String?
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
+  isActive        Boolean      @default(true)
+  xeroContactId   String?
+  xeroContactName String?
+  createdAt       DateTime     @default(now())
 
   sites           Site[]
   dealershipAddOns DealershipAddOn[]
