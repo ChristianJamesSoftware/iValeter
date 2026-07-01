@@ -206,7 +206,16 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
 
       {/* Tab panels */}
       {activeTab === "overview" && (
-        <OverviewTab d={d} onSave={(data) => updateDetails.mutate({ id: d.id, ...data })} saving={updateDetails.isPending} />
+        <OverviewTab d={d} onSave={(data) => updateDetails.mutate({
+          id: d.id,
+          name: data.name ?? undefined,
+          address: data.address ?? undefined,
+          contactName: data.contactName ?? undefined,
+          contactEmail: data.contactEmail ?? undefined,
+          contactPhone: data.contactPhone ?? undefined,
+          specialInstructions: data.specialInstructions ?? undefined,
+          isActive: data.isActive,
+        })} saving={updateDetails.isPending} />
       )}
       {activeTab === "sites" && (
         <SitesTab
