@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, CheckCircle2, Loader2, Download, Landmark } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
+import { TimesheetDetailDrawer } from "@/components/admin/timesheet-detail-drawer";
 
 interface PayrollClientProps {
   initialWeekStart: string;
@@ -33,6 +34,7 @@ const STATUS_CHIP: Record<string, string> = {
 export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [approveSuccess, setApproveSuccess] = useState(false);
+  const [selectedTimesheetId, setSelectedTimesheetId] = useState<string | null>(null);
 
   const { data: summary, refetch } = trpc.hq.payrollSummary.useQuery(
     { weekStart },
@@ -51,6 +53,7 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
   const allApproved = lines.length > 0 && lines.every((l) => l.status === "APPROVED" || l.status === "LOCKED");
 
   return (
+    <>
     <div className="space-y-5">
       {/* Week picker */}
       <div className="flex items-center gap-3">
@@ -160,7 +163,8 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
               lines.map((line) => (
                 <tr
                   key={line.timesheetId}
-                  className="border-b border-slate-50 last:border-0 hover:bg-slate-50"
+                  className="cursor-pointer border-b border-slate-50 last:border-0 hover:bg-slate-50"
+                  onClick={() => setSelectedTimesheetId(line.timesheetId)}
                 >
                   <td className="px-4 py-3 font-medium text-slate-900">
                     {line.name}
@@ -205,5 +209,14 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
         </table>
       </div>
     </div>
+
+    {/* Timesheet detail drawer */}
+    {selectedTimesheetId && (
+      <TimesheetDetailDrawer
+        timesheetId={selectedTimesheetId}
+        onClose={() => setSelectedTimesheetId(null)}
+      />
+    )}
+    </>
   );
 }

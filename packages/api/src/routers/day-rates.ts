@@ -74,6 +74,113 @@ export const dayRatesRouter = router({
       });
     }),
 
+  // ── Dealership operatives ───────────────────────────────────────────────────
+
+  /** List all active operatives for a dealership */
+  listOperatives: orgAdminProcedure
+    .input(z.object({ dealershipId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.dealershipOperative.findMany({
+        where: { dealershipId: input.dealershipId, isActive: true },
+        include: { role: true },
+        orderBy: { createdAt: "asc" },
+      });
+    }),
+
+  /** Add an operative position to a dealership */
+  addOperative: orgAdminProcedure
+    .input(z.object({
+      dealershipId: z.string(),
+      roleId: z.string(),
+      departmentName: z.string().optional(),
+      quantity: z.number().int().min(1).default(1),
+      allocatedHoursPerDay: z.number().min(0.5).max(24).default(8),
+      dayRatePence: z.number().int().min(0),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dealer = await ctx.prisma.dealership.findFirst({
+        where: { id: input.dealershipId, organisationId: ctx.session.organisationId },
+      });
+      if (!dealer) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.prisma.dealershipOperative.create({ data: input });
+    }),
+
+  /** Update an operative position */
+  updateOperative: orgAdminProcedure
+    .input(z.object({
+      id: z.string(),
+      roleId: z.string().optional(),
+      departmentName: z.string().nullable().optional(),
+      quantity: z.number().int().min(1).optional(),
+      allocatedHoursPerDay: z.number().min(0.5).max(24).optional(),
+      dayRatePence: z.number().int().min(0).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      return ctx.prisma.dealershipOperative.update({ where: { id }, data });
+    }),
+
+  /** Remove (soft-delete) an operative */
+  removeOperative: orgAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.dealershipOperative.update({
+        where: { id: input.id },
+        data: { isActive: false },
+      });
+    }),
+
+  // ── Dealership weekly tasks ─────────────────────────────────────────────────
+
+  /** List weekly tasks for a dealership */
+  listWeeklyTasks: orgAdminProcedure
+    .input(z.object({ dealershipId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.dealershipWeeklyTask.findMany({
+        where: { dealershipId: input.dealershipId, isActive: true },
+        orderBy: { createdAt: "asc" },
+      });
+    }),
+
+  /** Add a weekly task */
+  addWeeklyTask: orgAdminProcedure
+    .input(z.object({
+      dealershipId: z.string(),
+      description: z.string().min(1),
+      allocatedHoursPerWeek: z.number().min(0.5),
+      weeklyRatePence: z.number().int().min(0),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dealer = await ctx.prisma.dealership.findFirst({
+        where: { id: input.dealershipId, organisationId: ctx.session.organisationId },
+      });
+      if (!dealer) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.prisma.dealershipWeeklyTask.create({ data: input });
+    }),
+
+  /** Update a weekly task */
+  updateWeeklyTask: orgAdminProcedure
+    .input(z.object({
+      id: z.string(),
+      description: z.string().min(1).optional(),
+      allocatedHoursPerWeek: z.number().min(0.5).optional(),
+      weeklyRatePence: z.number().int().min(0).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      return ctx.prisma.dealershipWeeklyTask.update({ where: { id }, data });
+    }),
+
+  /** Remove a weekly task */
+  removeWeeklyTask: orgAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.dealershipWeeklyTask.update({
+        where: { id: input.id },
+        data: { isActive: false },
+      });
+    }),
+
   // ── Valeter standing charges ────────────────────────────────────────────────
 
   /** List standing charges for a valeter */

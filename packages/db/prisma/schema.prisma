@@ -95,6 +95,8 @@ model Dealership {
   dealershipAddOns DealershipAddOn[]
   notes            DealershipNote[]
   dayRates         DealershipDayRate[]
+  operatives       DealershipOperative[]
+  weeklyTasks      DealershipWeeklyTask[]
 
   @@index([organisationId])
 }
@@ -1393,6 +1395,7 @@ model DayRateRole {
   createdAt      DateTime @default(now())
 
   dealershipDayRates DealershipDayRate[]
+  operatives         DealershipOperative[]
 
   @@unique([organisationId, name])
   @@index([organisationId])
@@ -1483,4 +1486,60 @@ model ValeterExpense {
   @@index([siteId])
   @@index([weekStarting])
   @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEALERSHIP OPERATIVES & WEEKLY TASKS
+// Replaces the flat DealershipDayRate with a richer staffing plan per site.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One operative position allocated to a dealership site.
+/// e.g. "2× Valeting Operative in Sales dept, 8h/day @ £140/day each"
+model DealershipOperative {
+  id           String      @id @default(cuid())
+  dealershipId String
+  dealership   Dealership  @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+
+  roleId       String
+  role         DayRateRole @relation(fields: [roleId], references: [id])
+
+  /// Department at this site (e.g. Sales, Service, Bodyshop). Nullable = all depts.
+  departmentName String?
+
+  /// Number of operatives of this role/dept combination
+  quantity     Int         @default(1)
+
+  /// Allocated working hours per operative per day (used to measure vs booked work)
+  allocatedHoursPerDay Float @default(8)
+
+  /// Day rate charged to dealer per operative (pence)
+  dayRatePence Int
+
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([dealershipId])
+}
+
+/// Recurring additional weekly work required at a dealership.
+/// e.g. "Workshop Cleaning — 2h/week @ £50"
+model DealershipWeeklyTask {
+  id           String     @id @default(cuid())
+  dealershipId String
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+
+  description  String     // e.g. "Workshop Cleaning"
+
+  /// Allocated hours per week for this task
+  allocatedHoursPerWeek Float @default(1)
+
+  /// Weekly charge to dealer (pence)
+  weeklyRatePence Int
+
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([dealershipId])
 }
