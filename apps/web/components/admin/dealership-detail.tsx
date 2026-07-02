@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { DealershipAddOns } from "@/components/admin/dealership-addons";
 import { DealerDepartmentsTab } from "@/components/admin/dealer-departments-tab";
+import { LogoUpload } from "@/components/ui/logo-upload";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -452,24 +453,13 @@ function OverviewTab({
           <h2 className="font-bold text-slate-900">Branding</h2>
         </div>
         {editing ? (
-          <div className="p-5 space-y-3">
-            <div>
-              <label className={LBL_CLS}>Dealership Logo URL</label>
-              <input
-                type="url"
-                value={form.logoUrl}
-                onChange={(e) => setForm((p) => ({ ...p, logoUrl: e.target.value }))}
-                placeholder="https://cdn.example.com/logo.png"
-                className={INPUT_CLS}
-              />
-              <p className="mt-1 text-xs text-slate-400">Paste a publicly accessible image URL. Shown on the customer dashboard partnership banner.</p>
-            </div>
-            {form.logoUrl && (
-              <div className="flex h-16 w-40 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.logoUrl} alt="Logo preview" className="max-h-full max-w-full object-contain" />
-              </div>
-            )}
+          <div className="p-5">
+            <LogoUpload
+              value={form.logoUrl ?? ""}
+              onChange={(v) => setForm((p) => ({ ...p, logoUrl: v }))}
+              label="Dealership logo"
+              hint="PNG, JPG, SVG or WEBP · Max 500 KB · Shown on the customer dashboard partnership banner."
+            />
           </div>
         ) : (
           <div className="px-5 py-4">
@@ -479,10 +469,10 @@ function OverviewTab({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={d.logoUrl} alt="Dealership logo" className="max-h-full max-w-full object-contain" />
                 </div>
-                <p className="text-xs text-slate-500">Logo set — click Edit above to change.</p>
+                <p className="text-xs text-slate-500">Logo uploaded — click Edit above to change.</p>
               </div>
             ) : (
-              <p className="text-sm text-slate-400">No logo uploaded yet. Click Edit to add a logo URL.</p>
+              <p className="text-sm text-slate-400">No logo uploaded yet. Click Edit to upload.</p>
             )}
           </div>
         )}

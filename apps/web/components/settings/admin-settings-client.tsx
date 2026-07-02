@@ -11,6 +11,7 @@ import { ValetLibraryTab } from "@/components/settings/valet-library-tab";
 import { SupportServicesTab } from "@/components/settings/support-services-tab";
 import { VehicleSizesTab } from "@/components/settings/vehicle-sizes-tab";
 import { PaintProtectionTab } from "@/components/settings/paint-protection-tab";
+import { LogoUpload } from "@/components/ui/logo-upload";
 
 
 const TABS = [
@@ -98,19 +99,12 @@ function PlatformTab({ get, save, pending }: { get: GetFn; save: SaveFn; pending
 
       <div className="border-t border-line pt-4">
         <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate">Branding</p>
-        <TextField
-          label="Total Valeting logo URL"
+        <LogoUpload
           value={tvLogo}
           onChange={setTvLogo}
-          placeholder="https://cdn.example.com/tv-logo.png"
-          hint="Shown alongside each dealership's logo on the customer dashboard partnership banner."
+          label="Total Valeting logo"
+          hint="PNG, JPG, SVG or WEBP · Max 500 KB · Shown on the customer dashboard partnership banner."
         />
-        {tvLogo && (
-          <div className="mt-3 flex h-16 w-40 items-center justify-center rounded-lg border border-line bg-offwhite p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={tvLogo} alt="TV logo preview" className="max-h-full max-w-full object-contain" />
-          </div>
-        )}
       </div>
 
       <SaveBar
