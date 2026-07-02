@@ -14,6 +14,15 @@ const GROUP_LABELS: Record<string, string> = {
   WORKSHOP: "Workshop & Behind the Scenes",
 };
 
+function groupLabel(key: string): string {
+  if (GROUP_LABELS[key]) return GROUP_LABELS[key];
+  return key
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 const GROUP_ORDER = ["EXTERIOR", "SHOWROOM_LOUNGES", "WORKSHOP"];
 
 const STATUS_LABELS: Record<string, string> = {
@@ -105,7 +114,7 @@ export function SupportServicesTab() {
       {/* Catalogue groups */}
       {GROUP_ORDER.map((group) => {
         const groupServices = grouped[group] ?? [];
-        const label = GROUP_LABELS[group] ?? group;
+        const label = groupLabel(group);
 
         return (
           <div
@@ -174,7 +183,7 @@ export function SupportServicesTab() {
             >
               {GROUP_ORDER.map((g) => (
                 <option key={g} value={g}>
-                  {GROUP_LABELS[g] ?? g}
+                  {groupLabel(g)}
                 </option>
               ))}
             </select>
@@ -293,12 +302,6 @@ function ServiceRow({
         )}
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <a
-          href={`/admin/settings?tab=support`}
-          className="rounded-lg border border-[#01696F]/30 bg-[#01696F]/5 px-3 py-1.5 text-xs font-semibold text-[#01696F] transition hover:bg-[#01696F]/10"
-        >
-          Add to Booking
-        </a>
         <button
           onClick={onToggle}
           disabled={isToggling}

@@ -9,6 +9,17 @@ const GROUP_LABELS: Record<string, string> = {
   WORKSHOP: "Workshop & Behind the Scenes",
 };
 
+/** Human-readable label for any group key, including custom ones added via settings */
+function groupLabel(key: string): string {
+  if (GROUP_LABELS[key]) return GROUP_LABELS[key];
+  // Convert snake_case / UPPER_SNAKE to Title Case
+  return key
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 function todayString(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -173,7 +184,7 @@ export function CsiBookingForm(): React.JSX.Element {
               {Object.entries(grouped).map(([group, svcs]) => (
                 <optgroup
                   key={group}
-                  label={GROUP_LABELS[group] ?? group}
+                  label={groupLabel(group)}
                 >
                   {svcs.map((svc) => (
                     <option key={svc.id} value={svc.id}>
