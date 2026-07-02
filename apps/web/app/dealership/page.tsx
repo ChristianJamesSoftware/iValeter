@@ -4,6 +4,7 @@ import { getServerApi } from "@/lib/trpc/server";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DealerDashboardClient } from "@/components/dealership/dealer-dashboard-client";
 import { CsiScoreBanner } from "@/components/dealership/csi-score-banner";
+import { PartnershipBanner } from "@/components/dealership/partnership-banner";
 import { ImportBookingsButton } from "@/components/dealership/import-bookings-button";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +65,7 @@ export default async function DealershipDashboard() {
           </div>
         }
       />
+      <PartnershipBanner />
       <CsiScoreBanner />
       <DealerDashboardClient initialJobs={jobs} />
     </div>

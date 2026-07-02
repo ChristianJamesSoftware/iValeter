@@ -612,6 +612,27 @@ export const usersRouter = router({
       });
     }),
 
+  /** Dealership: list this dealership's sites + departments (for add-user form) */
+  listMyDealershipSites: dealershipProcedure.query(async ({ ctx }) => {
+    const session = ctx.session!;
+    const callerUser = await ctx.prisma.user.findUnique({
+      where: { id: session.userId },
+      include: { site: { include: { dealership: true } } },
+    });
+    if (!callerUser?.site?.dealership)
+      throw new TRPCError({ code: "FORBIDDEN", message: "No dealership found" });
+
+    return ctx.prisma.site.findMany({
+      where: { dealershipId: callerUser.site.dealership.id, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        departments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+      },
+      orderBy: { name: "asc" },
+    });
+  }),
+
   /** Dealership: add a user to their own dealership */
   addDealershipUser: dealershipProcedure
     .input(
@@ -621,6 +642,7 @@ export const usersRouter = router({
         lastName: z.string().min(1),
         password: z.string().min(6),
         siteId: z.string(),
+        departmentId: z.string().optional(),
         jobTitle: z.string().optional(),
         mobile: z.string().optional(),
       }),
@@ -651,6 +673,7 @@ export const usersRouter = router({
         data: {
           organisationId: site.organisationId,
           siteId: input.siteId,
+          departmentId: input.departmentId ?? null,
           email: input.email.toLowerCase().trim(),
           firstName: input.firstName.trim(),
           lastName: input.lastName.trim(),

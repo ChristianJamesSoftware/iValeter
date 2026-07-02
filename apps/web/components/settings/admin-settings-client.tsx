@@ -10,7 +10,7 @@ import { ManagementTeamTab } from "@/components/settings/management-team-tab";
 import { ValetLibraryTab } from "@/components/settings/valet-library-tab";
 import { SupportServicesTab } from "@/components/settings/support-services-tab";
 import { VehicleSizesTab } from "@/components/settings/vehicle-sizes-tab";
-import { DepartmentsTab } from "@/components/settings/departments-tab";
+
 
 const TABS = [
   { key: "platform", label: "Platform" },
@@ -21,7 +21,6 @@ const TABS = [
   { key: "library", label: "Valet Library" },
   { key: "support", label: "CSI Services" },
   { key: "vehicle-sizes", label: "Vehicle Sizes" },
-  { key: "departments",   label: "Departments" },
 ];
 
 const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
@@ -73,7 +72,7 @@ export function AdminSettingsClient() {
       {tab === "library" && <ValetLibraryTab />}
       {tab === "support" && <SupportServicesTab />}
       {tab === "vehicle-sizes" && <VehicleSizesTab />}
-      {tab === "departments"   && <DepartmentsTab />}
+
     </div>
   );
 }
@@ -85,6 +84,7 @@ function PlatformTab({ get, save, pending }: { get: GetFn; save: SaveFn; pending
   const [name, setName] = useState(get("PLATFORM_NAME")?.value ?? "");
   const [email, setEmail] = useState(get("SUPPORT_EMAIL")?.value ?? "");
   const [leave, setLeave] = useState(get("DEFAULT_LEAVE_DAYS")?.value ?? "");
+  const [tvLogo, setTvLogo] = useState(get("TV_LOGO_URL")?.value ?? "");
   const [saved, setSaved] = useState(false);
 
   return (
@@ -92,6 +92,24 @@ function PlatformTab({ get, save, pending }: { get: GetFn; save: SaveFn; pending
       <TextField label="Platform name" value={name} onChange={setName} />
       <TextField label="Support email" value={email} onChange={setEmail} type="email" />
       <TextField label="Default leave allowance (days/year)" value={leave} onChange={setLeave} type="number" />
+
+      <div className="border-t border-line pt-4">
+        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate">Branding</p>
+        <TextField
+          label="Total Valeting logo URL"
+          value={tvLogo}
+          onChange={setTvLogo}
+          placeholder="https://cdn.example.com/tv-logo.png"
+          hint="Shown alongside each dealership's logo on the customer dashboard partnership banner."
+        />
+        {tvLogo && (
+          <div className="mt-3 flex h-16 w-40 items-center justify-center rounded-lg border border-line bg-offwhite p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={tvLogo} alt="TV logo preview" className="max-h-full max-w-full object-contain" />
+          </div>
+        )}
+      </div>
+
       <SaveBar
         saving={pending}
         saved={saved}
@@ -101,6 +119,7 @@ function PlatformTab({ get, save, pending }: { get: GetFn; save: SaveFn; pending
             { key: "PLATFORM_NAME", value: name },
             { key: "SUPPORT_EMAIL", value: email },
             { key: "DEFAULT_LEAVE_DAYS", value: leave },
+            { key: "TV_LOGO_URL", value: tvLogo },
           ]);
           setSaved(true);
         }}

@@ -84,6 +84,7 @@ model Dealership {
   paymentTermsNote  String?  // e.g. "Month end + 14 days"
   creditLimit       Float?   // optional credit limit (£)
   isActive             Boolean  @default(true)
+  logoUrl              String?  // dealership brand logo (URL)
   xeroContactId        String?
   xeroContactName      String?
   specialInstructions  String?
@@ -166,6 +167,7 @@ model Department {
   site   Site   @relation(fields: [siteId], references: [id])
   name   String
 
+  users        User[]        @relation("UserDepartment")
   bookings     Booking[]
   serviceTypes ServiceType[]
 
@@ -183,6 +185,8 @@ model User {
   organisation   Organisation @relation(fields: [organisationId], references: [id])
   siteId         String?
   site           Site?        @relation(fields: [siteId], references: [id])
+  departmentId   String?      // for dealership_user: their assigned department
+  department     Department?  @relation("UserDepartment", fields: [departmentId], references: [id])
   email          String       @unique
   passwordHash   String
   firstName      String
@@ -343,7 +347,9 @@ model Booking {
   includeInspection      Boolean @default(false)
   inspectionComplete     Boolean @default(false)
   includeFreshScent      Boolean @default(false)
-  paintProtectionTier    String? // null | "essential" | "standard" | "premium" | "ultimate"
+  paintProtectionTier    String? // legacy — kept for backwards compat, new bookings use paintProtectionProductId
+  paintProtectionProductId String?  // FK → PaintProtectionProduct
+  paintProtectionProduct   PaintProtectionProduct? @relation("BookingPaintProtection", fields: [paintProtectionProductId], references: [id])
   freshScentConfirmed    Boolean @default(false)
   paintProtectionApplied Boolean @default(false)
   photographyPackage     String? // null | "standard" | "premium" | "full"
@@ -1291,4 +1297,29 @@ enum BankChangeStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ─── Paint Protection Products ───────────────────────────────────────────────
+// Configured by ops/super-admin in Settings > Paint Protection.
+// Customer booking form pulls this list to replace the old hardcoded PAINT_TIERS.
+
+model PaintProtectionProduct {
+  id              String   @id @default(cuid())
+  name            String                         // e.g. "Essential", "Ceramic Pro"
+  description     String?                        // short marketing line
+  durationMonths  Int                            // guarantee length in months (6, 12, 60, 120…)
+  guaranteeNote   String?                        // e.g. "Transferable to new owner"
+  priceGbp        Float                          // customer-facing price
+  applicationMins Int      @default(0)           // extra time added to booking slot
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  popular         Boolean  @default(false)       // highlights "Most Popular" badge
+
+  // Bookings that used this product
+  bookings        Booking[] @relation("BookingPaintProtection")
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }

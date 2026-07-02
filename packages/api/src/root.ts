@@ -21,6 +21,7 @@ import { hqRouter } from "./routers/hq";
 import { vehicleSizeRatesRouter } from "./routers/vehicle-size-rates";
 import { inactiveUsersRouter } from "./routers/inactive-users";
 import { addOnsRouter } from "./routers/add-ons";
+import { paintProtectionRouter } from "./routers/paint-protection";
 import { valetLibraryRouter } from "./routers/valet-library";
 import { supportServicesRouter } from "./routers/supportServices";
 import { vehicleSizeConfigRouter } from "./routers/vehicle-size-config";
@@ -50,6 +51,7 @@ export const appRouter = router({
   vehicleSizeRates: vehicleSizeRatesRouter,
   inactiveUsers: inactiveUsersRouter,
   addOns: addOnsRouter,
+  paintProtection: paintProtectionRouter,
   valetLibrary: valetLibraryRouter,
   supportServices: supportServicesRouter,
   vehicleSizeConfig: vehicleSizeConfigRouter,

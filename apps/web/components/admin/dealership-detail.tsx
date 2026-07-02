@@ -4,9 +4,10 @@ import { useState } from "react";
 import { ValeterCardModal } from "@/components/admin/valeter-card-modal";
 import {
   Building2, MapPin, Phone, Mail, User, PlusCircle, X,
-  FileText, Users, Layers, Wrench, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2, StickyNote, Trash2, ChevronDown, ChevronUp, CalendarDays, Briefcase, CreditCard, BadgeCheck,
+  FileText, Users, Layers, Wrench, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2, StickyNote, Trash2, ChevronDown, ChevronUp, CalendarDays, Briefcase, CreditCard, BadgeCheck, LayoutGrid,
 } from "lucide-react";
 import { DealershipAddOns } from "@/components/admin/dealership-addons";
+import { DealerDepartmentsTab } from "@/components/admin/dealer-departments-tab";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -52,20 +53,23 @@ interface DealershipData {
   paymentTermsDays: number | null;
   paymentTermsNote: string | null;
   creditLimit:      number | null;
+  // Branding
+  logoUrl: string | null;
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "overview",      label: "Overview",            icon: FileText },
-  { id: "sites",         label: "Sites",               icon: Layers },
-  { id: "valetTypes",    label: "Valet Types",         icon: Wrench },
-  { id: "rates",         label: "Vehicle Rates",       icon: ClipboardList },
-  { id: "team",          label: "Site Team",           icon: Users },
-  { id: "valeters",      label: "Valeters",            icon: Car },
-  { id: "addons",        label: "Add-Ons",             icon: Beaker },
+  { id: "overview",      label: "Overview",             icon: FileText },
+  { id: "sites",         label: "Sites",                icon: Layers },
+  { id: "departments",   label: "Departments",          icon: LayoutGrid },
+  { id: "valetTypes",    label: "Valet Types",          icon: Wrench },
+  { id: "rates",         label: "Vehicle Rates",        icon: ClipboardList },
+  { id: "team",          label: "Site Team",            icon: Users },
+  { id: "valeters",      label: "Valeters",             icon: Car },
+  { id: "addons",        label: "Add-Ons",              icon: Beaker },
   { id: "instructions",  label: "Special Instructions", icon: FileText },
-  { id: "notes",         label: "Contact Log",          icon: StickyNote },
+  { id: "notes",         label: "Contact Log",           icon: StickyNote },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -240,6 +244,7 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
           onSiteAdded={() => utils.dealerships.getById.invalidate({ id: d.id })}
         />
       )}
+      {activeTab === "departments" && <DealerDepartmentsTab dealershipId={d.id} />}
       {activeTab === "valetTypes" && <ValetTypesTab serviceTypes={allServiceTypes} sites={d.sites} dealershipId={d.id} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "rates"      && <VehicleRatesTab rates={allRates} sites={d.sites} onSaved={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "team"       && <TeamTab members={allTeam} sites={d.sites} organisationId={d.organisation?.id ?? ""} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
@@ -282,6 +287,7 @@ function OverviewTab({
     paymentTermsDays:    d.paymentTermsDays?.toString() ?? "",
     paymentTermsNote:    d.paymentTermsNote    ?? "",
     creditLimit:         d.creditLimit?.toString()    ?? "",
+    logoUrl:             d.logoUrl             ?? "",
   });
 
   function field(key: keyof typeof form, label: string, type = "text") {
@@ -311,6 +317,7 @@ function OverviewTab({
       paymentTermsDays: form.paymentTermsDays ? parseInt(form.paymentTermsDays, 10) : null,
       paymentTermsNote: form.paymentTermsNote || null,
       creditLimit:      form.creditLimit ? parseFloat(form.creditLimit) : null,
+      logoUrl:          form.logoUrl || null,
     });
     setEditing(false);
   }
@@ -435,6 +442,48 @@ function OverviewTab({
               value={d.creditLimit != null ? `£${d.creditLimit.toLocaleString("en-GB", { minimumFractionDigits: 2 })}` : null}
               icon={CreditCard}
             />
+          </div>
+        )}
+      </div>
+
+      {/* ── Branding ─────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h2 className="font-bold text-slate-900">Branding</h2>
+        </div>
+        {editing ? (
+          <div className="p-5 space-y-3">
+            <div>
+              <label className={LBL_CLS}>Dealership Logo URL</label>
+              <input
+                type="url"
+                value={form.logoUrl}
+                onChange={(e) => setForm((p) => ({ ...p, logoUrl: e.target.value }))}
+                placeholder="https://cdn.example.com/logo.png"
+                className={INPUT_CLS}
+              />
+              <p className="mt-1 text-xs text-slate-400">Paste a publicly accessible image URL. Shown on the customer dashboard partnership banner.</p>
+            </div>
+            {form.logoUrl && (
+              <div className="flex h-16 w-40 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.logoUrl} alt="Logo preview" className="max-h-full max-w-full object-contain" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="px-5 py-4">
+            {d.logoUrl ? (
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-32 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={d.logoUrl} alt="Dealership logo" className="max-h-full max-w-full object-contain" />
+                </div>
+                <p className="text-xs text-slate-500">Logo set — click Edit above to change.</p>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">No logo uploaded yet. Click Edit to add a logo URL.</p>
+            )}
           </div>
         )}
       </div>

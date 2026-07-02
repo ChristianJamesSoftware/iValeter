@@ -75,6 +75,8 @@ export const dealershipsRouter = router({
         paymentTermsDays: z.number().int().nullable().optional(),
         paymentTermsNote: z.string().nullable().optional(),
         creditLimit:      z.number().nullable().optional(),
+        // Branding
+        logoUrl: z.string().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -355,4 +357,28 @@ export const dealershipsRouter = router({
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.dealershipNote.delete({ where: { id: input.id } });
     }),
+
+  /**
+   * Returns the dealer's own logo URL + the Total Valeting platform logo URL.
+   * Used by the customer dashboard partnership banner.
+   */
+  getPartnershipLogos: protectedProcedure.query(async ({ ctx }) => {
+    // Resolve the caller's dealership via their site
+    const user = await ctx.prisma.user.findUnique({
+      where: { id: ctx.session.userId },
+      include: { site: { include: { dealership: { select: { id: true, name: true, logoUrl: true } } } } },
+    });
+    const dealership = user?.site?.dealership ?? null;
+
+    // TV logo stored in platform config
+    const tvConfig = await ctx.prisma.platformConfig.findUnique({
+      where: { key: "TV_LOGO_URL" },
+    });
+
+    return {
+      dealerLogoUrl:  dealership?.logoUrl  ?? null,
+      dealerName:     dealership?.name     ?? null,
+      tvLogoUrl:      tvConfig?.value      ?? null,
+    };
+  }),
 });

@@ -89,6 +89,7 @@ export default async function DealershipDetailPage({
           paymentTermsDays: dealership.paymentTermsDays ?? null,
           paymentTermsNote: dealership.paymentTermsNote ?? null,
           creditLimit:      dealership.creditLimit      ?? null,
+          logoUrl:          dealership.logoUrl           ?? null,
           sites: dealership.sites.map((s) => ({
             id: s.id,
             name: s.name,
