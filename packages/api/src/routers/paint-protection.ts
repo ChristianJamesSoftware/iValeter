@@ -22,7 +22,8 @@ export const paintProtectionRouter = router({
       z.object({
         name: z.string().min(1),
         description: z.string().optional(),
-        durationMonths: z.number().int().min(1),
+        detailedDescription: z.string().optional(),
+        durationMonths: z.number().int().min(0),
         guaranteeNote: z.string().optional(),
         priceGbp: z.number().min(0),
         applicationMins: z.number().int().min(0).default(0),
@@ -35,6 +36,7 @@ export const paintProtectionRouter = router({
         data: {
           name: input.name.trim(),
           description: input.description?.trim() ?? null,
+          detailedDescription: input.detailedDescription?.trim() ?? null,
           durationMonths: input.durationMonths,
           guaranteeNote: input.guaranteeNote?.trim() ?? null,
           priceGbp: input.priceGbp,
@@ -51,7 +53,8 @@ export const paintProtectionRouter = router({
         id: z.string(),
         name: z.string().min(1).optional(),
         description: z.string().optional(),
-        durationMonths: z.number().int().min(1).optional(),
+        detailedDescription: z.string().optional(),
+        durationMonths: z.number().int().min(0).optional(),
         guaranteeNote: z.string().optional(),
         priceGbp: z.number().min(0).optional(),
         applicationMins: z.number().int().min(0).optional(),
@@ -67,6 +70,7 @@ export const paintProtectionRouter = router({
         data: {
           ...(data.name !== undefined && { name: data.name.trim() }),
           ...(data.description !== undefined && { description: data.description.trim() || null }),
+          ...(data.detailedDescription !== undefined && { detailedDescription: data.detailedDescription.trim() || null }),
           ...(data.durationMonths !== undefined && { durationMonths: data.durationMonths }),
           ...(data.guaranteeNote !== undefined && { guaranteeNote: data.guaranteeNote.trim() || null }),
           ...(data.priceGbp !== undefined && { priceGbp: data.priceGbp }),

@@ -1305,9 +1305,10 @@ enum BankChangeStatus {
 
 model PaintProtectionProduct {
   id              String   @id @default(cuid())
-  name            String                         // e.g. "Essential", "Ceramic Pro"
-  description     String?                        // short marketing line
-  durationMonths  Int                            // guarantee length in months (6, 12, 60, 120…)
+  name                  String                         // e.g. "Essential", "Ceramic Pro"
+  description           String?                        // short marketing line shown on booking card
+  detailedDescription   String?                        // full detail shown via info icon
+  durationMonths        Int                            // guarantee length in months (0 = no guarantee)
   guaranteeNote   String?                        // e.g. "Transferable to new owner"
   priceGbp        Float                          // customer-facing price
   applicationMins Int      @default(0)           // extra time added to booking slot

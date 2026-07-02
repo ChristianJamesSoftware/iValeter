@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ShieldCheck, Sparkles, Droplets, Camera, Ban } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Sparkles, Droplets, Camera, Ban, Info } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -572,35 +572,50 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {(paintProductsQuery.data ?? []).map((product) => {
                   const selected = paintProtectionProductId === product.id;
-                  const guaranteeLabel = product.durationMonths >= 12
-                    ? `${Math.round(product.durationMonths / 12)} yr${Math.round(product.durationMonths / 12) !== 1 ? "s" : ""}`
-                    : `${product.durationMonths} mo`;
+                  const guaranteeLabel = product.durationMonths === 0
+                    ? null
+                    : product.durationMonths >= 12
+                      ? `${Math.round(product.durationMonths / 12)} year${Math.round(product.durationMonths / 12) !== 1 ? "s" : ""} guarantee`
+                      : `${product.durationMonths} month${product.durationMonths !== 1 ? "s" : ""} guarantee`;
                   return (
-                    <button
-                      key={product.id}
-                      type="button"
-                      onClick={() => setPaintProtectionProductId(product.id)}
-                      className={cn(
-                        "rounded-lg border-2 p-3 text-left transition",
-                        selected
-                          ? "border-cyan bg-cyan/10 ring-2 ring-cyan/30"
-                          : "border-line bg-white hover:border-cyan/50",
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-heading font-bold text-navy">{product.name}</span>
-                        {product.popular && (
-                          <span className="rounded-full bg-cyan px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy">Popular</span>
+                    <div key={product.id} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setPaintProtectionProductId(product.id)}
+                        className={cn(
+                          "w-full rounded-lg border-2 p-3 text-left transition",
+                          selected
+                            ? "border-cyan bg-cyan/10 ring-2 ring-cyan/30"
+                            : "border-line bg-white hover:border-cyan/50",
                         )}
-                      </div>
-                      <p className="text-sm font-semibold text-cyan-600">{guaranteeLabel}</p>
-                      {product.description && (
-                        <p className="mt-0.5 text-xs text-slate">{product.description}</p>
+                      >
+                        <div className="flex items-center justify-between pr-6">
+                          <span className="font-heading font-bold text-navy">{product.name}</span>
+                          {product.popular && (
+                            <span className="rounded-full bg-cyan px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy">Popular</span>
+                          )}
+                        </div>
+                        {guaranteeLabel && (
+                          <p className="text-sm font-semibold text-cyan-600">{guaranteeLabel}</p>
+                        )}
+                        {product.description && (
+                          <p className="mt-0.5 text-xs text-slate">{product.description}</p>
+                        )}
+                        {product.priceGbp > 0 && (
+                          <p className="mt-1 text-xs font-semibold text-navy">£{product.priceGbp.toFixed(2)}</p>
+                        )}
+                      </button>
+                      {product.detailedDescription && (
+                        <div className="group absolute right-2 top-2">
+                          <button type="button" className="flex h-6 w-6 items-center justify-center rounded-full text-slate hover:text-cyan">
+                            <Info className="h-4 w-4" />
+                          </button>
+                          <div className="pointer-events-none absolute right-0 top-7 z-20 w-64 rounded-xl border border-line bg-white p-3 text-xs text-slate shadow-lg opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+                            {product.detailedDescription}
+                          </div>
+                        </div>
                       )}
-                      {product.priceGbp > 0 && (
-                        <p className="mt-1 text-xs font-semibold text-navy">£{product.priceGbp.toFixed(2)}</p>
-                      )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>

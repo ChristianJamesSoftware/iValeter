@@ -8,6 +8,7 @@ type Product = {
   id: string;
   name: string;
   description: string | null;
+  detailedDescription: string | null;
   durationMonths: number;
   guaranteeNote: string | null;
   priceGbp: number;
@@ -20,6 +21,7 @@ type Product = {
 const blank = {
   name: "",
   description: "",
+  detailedDescription: "",
   durationMonths: 12,
   guaranteeNote: "",
   priceGbp: 0,
@@ -69,28 +71,40 @@ function ProductForm({
 
         {/* Description */}
         <div className="col-span-2">
-          <label className="mb-1 block text-xs font-medium text-slate">Description</label>
+          <label className="mb-1 block text-xs font-medium text-slate">Short Description</label>
           <input
             value={v.description}
             onChange={f("description")}
-            placeholder="Short marketing line shown to customer"
+            placeholder="One line shown on the booking card"
             className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+          />
+        </div>
+
+        {/* Detailed description */}
+        <div className="col-span-2">
+          <label className="mb-1 block text-xs font-medium text-slate">Detailed Description</label>
+          <textarea
+            value={v.detailedDescription}
+            onChange={f("detailedDescription")}
+            rows={3}
+            placeholder="Full detail shown when customer taps the info icon (e.g. what the product contains, how it works)"
+            className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
           />
         </div>
 
         {/* Duration */}
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate">Guarantee (months)</label>
+          <label className="mb-1 block text-xs font-medium text-slate">Guarantee (months, 0 = none)</label>
           <input
             type="number"
-            min={1}
+            min={0}
             value={v.durationMonths}
             onChange={f("durationMonths")}
             className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
           />
-          {v.durationMonths > 0 && (
-            <p className="mt-1 text-xs text-slate">{durationLabel(v.durationMonths)} guarantee</p>
-          )}
+          <p className="mt-1 text-xs text-slate">
+            {v.durationMonths === 0 ? "No guarantee" : `${durationLabel(v.durationMonths)} guarantee`}
+          </p>
         </div>
 
         {/* Price */}
@@ -224,6 +238,7 @@ export function PaintProtectionTab() {
                     initial={{
                       name: p.name,
                       description: p.description ?? "",
+                      detailedDescription: p.detailedDescription ?? "",
                       durationMonths: p.durationMonths,
                       guaranteeNote: p.guaranteeNote ?? "",
                       priceGbp: p.priceGbp,
