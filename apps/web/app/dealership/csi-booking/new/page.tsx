@@ -15,7 +15,7 @@ export default async function NewCsiBookingPage() {
         title="CSI Support Booking"
         subtitle="Book a specialist cleaning service for your site"
       />
-      <CsiBookingForm />
+      <CsiBookingForm siteId={session.siteId ?? undefined} />
     </div>
   );
 }

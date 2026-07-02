@@ -126,13 +126,12 @@ function SectionDivider({ label }: { label: string }) {
 
 // ─── Main form ────────────────────────────────────────────────────────────────
 
-export function CsiBookingForm(): React.JSX.Element {
+export function CsiBookingForm({ siteId: propSiteId }: { siteId?: string }): React.JSX.Element {
   const servicesQuery = trpc.supportServices.list.useQuery();
-  const sitesQuery    = trpc.sites.list.useQuery();
 
   const [selectedIds,     setSelectedIds]    = useState<Set<string>>(new Set());
   const [collapsed,       setCollapsed]      = useState<Set<string>>(new Set());
-  const [siteId,          setSiteId]         = useState("");
+  const [siteId,          setSiteId]         = useState(propSiteId ?? "");
   const [requiredByDate,  setRequiredByDate]  = useState(minCsiDateString());
   const [contactName,     setContactName]     = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
@@ -151,7 +150,6 @@ export function CsiBookingForm(): React.JSX.Element {
   });
 
   const services = servicesQuery.data ?? [];
-  const sites    = sitesQuery.data    ?? [];
 
   const grouped: Record<string, typeof services> = {};
   for (const svc of services) {
@@ -192,7 +190,7 @@ export function CsiBookingForm(): React.JSX.Element {
   }
 
   function handleMakeAnother() {
-    setSubmitted(false); setSelectedIds(new Set()); setSiteId("");
+    setSubmitted(false); setSelectedIds(new Set()); setSiteId(propSiteId ?? "");
     setRequiredByDate(minCsiDateString()); setContactName("");
     setSpecialRequests(""); setNotes(""); bookMultiple.reset();
   }
@@ -330,19 +328,6 @@ export function CsiBookingForm(): React.JSX.Element {
         </div>
 
         <SectionDivider label="Booking Details" />
-
-        <Field label="Site" required>
-          {sitesQuery.isLoading ? (
-            <div className="flex h-12 items-center text-sm text-slate-400">
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Loading sites…
-            </div>
-          ) : (
-            <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={INPUT_CLS}>
-              <option value="">Select a site…</option>
-              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          )}
-        </Field>
 
         <Field label="Date Required By" required>
           <input type="date" value={requiredByDate} min={minCsiDateString()}

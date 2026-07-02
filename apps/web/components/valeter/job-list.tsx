@@ -7,13 +7,14 @@ import { trpc } from "@/lib/trpc/react";
 import { BookingCard, type BookingCardData } from "@/components/brand/booking-card";
 import { Search, X } from "lucide-react";
 
-type Filter = "ALL" | "PRIORITY" | "PENDING" | "IN_PROGRESS";
+type Filter = "ALL" | "PRIORITY" | "PENDING" | "IN_PROGRESS" | "COMPLETED";
 
 const FILTERS: { key: Filter; label: string }[] = [
-  { key: "ALL", label: "All" },
+  { key: "ALL", label: "Active" },
   { key: "PRIORITY", label: "Priority" },
   { key: "PENDING", label: "To Do" },
   { key: "IN_PROGRESS", label: "In Progress" },
+  { key: "COMPLETED", label: "Done" },
 ];
 
 interface Job extends BookingCardData {
@@ -33,8 +34,10 @@ export function ValeterJobList({ initialJobs }: { initialJobs: Job[] }) {
 
   const filtered = useMemo(() => {
     let result = jobs.filter((j) => {
-      if (filter === "ALL") return true;
-      if (filter === "PRIORITY") return j.isPriority;
+      if (filter === "ALL")
+        return (j.status as BookingStatus) !== "COMPLETED";
+      if (filter === "PRIORITY")
+        return j.isPriority && (j.status as BookingStatus) !== "COMPLETED";
       if (filter === "PENDING")
         return (
           (j.status as BookingStatus) === "ASSIGNED" ||
@@ -45,6 +48,8 @@ export function ValeterJobList({ initialJobs }: { initialJobs: Job[] }) {
           (j.status as BookingStatus) === "IN_PROGRESS" ||
           (j.status as BookingStatus) === "QC_CHECK"
         );
+      if (filter === "COMPLETED")
+        return (j.status as BookingStatus) === "COMPLETED";
       return true;
     });
 
