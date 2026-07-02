@@ -11,7 +11,7 @@ export default async function DealershipTeamPage() {
   return (
     <div>
       <PageHeader
-        title="Dealership Team"
+        title="Customer Team"
         subtitle="Dealership staff who can access the booking portal"
       />
       <DealershipTeamManager sites={sites.map((s) => ({ id: s.id, name: s.name }))} />

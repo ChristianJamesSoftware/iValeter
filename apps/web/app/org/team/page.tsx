@@ -14,7 +14,7 @@ export default async function OrgTeamPage() {
   return (
     <div>
       <PageHeader
-        title="Team Management"
+        title="Valeting Team"
         subtitle="Your valeters across all sites"
       />
       <TeamManager
