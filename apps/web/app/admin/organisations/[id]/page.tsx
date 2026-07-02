@@ -26,7 +26,7 @@ export default async function HeadOfficeDetailPage({
   return (
     <div>
       <Link
-        href="/admin/organisations"
+        href="/admin/network"
         className="mb-4 inline-flex items-center gap-1 text-sm text-slate hover:text-navy"
       >
         <ChevronLeft className="h-4 w-4" /> All head offices
