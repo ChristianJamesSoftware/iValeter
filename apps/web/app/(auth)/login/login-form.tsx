@@ -6,19 +6,11 @@ import { loginAction, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
 
-const DEMO_ACCOUNTS = [
-  { email: "admin@ivaleter.co.uk", password: "admin123", role: "Super Admin" },
-  { email: "manager@totalvaleting.co.uk", password: "test123", role: "Manager" },
-  {
-    email: "dealer.arnold@totalvaleting.co.uk",
-    password: "test123",
-    role: "Dealer",
-  },
-  {
-    email: "james.mitchell@totalvaleting.co.uk",
-    password: "test123",
-    role: "Valeter",
-  },
+const QUICK_ACCESS = [
+  { email: "admin@ivaleter.co.uk",              password: "IceDogs99!", role: "Super Admin" },
+  { email: "manager@totalvaleting.co.uk",        password: "IceDogs99!", role: "Manager" },
+  { email: "dealer.arnold@totalvaleting.co.uk",  password: "IceDogs99!", role: "Dealer" },
+  { email: "james.mitchell@totalvaleting.co.uk", password: "IceDogs99!", role: "Valeter" },
 ];
 
 function SubmitButton() {
@@ -102,12 +94,12 @@ export function LoginForm({ resetSuccess, dark }: { resetSuccess?: boolean; dark
         <SubmitButton />
       </form>
 
-      <div className="mt-8">
+      <div className="mt-6 border-t border-slate-100 pt-5">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
           Quick access
         </p>
         <ul className="space-y-1">
-          {DEMO_ACCOUNTS.map((acc) => (
+          {QUICK_ACCESS.map((acc) => (
             <li key={acc.email}>
               <button
                 type="button"
@@ -117,12 +109,8 @@ export function LoginForm({ resetSuccess, dark }: { resetSuccess?: boolean; dark
                 }}
                 className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors hover:bg-slate-50"
               >
-                <span className="text-sm font-medium text-slate-700">
-                  {acc.email}
-                </span>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                  {acc.role}
-                </span>
+                <span className="text-sm font-medium text-slate-700">{acc.role}</span>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{acc.email}</span>
               </button>
             </li>
           ))}
