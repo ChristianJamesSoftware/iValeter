@@ -31,6 +31,7 @@ export default async function ValeterHomePage() {
     inspectionComplete: b.inspectionComplete,
     includeFreshScent: b.includeFreshScent,
     paintProtectionTier: b.paintProtectionTier,
+    qualityScore: b.qualityScore ?? undefined,
   }));
 
   // Get site geofence for the valeter's assigned site

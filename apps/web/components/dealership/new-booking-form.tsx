@@ -193,6 +193,15 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
 
   const hasDuplicate = !!(dupQuery.data && !overrideDuplicate);
 
+  // Auto-sync valet library into booking form service types on mount / site change
+  const syncLibrary = trpc.valetLibrary.syncValetLibraryForSite.useMutation();
+  useEffect(() => {
+    if (siteId) {
+      syncLibrary.mutate({ siteId });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteId]);
+
   const canSubmit =
     siteId &&
     departmentId &&

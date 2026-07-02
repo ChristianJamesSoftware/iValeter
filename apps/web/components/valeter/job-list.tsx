@@ -121,6 +121,7 @@ export function ValeterJobList({ initialJobs }: { initialJobs: Job[] }) {
               key={job.id}
               booking={job}
               href={`/valeter/jobs/${job.id}`}
+              variant="valeter"
             />
           ))}
         </div>

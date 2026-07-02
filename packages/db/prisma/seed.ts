@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 const SITE_NAMES = [
-  "Arnold Clark Milton Keynes",
+  "Buckingham Ford",
   "Lookers Aylesbury",
   "Pentagon Northampton",
 ];
