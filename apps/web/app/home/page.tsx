@@ -3,7 +3,7 @@ import Link from "next/link";
 export const metadata = {
   title: "iValeter — Valeting Management Built for UK Dealerships",
   description:
-    "iValeter is the only platform built specifically for dealership valeting operations. Real-time job tracking, geofenced timesheets, CSI quality scoring and Xero integration — all in one place.",
+    "iValeter is the only platform built specifically for dealership valeting operations. Real-time job tracking, geofenced timesheets, CSI quality scoring and accounting integration — all in one place.",
 };
 
 export default function HomePage() {
@@ -312,7 +312,7 @@ export default function HomePage() {
                     <span className="iv-hero-accent">your entire valet operation</span>
                   </h1>
                   <p className="iv-hero-sub">
-                    From booking to completion — real-time tracking, automated payroll, CSI scoring and Xero integration. Every role has exactly what they need. No paper. No chasing.
+                    From booking to completion — real-time tracking, automated payroll, CSI scoring and accounting integration. Every role has exactly what they need. No paper. No chasing.
                   </p>
                   <div className="iv-hero-actions">
                     <a href="#iv-contact" className="iv-btn iv-btn-primary">Request a Demo</a>
@@ -466,11 +466,11 @@ export default function HomePage() {
                   { icon: <><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></>, color: "iv-sage", title: "CSI Quality Scoring", desc: "Score every completed job 1–5 stars. Track quality per valeter, per site, per week. The only platform linking prep quality directly to CSI outcomes." },
                   { icon: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>, color: "iv-orange", title: "Vehicle Parking Pin", desc: "When a valeter parks a finished vehicle they drop a GPS pin on their app. The exact location is saved to the job — visible to managers as a Google Maps link." },
                   { icon: <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></>, color: "iv-sage", title: "Before & After Photos", desc: "Valeters photograph damage before touching a vehicle. After photos go to the customer portal — showcases the result and protects against false claims." },
-                  { icon: <><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>, color: "iv-orange", title: "Xero Integration & Payroll", desc: "Timesheet data flows into Xero. Payroll runs are generated weekly with NatWest Bankline export. Nominal codes and valet codes mapped automatically." },
+                  { icon: <><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>, color: "iv-orange", title: "Accounting Integration & Payroll", desc: "Timesheet data flows directly into your accounting software. Payroll runs are generated weekly with banking export. Valet codes mapped automatically." },
                   { icon: <><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>, color: "iv-sage", title: "Days in Prep Reporting", desc: "Track exactly how long each vehicle takes from booking to completion — by sales vs service, by site, by period. Show customers how quickly you turn cars around." },
                   { icon: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>, color: "iv-orange", title: "Spend Gatekeeper", desc: "Set a budget limit at booking time. Valeter and manager are alerted if costs approach the limit. Finance directors get full spend visibility — no surprises at month end." },
                   { icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>, color: "iv-sage", title: "Smart Broadcast & Feedback", desc: "Send weekly pulse messages to your team — they reply in one tap. Share 5-star reviews and CSI achievements direct to your Head of Business. SMS and email ready." },
-                  { icon: <><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></>, color: "iv-orange", title: "Accident & Damage Records", desc: "Log vehicle accidents against the valeter's card. Record the £1,000 excess, set a weekly deduction and track recovery — fully auditable from the admin panel." },
+                  { icon: <><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></>, color: "iv-orange", title: "Accident & Damage Records", desc: "Log vehicle accidents against the valeter's card. Set a weekly deduction and track full recovery — fully auditable from the admin panel." },
                   { icon: <><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></>, color: "iv-sage", title: "Duplicate Job Prevention", desc: "Automatic alert when a reg plate is already active in the system. The booker can review or override — no more duplicate prep orders for the same vehicle." },
                 ].map((f, i) => (
                   <div key={i} className="iv-feature-card">
@@ -544,13 +544,13 @@ export default function HomePage() {
               <div className="iv-compare-table">
                 <div className="iv-compare-col iv-compare-them">
                   <div className="iv-compare-col-head">Everyone else</div>
-                  {["Valet buried in a DMS module nobody uses","No valeter mobile app — or one that crashes","No real-time bay visibility without hardware","Payroll done on spreadsheets","Zero CSI linkage to prep quality","No support for contractor + in-house valeters","No Xero integration — invoices emailed as PDFs","Before/after photos? Paper file or WhatsApp"].map(t=>(
+                  {["Valet buried in a DMS module nobody uses","No valeter mobile app — or one that crashes","No real-time bay visibility without hardware","Payroll done on spreadsheets","Zero CSI linkage to prep quality","No support for contractor + in-house valeters","No accounting integration — invoices emailed as PDFs","Before/after photos? Paper file or WhatsApp"].map(t=>(
                     <div key={t} className="iv-compare-item iv-bad">{t}</div>
                   ))}
                 </div>
                 <div className="iv-compare-col iv-compare-us">
                   <div className="iv-compare-col-head">iValeter</div>
-                  {["Valet management is the whole platform","Mobile-first valeter portal — works on any device","Live job board, geofenced clock-in, no hardware","Automated payroll with NatWest Bankline export","Quality scores per job linked to CSI outcomes","Internal & external valeters managed together","Direct Xero integration, nominal code mapping","Camera-based photo proof on every job"].map(t=>(
+                  {["Valet management is the whole platform","Mobile-first valeter portal — works on any device","Live job board, geofenced clock-in, no hardware","Automated payroll with direct banking export","Quality scores per job linked to CSI outcomes","Internal & external valeters managed together","Direct accounting software integration","Camera-based photo proof on every job"].map(t=>(
                     <div key={t} className="iv-compare-item iv-good">{t}</div>
                   ))}
                 </div>
@@ -565,10 +565,10 @@ export default function HomePage() {
               <h2>Connects to the tools you already use</h2>
               <div className="iv-chip-row">
                 {[
-                  { label: "Xero", icon: <><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></> },
+                  { label: "Accounting Software", icon: <><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></> },
                   { label: "Samsara Fleet", icon: <><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></> },
                   { label: "Google Maps", icon: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></> },
-                  { label: "NatWest Bankline", icon: <><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></> },
+                  { label: "Banking Export", icon: <><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></> },
                 ].map(c=>(
                   <div key={c.label} className="iv-chip">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{c.icon}</svg>
