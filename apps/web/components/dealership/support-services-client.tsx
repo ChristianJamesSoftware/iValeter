@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, X, Loader2, Calendar, MapPin, User, FileText, Sparkles } from "lucide-react";
+import { CheckCircle2, X, Loader2, Calendar, MapPin, User, FileText, Sparkles, PhoneCall } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import type { RouterOutputs } from "@/lib/trpc/react";
 
@@ -68,7 +68,9 @@ export function SupportServicesClient() {
         <div>
           <p className="text-lg font-bold text-slate-900">Request submitted</p>
           <p className="mt-1 text-sm text-slate-500">
-            Our team will be in touch to confirm your booking.
+            {selectedService?.id === "__callback__"
+              ? "We\'ll be in touch shortly to discuss your requirements."
+              : "Our team will be in touch to confirm your booking."}
           </p>
         </div>
         <button
@@ -156,6 +158,23 @@ export function SupportServicesClient() {
         </div>
       )}
 
+      {/* Catch-all callback card */}
+      <section>
+        <button
+          onClick={() => setSelectedService({ id: "__callback__", name: "Support with another service", group: "OTHER", description: null, isActive: true, createdAt: new Date(), organisationId: "" })}
+          className="flex w-full items-center gap-4 rounded-2xl border-2 border-dashed border-[#01696F]/30 bg-[#01696F]/5 p-5 text-left transition hover:border-[#01696F]/60 hover:bg-[#01696F]/10 focus:outline-none focus:ring-2 focus:ring-[#01696F]/40"
+        >
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#01696F]/10 text-[#01696F]">
+            <PhoneCall className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#28251D]">Support with another service</p>
+            <p className="mt-0.5 text-xs text-slate-500">Not sure what you need? Tell us and we&apos;ll contact you to discuss.</p>
+          </div>
+          <span className="text-xs font-semibold text-[#01696F] whitespace-nowrap">Get a callback →</span>
+        </button>
+      </section>
+
       {/* Booking Modal */}
       {selectedService && (
         <BookingModal
@@ -163,6 +182,8 @@ export function SupportServicesClient() {
           sites={sitesData.map((s) => ({ id: s.id, name: s.name }))}
           onClose={() => setSelectedService(null)}
           onSuccess={() => setBookingSuccess(true)}
+          isCallback={selectedService.id === "__callback__"}
+          fallbackServiceId={services[0]?.id ?? ""}
         />
       )}
     </div>
@@ -174,11 +195,15 @@ function BookingModal({
   sites,
   onClose,
   onSuccess,
+  isCallback = false,
+  fallbackServiceId = "",
 }: {
   service: SupportService;
   sites: { id: string; name: string }[];
   onClose: () => void;
   onSuccess: () => void;
+  isCallback?: boolean;
+  fallbackServiceId?: string;
 }) {
   const [siteId, setSiteId] = useState(sites[0]?.id ?? "");
   const [scheduledDate, setScheduledDate] = useState("");
@@ -203,23 +228,29 @@ function BookingModal({
       setError("Please select a site.");
       return;
     }
-    if (!scheduledDate) {
+    if (!isCallback && !scheduledDate) {
       setError("Please select a preferred date.");
       return;
     }
-
-    const parsed = new Date(scheduledDate);
-    if (isNaN(parsed.getTime())) {
-      setError("Invalid date selected.");
+    if (isCallback && !notes.trim()) {
+      setError("Please describe what you need so we can help.");
+      return;
+    }
+    if (isCallback && !contactName.trim()) {
+      setError("Please provide a contact name so we know who to call.");
       return;
     }
 
+    const parsed = scheduledDate ? new Date(scheduledDate) : new Date();
+
     book.mutate({
-      serviceId: service.id,
+      serviceId: isCallback ? fallbackServiceId || service.id : service.id,
       siteId,
       scheduledDate: parsed,
       contactName: contactName.trim() || undefined,
-      notes: notes.trim() || undefined,
+      notes: isCallback
+        ? `CALLBACK REQUEST: ${notes.trim()}`
+        : notes.trim() || undefined,
     });
   }
 
@@ -270,54 +301,70 @@ function BookingModal({
             )}
           </div>
 
-          {/* Date */}
-          <div>
-            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              <Calendar className="h-3 w-3" />
-              Preferred Date
-            </label>
-            <input
-              type="date"
-              required
-              value={scheduledDate}
-              onChange={(e) => setScheduledDate(e.target.value)}
-              min={new Date().toISOString().split("T")[0]}
-              className={inputCls}
-            />
-          </div>
+          {/* Callback banner */}
+          {isCallback && (
+            <div className="flex items-start gap-3 rounded-xl bg-[#01696F]/8 border border-[#01696F]/20 px-4 py-3">
+              <PhoneCall className="h-4 w-4 mt-0.5 flex-shrink-0 text-[#01696F]" />
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Tell us what you need and provide a contact name — we&apos;ll reach out to discuss and arrange the service for you.
+              </p>
+            </div>
+          )}
 
-          {/* Contact Name */}
+          {/* Contact Name — required for callback */}
           <div>
             <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <User className="h-3 w-3" />
-              Contact Name{" "}
-              <span className="font-normal normal-case text-slate-400">
-                (optional)
-              </span>
+              Contact Name
+              {!isCallback && (
+                <span className="font-normal normal-case text-slate-400">(optional)</span>
+              )}
             </label>
             <input
               type="text"
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
-              placeholder="Who should we contact on site?"
+              placeholder={isCallback ? "Your name and best number to call" : "Who should we contact on site?"}
               className={inputCls}
             />
           </div>
 
-          {/* Notes */}
+          {/* Date — hidden for callback */}
+          {!isCallback && (
+            <div>
+              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <Calendar className="h-3 w-3" />
+                Preferred Date
+              </label>
+              <input
+                type="date"
+                required
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                className={inputCls}
+              />
+            </div>
+          )}
+
+          {/* Notes / Description */}
           <div>
             <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <FileText className="h-3 w-3" />
-              Notes{" "}
-              <span className="font-normal normal-case text-slate-400">
-                (optional)
-              </span>
+              {isCallback ? "What do you need?" : "Notes"}
+              {!isCallback && (
+                <span className="font-normal normal-case text-slate-400">(optional)</span>
+              )}
             </label>
             <textarea
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any specific requirements or access instructions…"
+              placeholder={
+                isCallback
+                  ? "Describe what you need and we\'ll get back to you…"
+                  : "Any specific requirements or access instructions…"
+              }
               className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 placeholder:text-slate-400"
             />
           </div>
@@ -345,7 +392,7 @@ function BookingModal({
               {book.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : null}
-              Submit Request
+              {isCallback ? "Request a Callback" : "Submit Request"}
             </button>
           </div>
         </form>
