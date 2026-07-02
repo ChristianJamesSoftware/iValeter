@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, CheckCircle2, Loader2, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, Loader2, Download, Landmark } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -120,6 +120,15 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
           >
             <Download className="h-4 w-4" aria-label="Export" />
             Export to Xero
+          </button>
+          <button
+            type="button"
+            disabled
+            title="NatWest bank export — configure bank account in Admin Settings"
+            className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-[#01696F] px-4 py-2 text-sm font-semibold text-[#01696F] opacity-50"
+          >
+            <Landmark className="h-4 w-4" />
+            Export to Bank
           </button>
         </div>
       </div>

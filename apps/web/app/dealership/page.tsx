@@ -4,6 +4,7 @@ import { getServerApi } from "@/lib/trpc/server";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DealerDashboardClient } from "@/components/dealership/dealer-dashboard-client";
 import { CsiScoreBanner } from "@/components/dealership/csi-score-banner";
+import { ImportBookingsButton } from "@/components/dealership/import-bookings-button";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export default async function DealershipDashboard() {
         subtitle="Live bookings for your site"
         action={
           <div className="flex items-center gap-3">
+            <ImportBookingsButton />
             <Link
               href="/dealership/csi-booking/new"
               className="flex h-11 items-center gap-2 rounded-lg border border-[#01696F] px-4 font-heading font-semibold text-[#01696F] transition hover:bg-[#01696F]/10"

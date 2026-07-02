@@ -24,6 +24,8 @@ import { addOnsRouter } from "./routers/add-ons";
 import { valetLibraryRouter } from "./routers/valet-library";
 import { supportServicesRouter } from "./routers/supportServices";
 import { vehicleSizeConfigRouter } from "./routers/vehicle-size-config";
+import { valeterDeductionsRouter } from "./routers/valeter-deductions";
+import { bankChangesRouter } from "./routers/bank-changes";
 
 export const appRouter = router({
   auth: authRouter,
@@ -51,6 +53,8 @@ export const appRouter = router({
   valetLibrary: valetLibraryRouter,
   supportServices: supportServicesRouter,
   vehicleSizeConfig: vehicleSizeConfigRouter,
+  valeterDeductions: valeterDeductionsRouter,
+  bankChanges: bankChangesRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -4,11 +4,12 @@ import { useState } from "react";
 import {
   X, User, Calendar, Banknote, Building2, Shield,
   Eye, EyeOff, CheckCircle2, AlertCircle, Check, Edit2, Power, AlertTriangle, Plus,
+  Scissors, CreditCard, Landmark,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
-type Tab = "overview" | "schedule" | "pay" | "bank" | "access" | "accidents";
+type Tab = "overview" | "schedule" | "pay" | "bank" | "access" | "accidents" | "deductions" | "bankchanges";
 
 const DAY_LABELS: Record<string, string> = {
   MON: "Mon", TUE: "Tue", WED: "Wed",
@@ -56,7 +57,9 @@ export function ValeterCardModal({ valeterUid, onClose }: { valeterUid: string; 
     { id: "pay"       as Tab, label: "Pay",          icon: <Banknote className="h-3.5 w-3.5" /> },
     { id: "bank"      as Tab, label: "Bank Details", icon: <Building2 className="h-3.5 w-3.5" /> },
     { id: "access"    as Tab, label: "Login Access", icon: <Shield className="h-3.5 w-3.5" /> },
-    { id: "accidents" as Tab, label: "Accidents",    icon: <AlertTriangle className="h-3.5 w-3.5" /> },
+    { id: "accidents"   as Tab, label: "Accidents",    icon: <AlertTriangle className="h-3.5 w-3.5" /> },
+    { id: "deductions"  as Tab, label: "Deductions",   icon: <Scissors className="h-3.5 w-3.5" /> },
+    { id: "bankchanges" as Tab, label: "Bank Changes", icon: <CreditCard className="h-3.5 w-3.5" /> },
   ];
 
   return (
@@ -155,6 +158,16 @@ export function ValeterCardModal({ valeterUid, onClose }: { valeterUid: string; 
               {/* ── Accidents ── */}
               {activeTab === "accidents" && (
                 <AccidentsTab valeterId={valeterUid} />
+              )}
+
+              {/* ── Deductions ── */}
+              {activeTab === "deductions" && (
+                <DeductionsTab valeterId={valeterUid} />
+              )}
+
+              {/* ── Bank Changes ── */}
+              {activeTab === "bankchanges" && (
+                <BankChangesTab valeterId={valeterUid} />
               )}
 
               {/* ── Login Access ── */}
@@ -308,85 +321,220 @@ function OverviewTab({ valeter, update, saving }: { valeter: ValeterData; update
 
 // ── Schedule tab ─────────────────────────────────────────────────────────────
 
+const DEFAULT_HOURS = 8;
+const SAT_HALF_HOURS = 4;
+
+function getInitialDayHours(valeter: ValeterData): Record<string, string> {
+  const stored = (valeter as Record<string, unknown>).dayHours as Record<string, number> | null | undefined;
+  const days = valeter.workingDays ?? [];
+  const fallback = valeter.contractedHours ?? DEFAULT_HOURS;
+  const result: Record<string, string> = {};
+  for (const d of days) {
+    if (stored && stored[d] != null) {
+      result[d] = String(stored[d]);
+    } else if (d === "SAT" && valeter.saturdayHalfDay) {
+      result[d] = String(SAT_HALF_HOURS);
+    } else {
+      result[d] = String(fallback);
+    }
+  }
+  return result;
+}
+
 function ScheduleTab({ valeter, update, saving }: { valeter: ValeterData; update: (d: Record<string, unknown>) => void; saving: boolean }) {
   const [editing, setEditing] = useState(false);
   const [days, setDays] = useState<string[]>(valeter.workingDays ?? []);
-  const [hours, setHours] = useState(valeter.contractedHours?.toString() ?? "");
-  const [saturdayHalfDay, setSaturdayHalfDay] = useState(valeter.saturdayHalfDay ?? false);
+  // dayHours: map of day key → hours string for the input
+  const [dayHours, setDayHours] = useState<Record<string, string>>(() => getInitialDayHours(valeter));
+  const [shiftStartTime, setShiftStartTime] = useState((valeter as Record<string, unknown>).shiftStartTime as string ?? "08:00");
+  const [shiftEndTime, setShiftEndTime]   = useState((valeter as Record<string, unknown>).shiftEndTime   as string ?? "17:00");
+
+  function toggleDay(d: string) {
+    setDays((prev) => {
+      const next = prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d];
+      // When adding a day, initialise its hours
+      if (!prev.includes(d)) {
+        setDayHours((h) => ({
+          ...h,
+          [d]: d === "SAT" ? String(SAT_HALF_HOURS) : String(valeter.contractedHours ?? DEFAULT_HOURS),
+        }));
+      }
+      return next;
+    });
+  }
+
+  function setHour(d: string, val: string) {
+    setDayHours((prev) => ({ ...prev, [d]: val }));
+  }
+
+  function applyHalfDay(d: string, half: boolean) {
+    setDayHours((prev) => ({ ...prev, [d]: half ? String(SAT_HALF_HOURS) : String(DEFAULT_HOURS) }));
+  }
 
   function save() {
-    update({ workingDays: days, contractedHours: hours ? parseFloat(hours) : null, saturdayHalfDay });
+    // Build clean dayHours record (only active days, parse floats)
+    const hoursRecord: Record<string, number> = {};
+    for (const d of days) {
+      const v = parseFloat(dayHours[d] ?? "0");
+      hoursRecord[d] = isNaN(v) ? DEFAULT_HOURS : v;
+    }
+    const weeklyTotal = Object.values(hoursRecord).reduce((a, b) => a + b, 0);
+    // Derive saturdayHalfDay and contractedHours from the new data for backwards compat
+    const satHrs = hoursRecord["SAT"];
+    const saturdayHalfDay = days.includes("SAT") && satHrs != null && satHrs <= 5;
+    // contractedHours = average of weekdays (non-SAT) or overall avg
+    const weekdayDays = days.filter((d) => d !== "SAT");
+    const contractedHours = weekdayDays.length > 0
+      ? weekdayDays.reduce((a, d) => a + (hoursRecord[d] ?? DEFAULT_HOURS), 0) / weekdayDays.length
+      : weeklyTotal / (days.length || 1);
+
+    update({
+      workingDays: days,
+      dayHours: hoursRecord,
+      contractedHours: Math.round(contractedHours * 10) / 10,
+      saturdayHalfDay,
+      shiftStartTime: shiftStartTime || null,
+      shiftEndTime:   shiftEndTime   || null,
+    });
     setEditing(false);
   }
 
-  function toggleDay(d: string) {
-    setDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
-  }
-
   const activeDays = editing ? days : (valeter.workingDays ?? []);
-  const satIsActive = activeDays.includes("SAT");
+  const displayHours = editing ? dayHours : getInitialDayHours(valeter);
+
+  // Weekly total for display
+  const weeklyTotal = activeDays.reduce((sum, d) => {
+    const v = parseFloat(displayHours[d] ?? "0");
+    return sum + (isNaN(v) ? 0 : v);
+  }, 0);
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
-        <button onClick={() => editing ? save() : setEditing(true)} disabled={saving}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="text-xs text-slate-500">
+          Weekly contracted: <span className="font-bold text-slate-800">{weeklyTotal}h</span>
+        </div>
+        <button
+          onClick={() => editing ? save() : setEditing(true)}
+          disabled={saving}
+          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+        >
           {editing ? <><Check className="h-3.5 w-3.5" />Save</> : <><Edit2 className="h-3.5 w-3.5" />Edit</>}
         </button>
       </div>
-      <div className="space-y-5">
+
+      {/* Shift times */}
+      <div className="mb-4 grid grid-cols-2 gap-3">
         <div>
-          <label className={LABEL}>Working days</label>
-          <div className="mt-1.5 flex gap-1.5">
-            {ALL_DAYS.map((d) => {
-              const active = activeDays.includes(d);
-              const isSat = d === "SAT";
-              return (
-                <div key={d} className="flex flex-col items-center gap-1">
-                  <button
-                    onClick={() => editing && toggleDay(d)}
-                    disabled={!editing}
-                    className={cn(
-                      "flex h-9 w-10 items-center justify-center rounded-lg text-xs font-semibold transition",
-                      active ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400",
-                      editing && !active && "hover:bg-slate-200 cursor-pointer",
-                      !editing && "cursor-default",
-                    )}
-                  >
-                    {DAY_LABELS[d]}
-                  </button>
-                  {isSat && active && (editing ? saturdayHalfDay : valeter.saturdayHalfDay) && (
-                    <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700">½day</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {satIsActive && editing && (
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={saturdayHalfDay}
-                onChange={(e) => setSaturdayHalfDay(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300"
-              />
-              Saturday is a half day
-            </label>
+          <label className={LABEL}>Shift start</label>
+          {editing ? (
+            <input
+              type="time"
+              value={shiftStartTime}
+              onChange={(e) => setShiftStartTime(e.target.value)}
+              className={INPUT}
+            />
+          ) : (
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {((valeter as Record<string, unknown>).shiftStartTime as string | null) ?? "08:00"}
+            </p>
           )}
         </div>
-        {editing ? (
-          <div>
-            <label className={LABEL}>Contracted hours / day</label>
-            <input type="number" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="e.g. 8" className={`${INPUT} max-w-[120px]`} />
-          </div>
-        ) : (
-          <>
-            <Row label="Contracted hours" value={valeter.contractedHours != null ? `${valeter.contractedHours}h/day` : null} />
-            {(valeter.workingDays ?? []).includes("SAT") && (
-              <Row label="Saturday" value={valeter.saturdayHalfDay ? "Half day" : "Full day"} />
-            )}
-          </>
-        )}
+        <div>
+          <label className={LABEL}>Shift end <span className="text-[10px] font-normal normal-case text-slate-400">(used for auto clock-out)</span></label>
+          {editing ? (
+            <input
+              type="time"
+              value={shiftEndTime}
+              onChange={(e) => setShiftEndTime(e.target.value)}
+              className={INPUT}
+            />
+          ) : (
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {((valeter as Record<string, unknown>).shiftEndTime as string | null) ?? "17:00"}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Day selector row */}
+      <div className="mb-4 flex gap-1.5">
+        {ALL_DAYS.map((d) => {
+          const active = activeDays.includes(d);
+          return (
+            <button
+              key={d}
+              onClick={() => editing && toggleDay(d)}
+              disabled={!editing}
+              className={cn(
+                "flex h-9 w-10 items-center justify-center rounded-lg text-xs font-semibold transition",
+                active ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400",
+                editing && "cursor-pointer hover:opacity-80",
+                !editing && "cursor-default",
+              )}
+            >
+              {DAY_LABELS[d]}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Per-day hours */}
+      {activeDays.length === 0 ? (
+        <p className="text-sm text-slate-400">No working days selected.</p>
+      ) : (
+        <div className="space-y-2">
+          {ALL_DAYS.filter((d) => activeDays.includes(d)).map((d) => {
+            const isSat = d === "SAT";
+            const hrs = displayHours[d] ?? "";
+            const isHalf = isSat && parseFloat(hrs) <= 5;
+            return (
+              <div key={d} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5">
+                <span className="w-8 text-xs font-bold uppercase tracking-wider text-slate-500">{DAY_LABELS[d]}</span>
+                <div className="flex flex-1 items-center gap-2">
+                  {editing ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0.5"
+                        max="16"
+                        step="0.5"
+                        value={hrs}
+                        onChange={(e) => setHour(d, e.target.value)}
+                        className="h-8 w-20 rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-semibold text-slate-900 outline-none focus:border-slate-400"
+                      />
+                      <span className="text-xs text-slate-400">hours</span>
+                      {isSat && (
+                        <button
+                          type="button"
+                          onClick={() => applyHalfDay(d, !isHalf)}
+                          className={cn(
+                            "rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition",
+                            isHalf
+                              ? "border-amber-300 bg-amber-100 text-amber-700"
+                              : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600",
+                          )}
+                        >
+                          ½ day (4h)
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-800">{hrs ? `${hrs}h` : "—"}</span>
+                      {isSat && isHalf && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">Half day</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="mt-5 border-t border-slate-100 pt-4">
         <Row label="Last login" value={fmtDate(valeter.lastLoginAt)} />
       </div>
     </div>
@@ -647,6 +795,459 @@ function Row({ label, value, mono }: { label: string; value: React.ReactNode; mo
       <span className={cn("text-sm text-slate-700", mono && "font-mono text-xs text-slate-500")}>
         {value ?? "—"}
       </span>
+    </div>
+  );
+}
+
+// ── Deductions tab ────────────────────────────────────────────────────────────
+
+function DeductionsTab({ valeterId }: { valeterId: string }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ description: "", totalAmount: "", weeklyAmount: "" });
+
+  const utils = trpc.useUtils();
+  const { data: deductions, isLoading } = trpc.valeterDeductions.listForValeter.useQuery({ valeterId });
+
+  const createDed = trpc.valeterDeductions.create.useMutation({
+    onSuccess: () => {
+      utils.valeterDeductions.listForValeter.invalidate({ valeterId });
+      setShowForm(false);
+      setForm({ description: "", totalAmount: "", weeklyAmount: "" });
+    },
+  });
+
+  const settle = trpc.valeterDeductions.settle.useMutation({
+    onSuccess: () => utils.valeterDeductions.listForValeter.invalidate({ valeterId }),
+  });
+
+  const remove = trpc.valeterDeductions.remove.useMutation({
+    onSuccess: () => utils.valeterDeductions.listForValeter.invalidate({ valeterId }),
+  });
+
+  type DeductionItem = NonNullable<typeof deductions>[0];
+  const active   = (deductions ?? []).filter((d: DeductionItem) => !d.settled);
+  const settled  = (deductions ?? []).filter((d: DeductionItem) => d.settled);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Deductions</h3>
+          <p className="text-xs text-slate-400">Uniform, equipment & other recoveries</p>
+        </div>
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Deduction
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">New Deduction</p>
+          <div>
+            <label className={LABEL}>Description</label>
+            <input
+              type="text"
+              value={form.description}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              placeholder="e.g. Summer uniform (2 sets)"
+              className={INPUT}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL}>Total to recover (£)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.totalAmount}
+                onChange={(e) => setForm((p) => ({ ...p, totalAmount: e.target.value }))}
+                placeholder="e.g. 60.00"
+                className={INPUT}
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Weekly deduction (£)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.weeklyAmount}
+                onChange={(e) => setForm((p) => ({ ...p, weeklyAmount: e.target.value }))}
+                placeholder="e.g. 15.00"
+                className={INPUT}
+              />
+            </div>
+          </div>
+          {form.totalAmount && form.weeklyAmount && parseFloat(form.weeklyAmount) > 0 && (
+            <p className="text-xs text-slate-500">
+              Approx.{" "}
+              <strong>{Math.ceil(parseFloat(form.totalAmount) / parseFloat(form.weeklyAmount))} weeks</strong>{" "}
+              to recover
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() =>
+                createDed.mutate({
+                  valeterId,
+                  description:  form.description,
+                  totalAmount:  parseFloat(form.totalAmount),
+                  weeklyAmount: parseFloat(form.weeklyAmount),
+                })
+              }
+              disabled={
+                createDed.isPending ||
+                !form.description ||
+                !form.totalAmount ||
+                !form.weeklyAmount
+              }
+              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
+            >
+              {createDed.isPending ? "Saving…" : "Save"}
+            </button>
+            <button
+              onClick={() => setShowForm(false)}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+          </div>
+          {createDed.error && <p className="text-xs text-red-500">{createDed.error.message}</p>}
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="space-y-2">
+          {[1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-lg bg-slate-50" />)}
+        </div>
+      )}
+
+      {!isLoading && active.length === 0 && settled.length === 0 && (
+        <div className="rounded-xl border border-slate-100 bg-slate-50 py-10 text-center">
+          <Scissors className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+          <p className="text-sm text-slate-400">No deductions recorded</p>
+        </div>
+      )}
+
+      {active.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active</p>
+          {active.map((d: typeof active[0]) => {
+            const remaining = d.totalAmount - d.totalDeducted;
+            const weeksLeft = d.weeklyAmount > 0 ? Math.ceil(remaining / d.weeklyAmount) : "—";
+            const pct = Math.min(100, (d.totalDeducted / d.totalAmount) * 100);
+            return (
+              <div key={d.id} className="rounded-xl border border-slate-100 bg-white p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{d.description}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      £{d.weeklyAmount.toFixed(2)}/wk · {weeksLeft} {typeof weeksLeft === "number" ? "wks left" : ""}
+                    </p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => settle.mutate({ id: d.id })}
+                      disabled={settle.isPending}
+                      className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-100"
+                    >
+                      Settle
+                    </button>
+                    {d.totalDeducted === 0 && (
+                      <button
+                        onClick={() => remove.mutate({ id: d.id })}
+                        disabled={remove.isPending}
+                        className="rounded-lg border border-red-100 bg-red-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-500 transition hover:bg-red-100"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-slate-900 transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold tabular-nums text-slate-500">
+                    £{d.totalDeducted.toFixed(2)} / £{d.totalAmount.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {settled.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Settled</p>
+          {settled.map((d: typeof settled[0]) => (
+            <div key={d.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4 opacity-60">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-700">{d.description}</p>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">Settled</span>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-400">£{d.totalDeducted.toFixed(2)} recovered</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Bank Changes tab ──────────────────────────────────────────────────────────
+
+function BankChangesTab({ valeterId }: { valeterId: string }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    newSortCode: "",
+    newAccountNumber: "",
+    newAccountName: "",
+    newBankReference: "",
+    evidenceUrl: "",
+  });
+  const [notes, setNotes] = useState("");
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const utils = trpc.useUtils();
+  const { data: requests, isLoading } = trpc.bankChanges.listForValeter.useQuery({ valeterId });
+
+  const create = trpc.bankChanges.create.useMutation({
+    onSuccess: () => {
+      utils.bankChanges.listForValeter.invalidate({ valeterId });
+      setShowForm(false);
+      setForm({ newSortCode: "", newAccountNumber: "", newAccountName: "", newBankReference: "", evidenceUrl: "" });
+    },
+  });
+
+  const approve = trpc.bankChanges.approve.useMutation({
+    onSuccess: () => {
+      utils.bankChanges.listForValeter.invalidate({ valeterId });
+      setActionId(null);
+    },
+  });
+
+  const reject = trpc.bankChanges.reject.useMutation({
+    onSuccess: () => {
+      utils.bankChanges.listForValeter.invalidate({ valeterId });
+      setActionId(null);
+    },
+  });
+
+  const STATUS_STYLE: Record<string, string> = {
+    PENDING:  "bg-amber-100 text-amber-700",
+    APPROVED: "bg-emerald-100 text-emerald-700",
+    REJECTED: "bg-red-100 text-red-700",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Bank Detail Changes</h3>
+          <p className="text-xs text-slate-400">£25 admin fee charged per request</p>
+        </div>
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700"
+        >
+          <Plus className="h-3.5 w-3.5" /> New Request
+        </button>
+      </div>
+
+      {/* £25 fee notice */}
+      <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+        <Landmark className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <p className="text-xs text-amber-700">
+          A <strong>£25 admin fee</strong> is automatically added to the valeter&apos;s pay deductions as soon as a
+          request is submitted. The fee applies regardless of whether the request is approved or rejected.
+        </p>
+      </div>
+
+      {showForm && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">New Bank Change Request</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL}>New sort code</label>
+              <input
+                type="text"
+                value={form.newSortCode}
+                onChange={(e) => setForm((p) => ({ ...p, newSortCode: e.target.value }))}
+                placeholder="00-00-00"
+                className={`${INPUT} font-mono`}
+              />
+            </div>
+            <div>
+              <label className={LABEL}>New account number</label>
+              <input
+                type="text"
+                value={form.newAccountNumber}
+                onChange={(e) => setForm((p) => ({ ...p, newAccountNumber: e.target.value }))}
+                placeholder="12345678"
+                className={`${INPUT} font-mono`}
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Account name</label>
+              <input
+                type="text"
+                value={form.newAccountName}
+                onChange={(e) => setForm((p) => ({ ...p, newAccountName: e.target.value }))}
+                placeholder="Full name on account"
+                className={INPUT}
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Bank reference (optional)</label>
+              <input
+                type="text"
+                value={form.newBankReference}
+                onChange={(e) => setForm((p) => ({ ...p, newBankReference: e.target.value }))}
+                placeholder="e.g. pay ref"
+                className={INPUT}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className={LABEL}>Evidence photo URL</label>
+              <input
+                type="text"
+                value={form.evidenceUrl}
+                onChange={(e) => setForm((p) => ({ ...p, evidenceUrl: e.target.value }))}
+                placeholder="Paste link to bank statement / screenshot"
+                className={INPUT}
+              />
+              <p className="mt-1 text-[10px] text-slate-400">
+                Upload the photo elsewhere and paste the link here, or leave blank for now — can be added later.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() =>
+                create.mutate({
+                  valeterId,
+                  newSortCode:      form.newSortCode,
+                  newAccountNumber: form.newAccountNumber,
+                  newAccountName:   form.newAccountName,
+                  newBankReference: form.newBankReference || undefined,
+                  evidenceUrl:      form.evidenceUrl || undefined,
+                })
+              }
+              disabled={
+                create.isPending ||
+                !form.newSortCode ||
+                !form.newAccountNumber ||
+                !form.newAccountName
+              }
+              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
+            >
+              {create.isPending ? "Submitting…" : "Submit Request + Charge £25"}
+            </button>
+            <button
+              onClick={() => setShowForm(false)}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+          </div>
+          {create.error && <p className="text-xs text-red-500">{create.error.message}</p>}
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="space-y-2">
+          {[1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-lg bg-slate-50" />)}
+        </div>
+      )}
+
+      {!isLoading && (!requests || requests.length === 0) && !showForm && (
+        <div className="rounded-xl border border-slate-100 bg-slate-50 py-10 text-center">
+          <CreditCard className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+          <p className="text-sm text-slate-400">No bank change requests</p>
+        </div>
+      )}
+
+      {(requests ?? []).map((req: NonNullable<typeof requests>[0]) => {
+        const isExpanded = actionId === req.id;
+        return (
+          <div key={req.id} className="rounded-xl border border-slate-100 bg-white p-4 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider", STATUS_STYLE[req.status] ?? "bg-slate-100 text-slate-500")}>
+                    {req.status}
+                  </span>
+                  <span className="text-xs text-slate-400">{new Date(req.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                  <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600">£{req.feeAmount.toFixed(2)} fee</span>
+                  {req.feeDeducted && <span className="text-[10px] text-slate-400">· deducted wk {req.weekDeducted}</span>}
+                </div>
+                <div className="font-mono text-xs text-slate-600">
+                  {req.newAccountName} · {req.newSortCode} · {req.newAccountNumber}
+                  {req.newBankReference && ` · ref: ${req.newBankReference}`}
+                </div>
+                {req.evidenceUrl && (
+                  <a href={req.evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline">
+                    View evidence photo
+                  </a>
+                )}
+                {req.notes && <p className="text-xs text-slate-500 italic">{req.notes}</p>}
+              </div>
+
+              {req.status === "PENDING" && (
+                <button
+                  onClick={() => setActionId(isExpanded ? null : req.id)}
+                  className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  {isExpanded ? "Cancel" : "Review"}
+                </button>
+              )}
+            </div>
+
+            {isExpanded && req.status === "PENDING" && (
+              <div className="border-t border-slate-100 pt-3 space-y-2">
+                <div>
+                  <label className={LABEL}>Notes (optional)</label>
+                  <input
+                    type="text"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Add a note for the record…"
+                    className={INPUT}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => approve.mutate({ id: req.id, notes: notes || undefined })}
+                    disabled={approve.isPending}
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {approve.isPending ? "Approving…" : "Approve — Apply New Details"}
+                  </button>
+                  <button
+                    onClick={() => reject.mutate({ id: req.id, notes: notes || undefined })}
+                    disabled={reject.isPending}
+                    className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                  >
+                    {reject.isPending ? "Rejecting…" : "Reject"}
+                  </button>
+                </div>
+                {(approve.error || reject.error) && (
+                  <p className="text-xs text-red-500">{(approve.error ?? reject.error)?.message}</p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

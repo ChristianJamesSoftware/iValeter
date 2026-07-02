@@ -83,6 +83,12 @@ export default async function DealershipDetailPage({
           specialInstructions: dealership.specialInstructions,
           isActive: dealership.isActive,
           organisation: dealership.organisation ?? null,
+          accountsContactName:  dealership.accountsContactName  ?? null,
+          accountsContactEmail: dealership.accountsContactEmail ?? null,
+          accountsContactPhone: dealership.accountsContactPhone ?? null,
+          paymentTermsDays: dealership.paymentTermsDays ?? null,
+          paymentTermsNote: dealership.paymentTermsNote ?? null,
+          creditLimit:      dealership.creditLimit      ?? null,
           sites: dealership.sites.map((s) => ({
             id: s.id,
             name: s.name,

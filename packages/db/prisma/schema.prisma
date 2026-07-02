@@ -26,6 +26,16 @@ model Organisation {
   contactEmail   String?
   contactPhone   String?
 
+  // Accounts department contact
+  accountsContactName   String?
+  accountsContactEmail  String?
+  accountsContactPhone  String?
+
+  // Payment terms
+  paymentTermsDays  Int?     // e.g. 14, 30, 60 — net days
+  paymentTermsNote  String?  // e.g. "Month end + 14 days"
+  creditLimit       Float?   // optional credit limit (£)
+
   // Feature flags (defaults seeded from platform-level flags)
   featureInspection      Boolean @default(true)
   featurePhotography     Boolean @default(false)
@@ -63,6 +73,16 @@ model Dealership {
   contactName    String?
   contactEmail   String?
   contactPhone   String?
+
+  // Accounts department contact
+  accountsContactName   String?
+  accountsContactEmail  String?
+  accountsContactPhone  String?
+
+  // Payment terms
+  paymentTermsDays  Int?     // e.g. 14, 30, 60 — net days
+  paymentTermsNote  String?  // e.g. "Month end + 14 days"
+  creditLimit       Float?   // optional credit limit (£)
   isActive             Boolean  @default(true)
   xeroContactId        String?
   xeroContactName      String?
@@ -187,6 +207,9 @@ model User {
   workingDays      String[]  // e.g. ["MON","TUE","WED","THU","FRI"]
   contractedHours  Float?    // daily contracted hours, e.g. 8.0
   saturdayHalfDay  Boolean   @default(false)
+  dayHours         Json?     // e.g. {"MON":8,"TUE":8,"WED":8,"THU":8,"FRI":8,"SAT":4}
+  shiftStartTime    String?   // e.g. "08:00" — contracted start (HH:mm)
+  shiftEndTime      String?   // e.g. "17:00" — contracted finish used by auto clock-out sweep
 
   // Dealership team field
   jobTitle String?
@@ -228,6 +251,8 @@ model User {
   messagesReceived     Message[]               @relation("MessageTo")
   overtimeRequests     OvertimeRequest[]
   accidents            ValeterAccident[]   @relation("ValeterAccidents")
+  deductions           ValeterDeduction[]  @relation("ValeterDeductions")
+  bankChangeRequests   BankChangeRequest[] @relation("ValeterBankChanges")
   feedbackReplies         BroadcastFeedbackReply[] @relation("FeedbackReplies")
   supportServiceBookings  SupportServiceBooking[]
 
@@ -1201,4 +1226,69 @@ model OrgVehicleSizeConfig {
 
   @@unique([organisationId, size])
   @@index([organisationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VALETER DEDUCTIONS
+// Uniform costs, equipment charges, etc. deducted over multiple weeks.
+// Ops team fills these in; they feed into the weekly payroll summary.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ValeterDeduction {
+  id           String   @id @default(cuid())
+  valeterId    String
+  valeter      User     @relation("ValeterDeductions", fields: [valeterId], references: [id])
+
+  description  String               // e.g. "Summer uniform (2 sets)"
+  totalAmount  Float                // full cost to recover (£)
+  weeklyAmount Float                // how much to deduct per week (£)
+  totalDeducted Float  @default(0)  // running total deducted so far (£)
+  settled      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([valeterId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BANK DETAILS CHANGE REQUESTS
+// Account manager raises a change request; £25 admin fee auto-deducted that
+// week. Photo evidence uploaded. Record kept permanently on the valeter card.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model BankChangeRequest {
+  id           String   @id @default(cuid())
+  valeterId    String
+  valeter      User     @relation("ValeterBankChanges", fields: [valeterId], references: [id])
+
+  // New bank details being requested
+  newSortCode        String
+  newAccountNumber   String
+  newAccountName     String
+  newBankReference   String?
+
+  // Photo evidence (URL/key stored here — uploaded by account manager)
+  evidenceUrl        String?
+
+  // £25 admin fee — charged immediately on creation, pulled into that week's pay
+  feeAmount          Float   @default(25)
+  feeDeducted        Boolean @default(false)  // flips to true once processed in payroll
+  weekDeducted       String? // ISO week-start date the £25 was deducted (e.g. "2026-07-07")
+
+  // Status lifecycle: PENDING → APPROVED (bank details updated) or REJECTED
+  status             BankChangeStatus @default(PENDING)
+  notes              String?          // ops notes on approval/rejection
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([valeterId])
+  @@index([status])
+}
+
+enum BankChangeStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

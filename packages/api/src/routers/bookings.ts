@@ -725,4 +725,75 @@ export const bookingsRouter = router({
         })),
       };
     }),
+
+  bulkCreate: dealershipProcedure
+    .input(
+      z.object({
+        siteId: z.string(),
+        rows: z.array(
+          z.object({
+            vehicleReg: z.string().min(1).max(12),
+            customerName: z.string().optional(),
+            readyByTime: z.date(),
+            departmentId: z.string(),
+            serviceTypeId: z.string(),
+            vehicleSize: z.enum(["SMALL", "MEDIUM", "LARGE", "XL", "VAN"]).optional(),
+          }),
+        ).min(1).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Scope check
+      if (ctx.session.role === "dealership_user" && ctx.session.siteId !== input.siteId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot create bookings for another site" });
+      }
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.siteId, organisationId: ctx.session.organisationId },
+      });
+      if (!site) throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+
+      const sizeConfigs = await ctx.prisma.orgVehicleSizeConfig.findMany({
+        where: { organisationId: ctx.session.organisationId },
+      });
+
+      let created = 0;
+      const errors: { row: number; message: string }[] = [];
+
+      for (let i = 0; i < input.rows.length; i++) {
+        const row = input.rows[i]!;
+        try {
+          const serviceType = await ctx.prisma.serviceType.findUnique({
+            where: { id: row.serviceTypeId },
+            select: { durationMins: true, chargeRate: true },
+          });
+          const { resolvedDurationMins, resolvedPricePence } = resolveVehicleSizeValues(
+            sizeConfigs,
+            serviceType?.durationMins ?? 60,
+            serviceType?.chargeRate,
+            row.vehicleSize ?? "LARGE",
+          );
+          await ctx.prisma.booking.create({
+            data: {
+              organisationId: ctx.session.organisationId,
+              siteId: input.siteId,
+              departmentId: row.departmentId,
+              serviceTypeId: row.serviceTypeId,
+              vehicleReg: row.vehicleReg.toUpperCase().trim(),
+              customerName: row.customerName?.trim() ?? "",
+              readyByTime: row.readyByTime,
+              vehicleSize: row.vehicleSize ?? "LARGE",
+              resolvedDurationMins,
+              resolvedPricePence,
+              status: BookingStatus.PENDING,
+              createdById: ctx.session.userId,
+            },
+          });
+          created++;
+        } catch {
+          errors.push({ row: i + 1, message: `Row ${i + 1}: failed to create booking for ${row.vehicleReg}` });
+        }
+      }
+
+      return { created, errors };
+    }),
 });

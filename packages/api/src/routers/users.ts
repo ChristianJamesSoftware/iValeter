@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Prisma } from "@ivaleter/db";
 import { TRPCError } from "@trpc/server";
 import { Role } from "@ivaleter/db";
 import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure, dealershipProcedure } from "../trpc";
@@ -380,6 +381,9 @@ export const usersRouter = router({
         workingDays: z.array(z.string()).optional(),
         contractedHours: z.number().nullable().optional(),
         saturdayHalfDay: z.boolean().optional(),
+        dayHours: z.record(z.string(), z.number()).nullable().optional(),
+        shiftStartTime: z.string().nullable().optional(),
+        shiftEndTime: z.string().nullable().optional(),
         dailyRate: z.number().nullable().optional(),
         dailyDeductions: z.number().nullable().optional(),
         startDate: z.string().nullable().optional(),
@@ -393,18 +397,14 @@ export const usersRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, startDate, ...rest } = input;
+      const { id, startDate, dayHours, ...rest } = input;
       const user = await ctx.prisma.user.findUnique({ where: { id } });
       if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
-      return ctx.prisma.user.update({
-        where: { id },
-        data: {
-          ...rest,
-          ...(startDate !== undefined
-            ? { startDate: startDate ? new Date(startDate) : null }
-            : {}),
-        },
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: Prisma.UserUpdateInput = rest as any;
+      if (startDate !== undefined) data.startDate = startDate ? new Date(startDate) : null;
+      if (dayHours !== undefined) data.dayHours = dayHours ?? Prisma.JsonNull;
+      return ctx.prisma.user.update({ where: { id }, data });
     }),
 
   /** Super admin: create a user on any site/org (for adding site team members from dealership card) */
@@ -547,6 +547,32 @@ export const usersRouter = router({
 
 
   /** Dealership: list users on their own site (for customer-side user management) */
+  /** Super admin: list ALL dealership_user accounts across every org */
+  listAllDealershipUsers: superAdminProcedure
+    .input(z.object({ showInactive: z.boolean().default(false) }).optional())
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.user.findMany({
+        where: {
+          role: "dealership_user",
+          ...(input?.showInactive ? {} : { isActive: true }),
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          mobile: true,
+          jobTitle: true,
+          isActive: true,
+          createdAt: true,
+          lastLoginAt: true,
+          site: { select: { id: true, name: true } },
+          organisation: { select: { id: true, name: true } },
+        },
+        orderBy: [{ organisation: { name: "asc" } }, { firstName: "asc" }],
+      });
+    }),
+
   listDealershipUsers: dealershipProcedure
     .query(async ({ ctx }) => {
       const session = ctx.session!;

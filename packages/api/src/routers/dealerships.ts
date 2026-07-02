@@ -67,6 +67,14 @@ export const dealershipsRouter = router({
         contactPhone: z.string().optional(),
         specialInstructions: z.string().optional(),
         isActive: z.boolean().optional(),
+        // Accounts contact
+        accountsContactName:  z.string().optional(),
+        accountsContactEmail: z.string().optional(),
+        accountsContactPhone: z.string().optional(),
+        // Payment terms
+        paymentTermsDays: z.number().int().nullable().optional(),
+        paymentTermsNote: z.string().nullable().optional(),
+        creditLimit:      z.number().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

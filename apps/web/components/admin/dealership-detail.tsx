@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ValeterCardModal } from "@/components/admin/valeter-card-modal";
 import {
   Building2, MapPin, Phone, Mail, User, PlusCircle, X,
-  FileText, Users, Layers, Wrench, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2, StickyNote, Trash2, ChevronDown, ChevronUp, CalendarDays,
+  FileText, Users, Layers, Wrench, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2, StickyNote, Trash2, ChevronDown, ChevronUp, CalendarDays, Briefcase, CreditCard, BadgeCheck,
 } from "lucide-react";
 import { DealershipAddOns } from "@/components/admin/dealership-addons";
 import { trpc } from "@/lib/trpc/react";
@@ -44,6 +44,14 @@ interface DealershipData {
   isActive: boolean;
   organisation?: { id: string; name: string } | null;
   sites: SiteRow[];
+  // Accounts contact
+  accountsContactName:  string | null;
+  accountsContactEmail: string | null;
+  accountsContactPhone: string | null;
+  // Payment terms
+  paymentTermsDays: number | null;
+  paymentTermsNote: string | null;
+  creditLimit:      number | null;
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
@@ -251,6 +259,9 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
 
 // ─── Overview tab ────────────────────────────────────────────────────────────
 
+const INPUT_CLS = "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
+const LBL_CLS  = "mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400";
+
 function OverviewTab({
   d, onSave, saving,
 }: {
@@ -260,71 +271,172 @@ function OverviewTab({
 }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    name: d.name,
-    address: d.address ?? "",
-    contactName: d.contactName ?? "",
-    contactEmail: d.contactEmail ?? "",
-    contactPhone: d.contactPhone ?? "",
+    name:                d.name,
+    address:             d.address             ?? "",
+    contactName:         d.contactName         ?? "",
+    contactEmail:        d.contactEmail        ?? "",
+    contactPhone:        d.contactPhone        ?? "",
+    accountsContactName:  d.accountsContactName  ?? "",
+    accountsContactEmail: d.accountsContactEmail ?? "",
+    accountsContactPhone: d.accountsContactPhone ?? "",
+    paymentTermsDays:    d.paymentTermsDays?.toString() ?? "",
+    paymentTermsNote:    d.paymentTermsNote    ?? "",
+    creditLimit:         d.creditLimit?.toString()    ?? "",
   });
+
+  function field(key: keyof typeof form, label: string, type = "text") {
+    return (
+      <div key={key}>
+        <label className={LBL_CLS}>{label}</label>
+        <input
+          type={type}
+          value={form[key]}
+          onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+          className={INPUT_CLS}
+        />
+      </div>
+    );
+  }
 
   function save() {
     onSave({
-      name: form.name || undefined,
-      address: form.address || undefined,
-      contactName: form.contactName || undefined,
-      contactEmail: form.contactEmail || undefined,
-      contactPhone: form.contactPhone || undefined,
+      name:                form.name || undefined,
+      address:             form.address || undefined,
+      contactName:         form.contactName || undefined,
+      contactEmail:        form.contactEmail || undefined,
+      contactPhone:        form.contactPhone || undefined,
+      accountsContactName:  form.accountsContactName  || undefined,
+      accountsContactEmail: form.accountsContactEmail || undefined,
+      accountsContactPhone: form.accountsContactPhone || undefined,
+      paymentTermsDays: form.paymentTermsDays ? parseInt(form.paymentTermsDays, 10) : null,
+      paymentTermsNote: form.paymentTermsNote || null,
+      creditLimit:      form.creditLimit ? parseFloat(form.creditLimit) : null,
     });
     setEditing(false);
   }
 
-  const inputCls = "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
-
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <h2 className="font-bold text-slate-900">Contact Details</h2>
-        <button
-          onClick={() => editing ? save() : setEditing(true)}
-          disabled={saving}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-        >
-          {editing ? <><Check className="h-3.5 w-3.5" /> Save</> : <><Edit2 className="h-3.5 w-3.5" /> Edit</>}
-        </button>
-      </div>
+    <div className="space-y-4">
+      {/* ── Main contact ─────────────────────────────────────── */}
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h2 className="font-bold text-slate-900">Dealership Details</h2>
+          <button
+            onClick={() => editing ? save() : setEditing(true)}
+            disabled={saving}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            {editing ? <><Check className="h-3.5 w-3.5" /> Save</> : <><Edit2 className="h-3.5 w-3.5" /> Edit</>}
+          </button>
+        </div>
 
-      <div className="divide-y divide-slate-50 px-5">
         {editing ? (
-          <div className="grid grid-cols-1 gap-4 py-5 sm:grid-cols-2">
-            {(["name","address","contactName","contactEmail","contactPhone"] as const).map((f) => (
-              <div key={f}>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  {f === "contactName" ? "Contact Name" : f === "contactEmail" ? "Contact Email" : f === "contactPhone" ? "Contact Phone" : f.charAt(0).toUpperCase() + f.slice(1)}
-                </label>
-                <input
-                  value={form[f]}
-                  onChange={(e) => setForm((prev) => ({ ...prev, [f]: e.target.value }))}
-                  className={inputCls}
-                />
-              </div>
-            ))}
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+            {field("name",         "Dealership Name")}
+            {field("address",      "Address")}
+            {field("contactName",  "Main Contact Name")}
+            {field("contactEmail", "Main Contact Email", "email")}
+            {field("contactPhone", "Main Contact Phone", "tel")}
           </div>
         ) : (
-          <>
+          <div className="divide-y divide-slate-50 px-5">
             <InfoRow label="Dealership Name"  value={d.name}         icon={Building2} />
             <InfoRow label="Address"          value={d.address}      icon={MapPin} />
-            <InfoRow label="Contact Name"     value={d.contactName}  icon={User} />
+            <InfoRow label="Main Contact"     value={d.contactName}  icon={User} />
             <InfoRow label="Contact Email"    value={d.contactEmail} icon={Mail} />
             <InfoRow label="Contact Phone"    value={d.contactPhone} icon={Phone} />
-          </>
+          </div>
+        )}
+
+        {/* Stats strip */}
+        <div className="grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100">
+          <Stat label="Sites"    value={d.sites.length} />
+          <Stat label="Valeters" value={allUniq(d.sites.flatMap((s) => s.users ?? []), "id")} />
+          <Stat label="Bookings" value={d.sites.reduce((acc, s) => acc + s._count.bookings, 0)} />
+        </div>
+      </div>
+
+      {/* ── Accounts contact ─────────────────────────────────── */}
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
+          <Briefcase className="h-4 w-4 text-slate-400" />
+          <h2 className="font-bold text-slate-900">Accounts Contact</h2>
+        </div>
+        {editing ? (
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+            {field("accountsContactName",  "Accounts Contact Name")}
+            {field("accountsContactEmail", "Accounts Email", "email")}
+            {field("accountsContactPhone", "Accounts Phone", "tel")}
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-50 px-5">
+            <InfoRow label="Accounts Contact" value={d.accountsContactName}  icon={User} />
+            <InfoRow label="Accounts Email"   value={d.accountsContactEmail} icon={Mail} />
+            <InfoRow label="Accounts Phone"   value={d.accountsContactPhone} icon={Phone} />
+          </div>
         )}
       </div>
 
-      {/* Stats strip */}
-      <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100">
-        <Stat label="Sites"    value={d.sites.length} />
-        <Stat label="Valeters" value={allUniq(d.sites.flatMap((s) => s.users ?? []), "id")} />
-        <Stat label="Bookings" value={d.sites.reduce((acc, s) => acc + s._count.bookings, 0)} />
+      {/* ── Payment terms ─────────────────────────────────────── */}
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
+          <CreditCard className="h-4 w-4 text-slate-400" />
+          <h2 className="font-bold text-slate-900">Payment Terms</h2>
+        </div>
+        {editing ? (
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+            <div>
+              <label className={LBL_CLS}>Net Days (e.g. 14, 30)</label>
+              <input
+                type="number"
+                min="0"
+                value={form.paymentTermsDays}
+                onChange={(e) => setForm((p) => ({ ...p, paymentTermsDays: e.target.value }))}
+                placeholder="e.g. 30"
+                className={INPUT_CLS}
+              />
+            </div>
+            <div>
+              <label className={LBL_CLS}>Credit Limit (£)</label>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                value={form.creditLimit}
+                onChange={(e) => setForm((p) => ({ ...p, creditLimit: e.target.value }))}
+                placeholder="e.g. 5000"
+                className={INPUT_CLS}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={LBL_CLS}>Terms Note</label>
+              <input
+                type="text"
+                value={form.paymentTermsNote}
+                onChange={(e) => setForm((p) => ({ ...p, paymentTermsNote: e.target.value }))}
+                placeholder="e.g. Month end + 14 days"
+                className={INPUT_CLS}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-50 px-5">
+            <InfoRow
+              label="Payment Terms"
+              value={
+                d.paymentTermsDays != null
+                  ? `Net ${d.paymentTermsDays} days${d.paymentTermsNote ? ` — ${d.paymentTermsNote}` : ""}`
+                  : d.paymentTermsNote ?? null
+              }
+              icon={BadgeCheck}
+            />
+            <InfoRow
+              label="Credit Limit"
+              value={d.creditLimit != null ? `£${d.creditLimit.toLocaleString("en-GB", { minimumFractionDigits: 2 })}` : null}
+              icon={CreditCard}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
