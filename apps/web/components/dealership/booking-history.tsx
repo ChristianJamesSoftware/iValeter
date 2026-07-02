@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Pencil } from "lucide-react";
+import { Pencil, Star } from "lucide-react";
 import { BookingStatus } from "@ivaleter/db";
 import { trpc } from "@/lib/trpc/react";
 import { formatDateTime, formatTime, cn } from "@/lib/utils";
@@ -39,7 +39,26 @@ type BookingRow = {
   site: { id: string; name: string };
   assignedTo: { firstName: string; lastName: string } | null;
   createdAt: Date;
+  qualityScore?: number | null;
 };
+
+function StarRow({ score }: { score: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          className={cn(
+            "h-3.5 w-3.5",
+            n <= score
+              ? "fill-amber-400 text-amber-400"
+              : "fill-transparent text-slate-200",
+          )}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function BookingHistory() {
   const [status, setStatus] = useState<BookingStatus | "ALL">("ALL");
@@ -119,6 +138,7 @@ export function BookingHistory() {
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Ready By</th>
               <th className="px-4 py-3">Valeter</th>
+              <th className="px-4 py-3">Rating</th>
               <th className="px-4 py-3">Created</th>
               <th className="px-4 py-3 sr-only">Edit</th>
             </tr>
@@ -126,13 +146,13 @@ export function BookingHistory() {
           <tbody>
             {query.isLoading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate">
+                <td colSpan={9} className="px-4 py-8 text-center text-slate">
                   Loading…
                 </td>
               </tr>
             ) : !query.data || query.data.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate">
+                <td colSpan={9} className="px-4 py-8 text-center text-slate">
                   No bookings found.
                 </td>
               </tr>
@@ -161,6 +181,13 @@ export function BookingHistory() {
                       {b.assignedTo
                         ? `${b.assignedTo.firstName} ${b.assignedTo.lastName}`
                         : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {b.status === "COMPLETED" && (b as unknown as BookingRow).qualityScore != null ? (
+                        <StarRow score={(b as unknown as BookingRow).qualityScore!} />
+                      ) : b.status === "COMPLETED" ? (
+                        <span className="text-xs text-slate-300">—</span>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 text-slate">
                       {formatDateTime(b.createdAt)}
