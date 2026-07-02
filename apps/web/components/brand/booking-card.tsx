@@ -23,6 +23,7 @@ export interface BookingCardData {
   doNotClean?: boolean;
   qualityScore?: number | null;
   variant?: "dealer" | "valeter";
+  rollCount?: number;
 }
 
 function StarRating({ score }: { score: number }) {
@@ -94,6 +95,11 @@ export function BookingCard({
                 {booking.vehicleReg}
               </span>
               {booking.isPriority && <PriorityBadge />}
+              {(booking.rollCount ?? 0) > 0 && (
+                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-700">
+                  Rolled ×{booking.rollCount}
+                </span>
+              )}
               {booking.doNotClean && (
                 <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700">
                   DNC

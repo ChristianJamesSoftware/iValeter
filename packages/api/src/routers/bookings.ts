@@ -214,6 +214,83 @@ export const bookingsRouter = router({
       });
     }),
 
+  /**
+   * List bookings that are overdue — not COMPLETED/CANCELLED and readyByTime
+   * was more than 48 hours ago. Used by the account manager reallocation view.
+   */
+  listOverdue: orgAdminProcedure.query(async ({ ctx }) => {
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    return ctx.prisma.booking.findMany({
+      where: {
+        organisationId: ctx.session.organisationId,
+        status: { notIn: [BookingStatus.COMPLETED, BookingStatus.CANCELLED] },
+        readyByTime: { lt: cutoff },
+      },
+      include: {
+        site:        { select: { id: true, name: true } },
+        department:  { select: { id: true, name: true } },
+        serviceType: { select: { id: true, name: true } },
+        assignedTo:  { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { readyByTime: "asc" },
+    });
+  }),
+
+  /**
+   * Reallocate an overdue booking — reassign valeter and/or push the date.
+   * Increments rollCount on every call so the job card tracks how many times
+   * it has been rolled.
+   */
+  reallocate: orgAdminProcedure
+    .input(
+      z.object({
+        bookingId:    z.string(),
+        valeterId:    z.string().optional(),
+        newReadyByTime: z.string(), // ISO string
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id: input.bookingId, organisationId: ctx.session.organisationId },
+      });
+      if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+
+      // Validate valeter if provided
+      if (input.valeterId) {
+        const valeter = await ctx.prisma.user.findFirst({
+          where: { id: input.valeterId, organisationId: ctx.session.organisationId, role: "valeter" },
+        });
+        if (!valeter) throw new TRPCError({ code: "NOT_FOUND", message: "Valeter not found" });
+      }
+
+      const updated = await ctx.prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          readyByTime:  new Date(input.newReadyByTime),
+          assignedToId: input.valeterId ?? booking.assignedToId,
+          status:       booking.status === BookingStatus.PENDING && input.valeterId
+                          ? BookingStatus.ASSIGNED
+                          : booking.status,
+          rollCount:    { increment: 1 },
+          lastRolledAt: new Date(),
+        },
+      });
+
+      await ctx.prisma.jobStatusHistory.create({
+        data: {
+          bookingId:  booking.id,
+          userId:     ctx.session.userId,
+          fromStatus: booking.status,
+          toStatus:   updated.status,
+          note:       `Reallocated (roll #${updated.rollCount}) — rescheduled to ${new Date(input.newReadyByTime).toLocaleDateString("en-GB")}${
+                        input.valeterId ? " + reassigned" : ""
+                      }`,
+        },
+      });
+
+      return updated;
+    }),
+
   /** Assign a valeter to a booking (org_admin / super_admin). */
   assign: orgAdminProcedure
     .input(z.object({ bookingId: z.string(), valeterId: z.string() }))

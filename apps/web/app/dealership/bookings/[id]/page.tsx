@@ -40,11 +40,16 @@ export default async function DealershipBookingDetail({
         <ChevronLeft className="h-4 w-4" /> {fromCalendar ? "Back to calendar" : "All bookings"}
       </Link>
 
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <h1 className="font-heading text-3xl font-bold text-navy">
           {booking.vehicleReg}
         </h1>
         <JobStatusBadge status={booking.status} />
+        {(booking.rollCount ?? 0) > 0 && (
+          <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-orange-700">
+            Rolled ×{booking.rollCount}
+          </span>
+        )}
       </div>
 
       <section className="mb-6 grid gap-4 rounded-xl border border-line bg-white p-5 sm:grid-cols-2">

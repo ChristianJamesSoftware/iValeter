@@ -5,7 +5,7 @@ import { PlusCircle, Pencil, Power, ChevronDown, ChevronRight, PoundSterling, Cl
 import { trpc } from "@/lib/trpc/react";
 
 type Category = "VALET" | "PAINT" | "CLEANING" | "OTHER";
-type DeptType = "SALES" | "SERVICE" | "BODYSHOP" | "ALL";
+type DeptType = "SALES" | "SERVICE" | "BODYSHOP" | "HIRE" | "ALL";
 
 const CATEGORY_LABELS: Record<Category, string> = {
   VALET:   "Valet",
@@ -25,6 +25,7 @@ const DEPT_LABELS: Record<DeptType, string> = {
   SALES:    "Sales",
   SERVICE:  "Service",
   BODYSHOP: "Bodyshop",
+  HIRE:     "Hire",
   ALL:      "All",
 };
 
@@ -32,6 +33,7 @@ const DEPT_COLORS: Record<DeptType, string> = {
   SALES:    "bg-sky-100 text-sky-700",
   SERVICE:  "bg-violet-100 text-violet-700",
   BODYSHOP: "bg-orange-100 text-orange-700",
+  HIRE:     "bg-teal-100 text-teal-700",
   ALL:      "bg-slate-100 text-slate-600",
 };
 

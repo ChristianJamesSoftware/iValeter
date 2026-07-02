@@ -394,6 +394,10 @@ model Booking {
   resolvedPricePence   Int?  // calculated from OrgVehicleSizeConfig at booking time
   resolvedDurationMins Int?  // calculated from OrgVehicleSizeConfig at booking time
 
+  // Roll tracking — incremented each time an account manager reschedules an overdue job
+  rollCount    Int       @default(0)
+  lastRolledAt DateTime?
+
   statusHistory JobStatusHistory[]
   photos        JobPhoto[]
   complaints    Complaint[]
@@ -1044,6 +1048,7 @@ enum ValetDepartmentType {
   SALES
   SERVICE
   BODYSHOP
+  HIRE
   ALL
 }
 

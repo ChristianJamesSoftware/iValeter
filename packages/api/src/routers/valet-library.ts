@@ -9,7 +9,7 @@ import { z } from "zod";
 import { router, superAdminProcedure, protectedProcedure } from "../trpc";
 
 const SERVICE_CATEGORIES = ["VALET", "PAINT", "CLEANING", "OTHER"] as const;
-const DEPARTMENT_TYPES = ["SALES", "SERVICE", "BODYSHOP", "ALL"] as const;
+const DEPARTMENT_TYPES = ["SALES", "SERVICE", "BODYSHOP", "HIRE", "ALL"] as const;
 
 export const valetLibraryRouter = router({
   // ── Valet Type Templates ──────────────────────────────────────────────────
