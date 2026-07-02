@@ -21,6 +21,7 @@ import {
   HelpCircle,
   MessageSquare,
   Handshake,
+  Network,
   type LucideIcon,
 } from "lucide-react";
 
@@ -47,7 +48,8 @@ export type NavIconName =
   | "impersonate"
   | "support"
   | "messaging"
-  | "clients";
+  | "clients"
+  | "network";
 
 export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -73,4 +75,5 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   support: HelpCircle,
   messaging: MessageSquare,
   clients: Handshake,
+  network: Network,
 };

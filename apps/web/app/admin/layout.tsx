@@ -4,8 +4,7 @@ import type { NavItem } from "@/components/dashboard/app-sidebar";
 const NAV: NavItem[] = [
   // Platform
   { href: "/admin", label: "Dashboard", icon: "dashboard", section: "Platform" },
-  { href: "/admin/dealerships", label: "Dealerships", icon: "building" },
-  { href: "/admin/organisations", label: "Head Offices", icon: "building" },
+  { href: "/admin/network", label: "Network", icon: "network" },
   { href: "/admin/team", label: "Valeting Team", icon: "team" },
   { href: "/admin/clients", label: "Clients", icon: "clients" },
 
