@@ -553,7 +553,7 @@ export const usersRouter = router({
     .query(async ({ ctx, input }) => {
       return ctx.prisma.user.findMany({
         where: {
-          role: "dealership_user",
+          role: { in: ["dealership_user", "management"] },
           ...(input?.showInactive ? {} : { isActive: true }),
         },
         select: {
@@ -566,6 +566,7 @@ export const usersRouter = router({
           isActive: true,
           createdAt: true,
           lastLoginAt: true,
+          role: true,
           site: { select: { id: true, name: true } },
           organisation: { select: { id: true, name: true } },
         },

@@ -94,7 +94,7 @@ export function AdminClientsList() {
         </div>
 
         <span className="text-xs text-slate-400">
-          {users.length} client{users.length !== 1 ? "s" : ""}
+          {users.length} user{users.length !== 1 ? "s" : ""}
         </span>
       </div>
 
@@ -184,9 +184,19 @@ export function AdminClientsList() {
                     )}
                   </td>
 
-                  {/* Job title */}
+                  {/* Role / Job title */}
                   <td className="px-5 py-3">
-                    <span className="text-xs text-slate-600">{u.jobTitle ?? "Dealer User"}</span>
+                    <span className={cn(
+                      "inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                      u.role === "management"
+                        ? "bg-purple-50 text-purple-700"
+                        : "bg-slate-100 text-slate-500",
+                    )}>
+                      {u.role === "management" ? "Manager" : "Dealer User"}
+                    </span>
+                    {u.jobTitle && (
+                      <p className="mt-0.5 text-xs text-slate-400">{u.jobTitle}</p>
+                    )}
                   </td>
 
                   {/* Last login */}
