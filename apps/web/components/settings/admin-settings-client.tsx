@@ -31,7 +31,6 @@ const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
   { key: "FLAG_PHOTOGRAPHY", label: "Photography", description: "Vehicle photography service" },
   { key: "FLAG_PAINT_PROTECTION", label: "Paint Protection", description: "Paint protection add-on tiers" },
   { key: "FLAG_FRESH_SCENT", label: "Fresh Scent", description: "Cabin fragrance add-on" },
-  { key: "FLAG_XERO", label: "Xero", description: "Xero accounting integration" },
 ];
 
 export function AdminSettingsClient() {

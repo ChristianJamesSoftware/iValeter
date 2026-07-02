@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { DealershipAddOns } from "@/components/admin/dealership-addons";
 import { DealerDepartmentsTab } from "@/components/admin/dealer-departments-tab";
+import { DealerDayRatesTab } from "@/components/admin/dealer-day-rates-tab";
 import { LogoUpload } from "@/components/ui/logo-upload";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -63,6 +64,7 @@ interface DealershipData {
 const TABS = [
   { id: "overview",      label: "Overview",             icon: FileText },
   { id: "departments",   label: "Departments",          icon: LayoutGrid },
+  { id: "dayRates",      label: "Day Rates",            icon: Briefcase },
   { id: "rates",         label: "Vehicle Rates",        icon: ClipboardList },
   { id: "team",          label: "Site Team",            icon: Users },
   { id: "valeters",      label: "Valeters",             icon: Car },
@@ -243,6 +245,7 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
         />
       )}
       {activeTab === "departments" && <DealerDepartmentsTab dealershipId={d.id} />}
+      {activeTab === "dayRates"   && <DealerDayRatesTab dealershipId={d.id} />}
       {activeTab === "rates"      && <VehicleRatesTab rates={allRates} sites={d.sites} onSaved={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "team"       && <TeamTab members={allTeam} sites={d.sites} organisationId={d.organisation?.id ?? ""} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "valeters"    && <ValetersTab valeters={allValeters} />}

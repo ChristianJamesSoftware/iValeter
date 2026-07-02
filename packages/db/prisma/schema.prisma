@@ -94,6 +94,7 @@ model Dealership {
   sites            Site[]
   dealershipAddOns DealershipAddOn[]
   notes            DealershipNote[]
+  dayRates         DealershipDayRate[]
 
   @@index([organisationId])
 }
@@ -262,6 +263,7 @@ model User {
   dealershipRequestsReviewed DealershipRequest[] @relation("DealershipReviewedBy")
   feedbackReplies         BroadcastFeedbackReply[] @relation("FeedbackReplies")
   supportServiceBookings  SupportServiceBooking[]
+  standingCharges         ValeterStandingCharge[]
 
   @@index([organisationId])
   @@index([siteId])
@@ -570,6 +572,7 @@ model Timesheet {
   updatedAt DateTime @updatedAt
 
   lines      TimesheetLine[]
+  extraLines TimesheetExtraLine[]
   payRunLine PayRunLine?
 
   @@unique([userId, weekStarting])
@@ -1373,4 +1376,69 @@ model PaintProtectionProduct {
   updatedAt  DateTime @updatedAt
 
   @@index([isActive, sortOrder])
+}
+
+// ─── Day Rate Roles ───────────────────────────────────────────────────────────
+
+/// Platform or org-level staff role types for day rate billing
+model DayRateRole {
+  id             String   @id @default(cuid())
+  organisationId String?  // null = platform default; set = org-specific custom
+  name           String
+  description    String?
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  dealershipDayRates DealershipDayRate[]
+
+  @@unique([organisationId, name])
+  @@index([organisationId])
+}
+
+/// Day rate charged to a dealership for a staff role (9-hour day)
+model DealershipDayRate {
+  id           String      @id @default(cuid())
+  dealershipId String
+  dealership   Dealership  @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  roleId       String
+  role         DayRateRole @relation(fields: [roleId], references: [id])
+  ratePence    Int
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([dealershipId, roleId])
+  @@index([dealershipId])
+}
+
+// ─── Standing Charges ─────────────────────────────────────────────────────────
+
+/// Recurring extra work items set by ops per valeter.
+/// Auto-populated onto every timesheet as TimesheetExtraLine rows.
+model ValeterStandingCharge {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  description    String   // e.g. "Workshop Cleaning", "Driver duties"
+  ratePence      Int      // weekly charge in pence
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/// Extra work line on a timesheet — auto-seeded from ValeterStandingCharge.
+/// Ops can also add one-off lines manually.
+model TimesheetExtraLine {
+  id          String    @id @default(cuid())
+  timesheetId String
+  timesheet   Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  description String
+  ratePence   Int
+  isRecurring Boolean   @default(true)  // true = came from standing charge
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([timesheetId])
 }
