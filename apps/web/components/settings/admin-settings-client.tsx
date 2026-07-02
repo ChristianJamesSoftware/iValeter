@@ -9,6 +9,7 @@ import { AddOnsTab } from "@/components/settings/add-ons-tab";
 import { ManagementTeamTab } from "@/components/settings/management-team-tab";
 import { ValetLibraryTab } from "@/components/settings/valet-library-tab";
 import { SupportServicesTab } from "@/components/settings/support-services-tab";
+import { VehicleSizesTab } from "@/components/settings/vehicle-sizes-tab";
 
 const TABS = [
   { key: "platform", label: "Platform" },
@@ -18,6 +19,7 @@ const TABS = [
   { key: "team", label: "Management Team" },
   { key: "library", label: "Valet Library" },
   { key: "support", label: "Support Services" },
+  { key: "vehicle-sizes", label: "Vehicle Sizes" },
 ];
 
 const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
@@ -68,6 +70,7 @@ export function AdminSettingsClient() {
       {tab === "team" && <ManagementTeamTab />}
       {tab === "library" && <ValetLibraryTab />}
       {tab === "support" && <SupportServicesTab />}
+      {tab === "vehicle-sizes" && <VehicleSizesTab />}
     </div>
   );
 }

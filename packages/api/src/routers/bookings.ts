@@ -7,6 +7,7 @@ import {
   dealershipProcedure,
   orgAdminProcedure,
 } from "../trpc";
+import { resolveVehicleSizeValues, DEFAULT_SIZE_CONFIGS } from "./vehicle-size-config";
 
 const statusEnum = z.nativeEnum(BookingStatus);
 
@@ -165,6 +166,24 @@ export const bookingsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
       }
 
+      // Resolve size-adjusted price and duration
+      const [serviceType, sizeConfigs] = await Promise.all([
+        ctx.prisma.serviceType.findUnique({
+          where: { id: input.serviceTypeId },
+          select: { durationMins: true, chargeRate: true },
+        }),
+        ctx.prisma.orgVehicleSizeConfig.findMany({
+          where: { organisationId: ctx.session.organisationId },
+        }),
+      ]);
+
+      const { resolvedDurationMins, resolvedPricePence } = resolveVehicleSizeValues(
+        sizeConfigs,
+        serviceType?.durationMins ?? 60,
+        serviceType?.chargeRate,
+        input.vehicleSize ?? "LARGE",
+      );
+
       return ctx.prisma.booking.create({
         data: {
           organisationId: ctx.session.organisationId,
@@ -182,7 +201,9 @@ export const bookingsRouter = router({
           includeFreshScent: input.includeFreshScent,
           paintProtectionTier: input.paintProtectionTier ?? null,
           photographyPackage: input.photographyPackage ?? null,
-          vehicleSize: input.vehicleSize,
+          vehicleSize: input.vehicleSize ?? "LARGE",
+          resolvedDurationMins,
+          resolvedPricePence,
           doNotClean: input.doNotClean,
           budgetLimit: input.budgetLimit ?? null,
           createdById: ctx.session.userId,
@@ -596,9 +617,13 @@ export const bookingsRouter = router({
         },
       });
 
+      // Use resolvedDurationMins if set, else fall back to serviceType.durationMins
+      const effectiveMins = (b: { resolvedDurationMins: number | null; serviceType: { durationMins: number } }) =>
+        b.resolvedDurationMins ?? b.serviceType.durationMins;
+
       // Total minutes booked for the day (all valeters combined, for the site)
       const totalBookedMins = bookings.reduce(
-        (sum, b) => sum + b.serviceType.durationMins,
+        (sum, b) => sum + effectiveMins(b),
         0,
       );
 
@@ -618,7 +643,7 @@ export const bookingsRouter = router({
             bookingCount: 0,
           };
         }
-        valeterMap[vid].bookedMins += b.serviceType.durationMins;
+        valeterMap[vid].bookedMins += effectiveMins(b);
         valeterMap[vid].bookingCount += 1;
       }
 

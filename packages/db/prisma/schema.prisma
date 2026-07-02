@@ -47,6 +47,7 @@ model Organisation {
   xeroConnection   XeroConnection?
   supportServices         SupportService[]
   supportServiceBookings  SupportServiceBooking[]
+  vehicleSizeConfigs      OrgVehicleSizeConfig[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -354,8 +355,10 @@ model Booking {
   qualityScore Int?    // 1-5
   qualityNote  String?
 
-  // Vehicle sizing for piece-work pricing
-  vehicleSize VehicleSize?
+  // Vehicle sizing for piece-work pricing and time allocation
+  vehicleSize          VehicleSize?
+  resolvedPricePence   Int?  // calculated from OrgVehicleSizeConfig at booking time
+  resolvedDurationMins Int?  // calculated from OrgVehicleSizeConfig at booking time
 
   statusHistory JobStatusHistory[]
   photos        JobPhoto[]
@@ -1164,4 +1167,38 @@ model SupportServiceBooking {
 
   @@index([organisationId])
   @@index([siteId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ORG VEHICLE SIZE CONFIG
+// One row per org per vehicle size. LARGE is the baseline — its basePricePence
+// and baseAllocMins are the reference point. Other sizes carry deltaPricePence
+// and deltaMins relative to LARGE (negative = cheaper/faster).
+// Defaults: SMALL(-5m/-£5), MEDIUM(-5m/-£5? no — per spec: MEDIUM is -5m/-£5
+//   from LARGE, SMALL is -5m from MEDIUM = -10m/-£10 from LARGE, XL+5m/+£5,
+//   VAN+5m/+£5 from LARGE).
+// ─────────────────────────────────────────────────────────────────────────────
+model OrgVehicleSizeConfig {
+  id             String       @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  size           VehicleSize
+
+  // LARGE only: base price and base allocation time
+  basePricePence Int?  // e.g. 2000 = £20.00
+  baseAllocMins  Int?  // e.g. 60
+
+  // Delta relative to LARGE (positive = more, negative = less)
+  deltaPricePence Int @default(0)  // e.g. -500 = -£5, +500 = +£5
+  deltaMins       Int @default(0)  // e.g. -5 = 5 min less, +5 = 5 min more
+
+  // Display label override (e.g. "Small Hatchback")
+  label String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organisationId, size])
+  @@index([organisationId])
 }

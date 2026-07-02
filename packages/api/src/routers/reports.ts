@@ -686,5 +686,75 @@ export const reportsRouter = router({
       };
     }),
 
+  /**
+   * Vehicle size report — actual valet time grouped by size.
+   * Org admin only.
+   */
+  vehicleSizeReport: orgAdminProcedure
+    .input(
+      z.object({
+        siteId: z.string().optional(),
+        dateFrom: z.date().optional(),
+        dateTo: z.date().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const dateFrom = input.dateFrom ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const dateTo = input.dateTo ?? new Date();
+
+      const bookings = await ctx.prisma.booking.findMany({
+        where: {
+          organisationId: ctx.session.organisationId,
+          ...(input.siteId ? { siteId: input.siteId } : {}),
+          status: "COMPLETED",
+          completedAt: { gte: dateFrom, lte: dateTo },
+        },
+        select: {
+          id: true,
+          vehicleSize: true,
+          resolvedDurationMins: true,
+          createdAt: true,
+          completedAt: true,
+          serviceType: { select: { durationMins: true } },
+        },
+      });
+
+      const sizes = ["SMALL", "MEDIUM", "LARGE", "XL", "VAN"] as const;
+      type SizeBucket = { size: string; count: number; totalActualMins: number; totalAllocatedMins: number };
+      const sizeMap: Record<string, SizeBucket> = Object.fromEntries(
+        sizes.map((s) => [s, { size: s, count: 0, totalActualMins: 0, totalAllocatedMins: 0 }]),
+      );
+
+      for (const b of bookings) {
+        const size = b.vehicleSize ?? "LARGE";
+        const bucket = sizeMap[size];
+        if (!bucket) continue;
+        bucket.count += 1;
+        const allocated = b.resolvedDurationMins ?? b.serviceType.durationMins;
+        bucket.totalAllocatedMins += allocated;
+        if (b.completedAt) {
+          const actualMins = Math.round((b.completedAt.getTime() - b.createdAt.getTime()) / 60000);
+          if (actualMins > 0 && actualMins < 480) {
+            bucket.totalActualMins += actualMins;
+          }
+        }
+      }
+
+      return sizes.map((size) => {
+        const bucket = sizeMap[size];
+        if (!bucket) return { size, count: 0, avgActualMins: null, avgAllocatedMins: null, differenceMins: null };
+        const avgActualMins = bucket.count > 0 ? Math.round(bucket.totalActualMins / bucket.count) : null;
+        const avgAllocatedMins = bucket.count > 0 ? Math.round(bucket.totalAllocatedMins / bucket.count) : null;
+        return {
+          size,
+          count: bucket.count,
+          avgActualMins,
+          avgAllocatedMins,
+          differenceMins: avgActualMins != null && avgAllocatedMins != null
+            ? avgActualMins - avgAllocatedMins
+            : null,
+        };
+      });
+    }),
 
 });

@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { PlatformReportsClient } from "./platform-reports-client";
 import { ReportsClient } from "@/components/org/reports-client";
+import { VehicleSizeReport } from "./vehicle-size-report";
 import { cn } from "@/lib/utils";
 
-type Tab = "platform" | "detailed";
+type Tab = "platform" | "detailed" | "vehicle-sizes";
 
 export function AdminReportsTabs(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>("platform");
@@ -17,6 +18,7 @@ export function AdminReportsTabs(): React.JSX.Element {
           [
             { key: "platform" as Tab, label: "Platform Overview" },
             { key: "detailed" as Tab, label: "Detailed Reports" },
+            { key: "vehicle-sizes" as Tab, label: "Vehicle Size Report" },
           ] as const
         ).map((t) => (
           <button
@@ -35,6 +37,7 @@ export function AdminReportsTabs(): React.JSX.Element {
       </div>
       {tab === "platform" && <PlatformReportsClient />}
       {tab === "detailed" && <ReportsClient />}
+      {tab === "vehicle-sizes" && <VehicleSizeReport />}
     </div>
   );
 }

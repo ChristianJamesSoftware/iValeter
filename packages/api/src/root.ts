@@ -23,6 +23,7 @@ import { inactiveUsersRouter } from "./routers/inactive-users";
 import { addOnsRouter } from "./routers/add-ons";
 import { valetLibraryRouter } from "./routers/valet-library";
 import { supportServicesRouter } from "./routers/supportServices";
+import { vehicleSizeConfigRouter } from "./routers/vehicle-size-config";
 
 export const appRouter = router({
   auth: authRouter,
@@ -49,6 +50,7 @@ export const appRouter = router({
   addOns: addOnsRouter,
   valetLibrary: valetLibraryRouter,
   supportServices: supportServicesRouter,
+  vehicleSizeConfig: vehicleSizeConfigRouter,
 });
 
 export type AppRouter = typeof appRouter;
