@@ -313,24 +313,13 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
           </Field>
         )}
 
-        {/* Department — hidden when the user is pre-assigned to one */}
-        {!userDepartmentId && (
-          <Field label="Department">
-            <Select value={departmentId} onChange={onDeptChange}>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        )}
+        {/* Department — set automatically from user assignment, not shown to customer */}
 
         <Field label="Service Type">
           <Select value={serviceTypeId} onChange={setServiceTypeId}>
             {serviceTypes.map((st) => (
               <option key={st.id} value={st.id}>
-                {st.name} ({st.durationMins}m)
+                {st.name}
               </option>
             ))}
           </Select>
@@ -471,7 +460,7 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
               )}
             >
               <ShieldCheck className="h-5 w-5" />
-              Include pre-valet vehicle inspection (+5 mins)
+              Include pre-valet vehicle inspection
             </span>
             <span
               className={cn(
@@ -521,7 +510,7 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
                   )}
                 >
                   <Sparkles className="h-5 w-5" />
-                  Fresh Scent (+2 mins)
+                  Fresh Scent
                 </span>
                 <span
                   className={cn(
@@ -561,7 +550,7 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
                   )}
                 >
                   <Droplets className="h-5 w-5 text-cyan-600" />
-                  Paint Protection (+60 mins)
+                  Paint Protection
                 </span>
                 <span
                   className={cn(
