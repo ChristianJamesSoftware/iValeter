@@ -196,19 +196,6 @@ export function EditBookingModal({ booking, departments, onClose, onSaved }: Pro
                 />
               </div>
 
-              {/* Customer Name */}
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate">
-                  Customer Name
-                </label>
-                <input
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  required
-                  className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
-                />
-              </div>
-
               {/* Ready By */}
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate">
