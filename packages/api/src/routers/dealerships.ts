@@ -158,7 +158,7 @@ export const dealershipsRouter = router({
         where: input?.showInactive ? undefined : { isActive: true },
         include: {
           organisation: { select: { id: true, name: true } },
-          _count: { select: { sites: true } },
+          _count: { select: { sites: { where: { isActive: true } } } },
         },
         orderBy: [{ organisation: { name: "asc" } }, { name: "asc" }],
       });
