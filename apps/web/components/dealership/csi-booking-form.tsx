@@ -6,6 +6,8 @@ import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
 // ─── Group config ─────────────────────────────────────────────────────────────
+// All Tailwind classes must be complete static strings — no string concatenation
+// or Tailwind will purge them from the build.
 
 const GROUP_LABELS: Record<string, string> = {
   EXTERIOR:         "Exterior",
@@ -19,10 +21,59 @@ const GROUP_ICONS: Record<string, string> = {
   WORKSHOP:         "🔧",
 };
 
-const GROUP_COLORS: Record<string, { border: string; header: string; badge: string; tickText: string; tickBg: string }> = {
-  EXTERIOR:         { border: "border-sky-200",    header: "bg-sky-50",    badge: "bg-sky-100 text-sky-700",       tickText: "text-sky-600",    tickBg: "bg-sky-500" },
-  SHOWROOM_LOUNGES: { border: "border-violet-200", header: "bg-violet-50", badge: "bg-violet-100 text-violet-700", tickText: "text-violet-600", tickBg: "bg-violet-500" },
-  WORKSHOP:         { border: "border-amber-200",  header: "bg-amber-50",  badge: "bg-amber-100 text-amber-700",   tickText: "text-amber-600",  tickBg: "bg-amber-500" },
+interface GroupStyle {
+  card: string;       // border + wrapper
+  header: string;     // header background
+  badge: string;      // count badge
+  checkFull: string;  // fully selected check icon colour
+  checkPartialBorder: string; // partial ring border
+  checkPartialFill: string;   // partial ring inner fill
+  selectedRow: string; // selected row bg
+  selectedText: string; // selected item text colour
+}
+
+const GROUP_STYLES: Record<string, GroupStyle> = {
+  EXTERIOR: {
+    card:               "border-2 border-sky-200",
+    header:             "bg-sky-50",
+    badge:              "bg-sky-100 text-sky-700",
+    checkFull:          "text-sky-600",
+    checkPartialBorder: "border-sky-400",
+    checkPartialFill:   "bg-sky-400",
+    selectedRow:        "bg-sky-50/60",
+    selectedText:       "text-sky-700",
+  },
+  SHOWROOM_LOUNGES: {
+    card:               "border-2 border-violet-200",
+    header:             "bg-violet-50",
+    badge:              "bg-violet-100 text-violet-700",
+    checkFull:          "text-violet-600",
+    checkPartialBorder: "border-violet-400",
+    checkPartialFill:   "bg-violet-400",
+    selectedRow:        "bg-violet-50/60",
+    selectedText:       "text-violet-700",
+  },
+  WORKSHOP: {
+    card:               "border-2 border-amber-200",
+    header:             "bg-amber-50",
+    badge:              "bg-amber-100 text-amber-700",
+    checkFull:          "text-amber-600",
+    checkPartialBorder: "border-amber-400",
+    checkPartialFill:   "bg-amber-400",
+    selectedRow:        "bg-amber-50/60",
+    selectedText:       "text-amber-700",
+  },
+};
+
+const FALLBACK_STYLE: GroupStyle = {
+  card:               "border-2 border-slate-200",
+  header:             "bg-slate-50",
+  badge:              "bg-slate-100 text-slate-600",
+  checkFull:          "text-slate-500",
+  checkPartialBorder: "border-slate-400",
+  checkPartialFill:   "bg-slate-400",
+  selectedRow:        "bg-slate-50",
+  selectedText:       "text-slate-700",
 };
 
 const GROUP_ORDER = ["EXTERIOR", "SHOWROOM_LOUNGES", "WORKSHOP"];
@@ -30,10 +81,8 @@ const GROUP_ORDER = ["EXTERIOR", "SHOWROOM_LOUNGES", "WORKSHOP"];
 function groupLabel(key: string): string {
   return GROUP_LABELS[key] ?? key.toLowerCase().split(/[_\s]+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
-function groupIcon(key: string): string  { return GROUP_ICONS[key] ?? "📋"; }
-function groupColors(key: string) {
-  return GROUP_COLORS[key] ?? { border: "border-slate-200", header: "bg-slate-50", badge: "bg-slate-100 text-slate-600", tickText: "text-slate-600", tickBg: "bg-slate-500" };
-}
+function groupIcon(key: string): string { return GROUP_ICONS[key] ?? "📋"; }
+function groupStyle(key: string): GroupStyle { return GROUP_STYLES[key] ?? FALLBACK_STYLE; }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,8 +106,6 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-// ─── Section divider ──────────────────────────────────────────────────────────
-
 function SectionDivider({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 py-1">
@@ -75,13 +122,13 @@ export function CsiBookingForm(): React.JSX.Element {
   const servicesQuery = trpc.supportServices.list.useQuery();
   const sitesQuery    = trpc.sites.list.useQuery();
 
-  const [selectedIds,     setSelectedIds]     = useState<Set<string>>(new Set());
-  const [collapsed,       setCollapsed]       = useState<Set<string>>(new Set());
-  const [siteId,          setSiteId]          = useState("");
-  const [requiredByDate,  setRequiredByDate]   = useState(todayString());
-  const [contactName,     setContactName]      = useState("");
-  const [specialRequests, setSpecialRequests]  = useState("");
-  const [notes,           setNotes]            = useState("");
+  const [selectedIds,     setSelectedIds]    = useState<Set<string>>(new Set());
+  const [collapsed,       setCollapsed]      = useState<Set<string>>(new Set());
+  const [siteId,          setSiteId]         = useState("");
+  const [requiredByDate,  setRequiredByDate]  = useState(todayString());
+  const [contactName,     setContactName]     = useState("");
+  const [specialRequests, setSpecialRequests] = useState("");
+  const [notes,           setNotes]           = useState("");
 
   const [submitted,        setSubmitted]        = useState(false);
   const [submittedContact, setSubmittedContact] = useState("");
@@ -98,7 +145,6 @@ export function CsiBookingForm(): React.JSX.Element {
   const services = servicesQuery.data ?? [];
   const sites    = sitesQuery.data    ?? [];
 
-  // Build ordered groups
   const grouped: Record<string, typeof services> = {};
   for (const svc of services) {
     const g = svc.group ?? "OTHER";
@@ -111,36 +157,19 @@ export function CsiBookingForm(): React.JSX.Element {
   ];
 
   function toggleService(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+    setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }
   function toggleGroup(group: string) {
-    const groupIds = (grouped[group] ?? []).map((s) => s.id);
-    const allSelected = groupIds.every((id) => selectedIds.has(id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (allSelected) groupIds.forEach((id) => next.delete(id));
-      else             groupIds.forEach((id) => next.add(id));
-      return next;
-    });
+    const ids = (grouped[group] ?? []).map((s) => s.id);
+    const all = ids.every((id) => selectedIds.has(id));
+    setSelectedIds((prev) => { const n = new Set(prev); all ? ids.forEach((id) => n.delete(id)) : ids.forEach((id) => n.add(id)); return n; });
   }
   function toggleCollapse(group: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(group)) next.delete(group); else next.add(group);
-      return next;
-    });
+    setCollapsed((prev) => { const n = new Set(prev); n.has(group) ? n.delete(group) : n.add(group); return n; });
   }
 
   const canSubmit =
-    selectedIds.size > 0 &&
-    siteId &&
-    contactName.trim() &&
-    requiredByDate &&
-    !bookMultiple.isPending;
+    selectedIds.size > 0 && siteId && contactName.trim() && requiredByDate && !bookMultiple.isPending;
 
   function handleSubmit() {
     if (!canSubmit) return;
@@ -155,17 +184,12 @@ export function CsiBookingForm(): React.JSX.Element {
   }
 
   function handleMakeAnother() {
-    setSubmitted(false);
-    setSelectedIds(new Set());
-    setSiteId("");
-    setRequiredByDate(todayString());
-    setContactName("");
-    setSpecialRequests("");
-    setNotes("");
-    bookMultiple.reset();
+    setSubmitted(false); setSelectedIds(new Set()); setSiteId("");
+    setRequiredByDate(todayString()); setContactName("");
+    setSpecialRequests(""); setNotes(""); bookMultiple.reset();
   }
 
-  // ── Success ────────────────────────────────────────────────────────────────
+  // ── Success ──────────────────────────────────────────────────────────────
   if (submitted) {
     return (
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6">
@@ -180,23 +204,18 @@ export function CsiBookingForm(): React.JSX.Element {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleMakeAnother}
-          className="mt-4 h-10 rounded-lg border border-emerald-600 px-4 font-heading text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
-        >
+        <button type="button" onClick={handleMakeAnother}
+          className="mt-4 h-10 rounded-lg border border-emerald-600 px-4 font-heading text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
           Make another booking
         </button>
       </div>
     );
   }
 
-  // ── Loading ────────────────────────────────────────────────────────────────
   if (servicesQuery.isLoading) {
     return (
       <div className="flex items-center gap-2 py-10 text-sm text-slate-400">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Loading services…
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading services…
       </div>
     );
   }
@@ -209,202 +228,154 @@ export function CsiBookingForm(): React.JSX.Element {
     );
   }
 
-  // ── Form ───────────────────────────────────────────────────────────────────
+  // ── Form ──────────────────────────────────────────────────────────────────
   return (
     <div className="rounded-xl border border-line bg-white p-6">
       <div className="space-y-5">
 
-        {/* ── Section: Services ───────────────────────────────────── */}
         <SectionDivider label="Select Services" />
 
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm text-slate-500">Choose one or more services below</p>
-            {selectedIds.size > 0 && (
-              <span className="rounded-full bg-[#01696F] px-2.5 py-0.5 text-xs font-bold text-white">
-                {selectedIds.size} selected
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            {orderedGroups.map((group) => {
-              const groupServices = grouped[group] ?? [];
-              const colors = groupColors(group);
-              const isCollapsed = collapsed.has(group);
-              const selectedInGroup = groupServices.filter((s) => selectedIds.has(s.id)).length;
-              const allInGroupSelected = groupServices.length > 0 && selectedInGroup === groupServices.length;
-
-              return (
-                <div key={group} className={cn("overflow-hidden rounded-xl border-2", colors.border)}>
-                  {/* Group header */}
-                  <div className={cn("flex items-center gap-3 px-4 py-3.5", colors.header)}>
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(group)}
-                      className="shrink-0"
-                      aria-label={`Select all ${groupLabel(group)}`}
-                    >
-                      {allInGroupSelected ? (
-                        <CheckCircle2 className={cn("h-5 w-5", colors.tickText)} />
-                      ) : selectedInGroup > 0 ? (
-                        <div className={cn("relative h-5 w-5 rounded-full border-2", colors.tickText.replace("text-", "border-"))}>
-                          <div className={cn("absolute inset-[3px] rounded-full", colors.tickBg)} style={{ clipPath: "inset(0 50% 0 0)" }} />
-                        </div>
-                      ) : (
-                        <Circle className="h-5 w-5 text-slate-300" />
-                      )}
-                    </button>
-
-                    <span className="text-lg leading-none">{groupIcon(group)}</span>
-
-                    <p className="flex-1 font-heading text-sm font-bold text-[#28251D]">{groupLabel(group)}</p>
-
-                    {selectedInGroup > 0 && (
-                      <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", colors.badge)}>
-                        {selectedInGroup}/{groupServices.length}
-                      </span>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => toggleCollapse(group)}
-                      className="shrink-0 text-slate-400 hover:text-slate-600"
-                    >
-                      {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-                    </button>
-                  </div>
-
-                  {/* Service cards */}
-                  {!isCollapsed && (
-                    <div className="divide-y divide-slate-100 bg-white">
-                      {groupServices.map((svc) => {
-                        const isSelected = selectedIds.has(svc.id);
-                        return (
-                          <button
-                            key={svc.id}
-                            type="button"
-                            onClick={() => toggleService(svc.id)}
-                            className={cn(
-                              "flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors",
-                              isSelected ? "bg-[#01696F]/5" : "hover:bg-slate-50",
-                            )}
-                          >
-                            <span className="shrink-0">
-                              {isSelected ? (
-                                <CheckCircle2 className="h-5 w-5 text-[#01696F]" />
-                              ) : (
-                                <Circle className="h-5 w-5 text-slate-200" />
-                              )}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <p className={cn("text-sm font-semibold", isSelected ? "text-[#01696F]" : "text-[#28251D]")}>
-                                {svc.name}
-                              </p>
-                              {svc.description && (
-                                <p className="mt-0.5 text-xs text-slate-400 truncate">{svc.description}</p>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        {/* Selected count */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-500">Choose one or more services below</p>
+          {selectedIds.size > 0 && (
+            <span className="rounded-full bg-[#01696F] px-2.5 py-0.5 text-xs font-bold text-white">
+              {selectedIds.size} selected
+            </span>
+          )}
         </div>
 
-        {/* ── Section: Booking Details ─────────────────────────────── */}
+        {/* Groups */}
+        <div className="space-y-3">
+          {orderedGroups.map((group) => {
+            const groupServices = grouped[group] ?? [];
+            const style = groupStyle(group);
+            const isCollapsed = collapsed.has(group);
+            const selectedInGroup = groupServices.filter((s) => selectedIds.has(s.id)).length;
+            const allSelected = groupServices.length > 0 && selectedInGroup === groupServices.length;
+            const partialSelected = selectedInGroup > 0 && !allSelected;
+
+            return (
+              <div key={group} className={cn("overflow-hidden rounded-xl", style.card)}>
+                {/* Group header */}
+                <div className={cn("flex items-center gap-3 px-4 py-3.5", style.header)}>
+                  <button type="button" onClick={() => toggleGroup(group)} className="shrink-0" aria-label={`Select all ${groupLabel(group)}`}>
+                    {allSelected ? (
+                      <CheckCircle2 className={cn("h-5 w-5", style.checkFull)} />
+                    ) : partialSelected ? (
+                      <div className={cn("relative h-5 w-5 rounded-full border-2", style.checkPartialBorder)}>
+                        <div className={cn("absolute inset-[3px] rounded-full", style.checkPartialFill)} style={{ clipPath: "inset(0 50% 0 0)" }} />
+                      </div>
+                    ) : (
+                      <Circle className="h-5 w-5 text-slate-300" />
+                    )}
+                  </button>
+
+                  <span className="text-lg leading-none">{groupIcon(group)}</span>
+                  <p className="flex-1 font-heading text-sm font-bold text-[#28251D]">{groupLabel(group)}</p>
+
+                  {selectedInGroup > 0 && (
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", style.badge)}>
+                      {selectedInGroup}/{groupServices.length}
+                    </span>
+                  )}
+
+                  <button type="button" onClick={() => toggleCollapse(group)} className="shrink-0 text-slate-400 hover:text-slate-600">
+                    {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                  </button>
+                </div>
+
+                {/* Service rows */}
+                {!isCollapsed && (
+                  <div className="divide-y divide-slate-100 bg-white">
+                    {groupServices.map((svc) => {
+                      const isSelected = selectedIds.has(svc.id);
+                      return (
+                        <button key={svc.id} type="button" onClick={() => toggleService(svc.id)}
+                          className={cn(
+                            "flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors",
+                            isSelected ? style.selectedRow : "hover:bg-slate-50",
+                          )}
+                        >
+                          <span className="shrink-0">
+                            {isSelected
+                              ? <CheckCircle2 className={cn("h-5 w-5", style.checkFull)} />
+                              : <Circle className="h-5 w-5 text-slate-200" />
+                            }
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className={cn("text-sm font-semibold", isSelected ? style.selectedText : "text-[#28251D]")}>
+                              {svc.name}
+                            </p>
+                            {svc.description && (
+                              <p className="mt-0.5 truncate text-xs text-slate-400">{svc.description}</p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
         <SectionDivider label="Booking Details" />
 
         <Field label="Site" required>
           {sitesQuery.isLoading ? (
             <div className="flex h-12 items-center text-sm text-slate-400">
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />Loading sites…
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Loading sites…
             </div>
           ) : (
             <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={INPUT_CLS}>
               <option value="">Select a site…</option>
-              {sites.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           )}
         </Field>
 
         <Field label="Date Required By" required>
-          <input
-            type="date"
-            value={requiredByDate}
-            min={todayString()}
-            onChange={(e) => setRequiredByDate(e.target.value)}
-            className={INPUT_CLS}
-          />
+          <input type="date" value={requiredByDate} min={todayString()}
+            onChange={(e) => setRequiredByDate(e.target.value)} className={INPUT_CLS} />
         </Field>
 
         <Field label="Contact Name" required>
-          <input
-            type="text"
-            value={contactName}
-            onChange={(e) => setContactName(e.target.value)}
-            placeholder="Name of person to contact on site"
-            className={INPUT_CLS}
-          />
+          <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)}
+            placeholder="Name of person to contact on site" className={INPUT_CLS} />
         </Field>
 
-        {/* ── Section: Additional Info ─────────────────────────────── */}
         <SectionDivider label="Additional Info" />
 
         <Field label="Special Requests">
-          <input
-            type="text"
-            value={specialRequests}
-            onChange={(e) => setSpecialRequests(e.target.value)}
-            placeholder="Any specific requirements…"
-            className={INPUT_CLS}
-          />
+          <input type="text" value={specialRequests} onChange={(e) => setSpecialRequests(e.target.value)}
+            placeholder="Any specific requirements…" className={INPUT_CLS} />
         </Field>
 
         <Field label="Notes">
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Access instructions, parking, additional details…"
-            rows={3}
-            className="w-full resize-none rounded-lg border border-line bg-white px-4 py-3 text-navy outline-none transition focus:border-cyan focus:ring-2 focus:ring-cyan/30"
-          />
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
+            placeholder="Access instructions, parking, additional details…" rows={3}
+            className="w-full resize-none rounded-lg border border-line bg-white px-4 py-3 text-navy outline-none transition focus:border-cyan focus:ring-2 focus:ring-cyan/30" />
         </Field>
 
-        {/* ── Error ──────────────────────────────────────────────────── */}
         {bookMultiple.error && (
-          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-            <span className="mt-0.5 text-sm text-red-700">{bookMultiple.error.message}</span>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {bookMultiple.error.message}
           </div>
         )}
 
-        {/* ── Submit ─────────────────────────────────────────────────── */}
-        <button
-          type="button"
-          disabled={!canSubmit}
-          onClick={handleSubmit}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-[#01696F] font-heading text-lg font-bold text-white transition hover:bg-[#015559] disabled:opacity-60"
-        >
+        <button type="button" disabled={!canSubmit} onClick={handleSubmit}
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-[#01696F] font-heading text-lg font-bold text-white transition hover:bg-[#015559] disabled:opacity-60">
           {bookMultiple.isPending ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Submitting…
-            </>
+            <><Loader2 className="h-5 w-5 animate-spin" /> Submitting…</>
           ) : (
-            <>
-              <Sparkles className="h-5 w-5" />
-              {selectedIds.size > 1
-                ? `Submit ${selectedIds.size} Booking Requests`
-                : "Submit Booking Request"}
+            <><Sparkles className="h-5 w-5" />
+              {selectedIds.size > 1 ? `Submit ${selectedIds.size} Booking Requests` : "Submit Booking Request"}
             </>
           )}
         </button>
+
       </div>
     </div>
   );
