@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { ValeterCardModal } from "@/components/admin/valeter-card-modal";
 import {
   Building2, MapPin, Phone, Mail, User, PlusCircle, X,
-  FileText, Users, Layers, Wrench, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2, StickyNote, Trash2, ChevronDown, ChevronUp, CalendarDays, Briefcase, CreditCard, BadgeCheck, LayoutGrid,
+  FileText, Users, Layers, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2, StickyNote, Trash2, ChevronDown, ChevronUp, CalendarDays, Briefcase, CreditCard, BadgeCheck, LayoutGrid,
 } from "lucide-react";
 import { DealershipAddOns } from "@/components/admin/dealership-addons";
 import { DealerDepartmentsTab } from "@/components/admin/dealer-departments-tab";
@@ -63,7 +63,6 @@ interface DealershipData {
 const TABS = [
   { id: "overview",      label: "Overview",             icon: FileText },
   { id: "departments",   label: "Departments",          icon: LayoutGrid },
-  { id: "valetTypes",    label: "Valet Types",          icon: Wrench },
   { id: "rates",         label: "Vehicle Rates",        icon: ClipboardList },
   { id: "team",          label: "Site Team",            icon: Users },
   { id: "valeters",      label: "Valeters",             icon: Car },
@@ -136,17 +135,6 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
   // Split: site staff vs valeters
   const allTeam = allUsers.filter((u) => u.role !== "valeter");
   const allValeters = allUsers.filter((u) => u.role === "valeter");
-
-  // All service types across all sites (deduplicated)
-  const allServiceTypes = Array.from(
-    new Map(
-      d.sites.flatMap((s) =>
-        s.departments.flatMap((dept) =>
-          dept.serviceTypes.map((st) => [st.id, st]),
-        ),
-      ),
-    ).values(),
-  );
 
   // All vehicle size rates across all sites
   const allRates = d.sites.flatMap((s) =>
@@ -255,7 +243,6 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
         />
       )}
       {activeTab === "departments" && <DealerDepartmentsTab dealershipId={d.id} />}
-      {activeTab === "valetTypes" && <ValetTypesTab serviceTypes={allServiceTypes} sites={d.sites} dealershipId={d.id} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "rates"      && <VehicleRatesTab rates={allRates} sites={d.sites} onSaved={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "team"       && <TeamTab members={allTeam} sites={d.sites} organisationId={d.organisation?.id ?? ""} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "valeters"    && <ValetersTab valeters={allValeters} />}
@@ -719,129 +706,6 @@ function SitesTab({
             ))}
           </tbody>
         </table>
-      )}
-    </div>
-  );
-}
-
-// ─── Valet Types tab ─────────────────────────────────────────────────────────
-
-function ValetTypesTab({ serviceTypes, sites, dealershipId, onAdded }: {
-  serviceTypes: { id: string; name: string; durationMins: number }[];
-  sites: SiteRow[];
-  dealershipId: string;
-  onAdded: () => void;
-}) {
-  const [durations, setDurations] = useState<Record<string, number>>({});
-  const templates = trpc.valetLibrary.listValetTypes.useQuery();
-  const activate = trpc.valetLibrary.activateValetTypeForDealership.useMutation({ onSuccess: onAdded });
-  const deactivate = trpc.valetLibrary.deactivateValetTypeForDealership.useMutation({ onSuccess: onAdded });
-
-  const activeNames = new Set(serviceTypes.map((s) => s.name));
-  const available = templates.data ?? [];
-  const inputCls = "h-8 rounded border border-slate-200 bg-white px-2 text-xs outline-none focus:border-slate-400";
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-5 py-4">
-        <h2 className="font-bold text-slate-900">
-          Valet Types
-          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{serviceTypes.length} active</span>
-        </h2>
-        <p className="mt-0.5 text-xs text-slate-400">
-          Select from the platform valet type library. Tick to activate for this dealership, untick to deactivate.
-        </p>
-      </div>
-
-      {templates.isLoading ? (
-        <p className="px-5 py-8 text-center text-sm text-slate-400">Loading library...</p>
-      ) : available.length === 0 ? (
-        <p className="px-5 py-12 text-center text-sm text-slate-400">
-          No valet types in the library yet. Go to <strong>Settings &rarr; Valet Library</strong> to add them first.
-        </p>
-      ) : (
-        <div className="divide-y divide-slate-50">
-          {available.map((t) => {
-            const isActive = activeNames.has(t.name);
-            const existing = serviceTypes.find((s) => s.name === t.name);
-            return (
-              <div key={t.id} className={`flex flex-wrap items-center gap-4 px-5 py-3 ${isActive ? "" : "opacity-60"}`}>
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-slate-900"
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      activate.mutate({ dealershipId, templateId: t.id, durationMins: durations[t.id] });
-                    } else {
-                      deactivate.mutate({ dealershipId, name: t.name });
-                    }
-                  }}
-                />
-                <div className="flex-1 min-w-[160px]">
-                  <span className="font-medium text-slate-900 text-sm">{t.name}</span>
-                  {t.description && <span className="ml-2 text-xs text-slate-400">{t.description}</span>}
-                </div>
-                {!isActive && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Duration:</span>
-                    <input
-                      type="number"
-                      placeholder={String(t.defaultDurationMins)}
-                      className={inputCls}
-                      style={{ width: 64 }}
-                      value={durations[t.id] ?? ""}
-                      onChange={(e) => setDurations((d) => ({ ...d, [t.id]: parseInt(e.target.value) || t.defaultDurationMins }))}
-                    />
-                    <span className="text-xs text-slate-400">min</span>
-                  </div>
-                )}
-                {isActive && (
-                  <span className="text-xs text-slate-400">{existing ? `${existing.durationMins} min` : ""}</span>
-                )}
-                <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                  isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
-                }`}>
-                  {isActive ? "Active" : "Inactive"}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {serviceTypes.length > 0 && (
-        <div className="border-t border-slate-100">
-          {sites.map((site) => {
-            const hasST = site.departments.some((d) => d.serviceTypes.length > 0);
-            if (!hasST) return null;
-            return (
-              <div key={site.id}>
-                <div className="border-b border-slate-100 bg-slate-50 px-5 py-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{site.name}</p>
-                </div>
-                {site.departments.map((dept) => dept.serviceTypes.length > 0 && (
-                  <div key={dept.id}>
-                    <div className="border-b border-slate-50 px-5 py-1.5">
-                      <p className="text-xs font-semibold text-slate-400">{dept.name}</p>
-                    </div>
-                    <table className="w-full text-left text-sm">
-                      <thead><tr><th className={TH}>Service Type</th><th className={TH}>Duration</th></tr></thead>
-                      <tbody>
-                        {dept.serviceTypes.map((st) => (
-                          <tr key={st.id} className="hover:bg-slate-50/50">
-                            <td className={`${TD} font-medium text-slate-900`}>{st.name}</td>
-                            <td className={TD}>{st.durationMins} min</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-        </div>
       )}
     </div>
   );
