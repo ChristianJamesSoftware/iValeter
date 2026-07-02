@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { getServerApi } from "@/lib/trpc/server";
 import { formatTime } from "@/lib/utils";
 import { JobStatusBadge } from "@/components/brand/job-status-badge";
+import { QualityRating } from "@/components/dealership/quality-rating";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,13 @@ export default async function DealershipBookingDetail({
           </div>
         )}
       </section>
+
+      <QualityRating
+        bookingId={booking.id}
+        currentScore={booking.qualityScore ?? null}
+        currentNote={booking.qualityNote ?? null}
+        status={booking.status}
+      />
 
       <section>
         <h2 className="mb-3 font-heading text-xl font-bold text-navy">

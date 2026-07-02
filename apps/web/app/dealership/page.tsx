@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Sparkles } from "lucide-react";
 import { getServerApi } from "@/lib/trpc/server";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DealerDashboardClient } from "@/components/dealership/dealer-dashboard-client";
@@ -42,13 +42,22 @@ export default async function DealershipDashboard() {
         title="Today's Operations"
         subtitle="Live bookings for your site"
         action={
-          <Link
-            href="/dealership/bookings/new"
-            className="flex h-11 items-center gap-2 rounded-lg bg-cyan px-4 font-heading font-semibold text-navy transition hover:bg-cyan-600"
-          >
-            <PlusCircle className="h-5 w-5" />
-            New Booking
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dealership/csi-booking/new"
+              className="flex h-11 items-center gap-2 rounded-lg border border-[#01696F] px-4 font-heading font-semibold text-[#01696F] transition hover:bg-[#01696F]/10"
+            >
+              <Sparkles className="h-5 w-5" />
+              CSI Booking
+            </Link>
+            <Link
+              href="/dealership/bookings/new"
+              className="flex h-11 items-center gap-2 rounded-lg bg-cyan px-4 font-heading font-semibold text-navy transition hover:bg-cyan-600"
+            >
+              <PlusCircle className="h-5 w-5" />
+              Book Valet
+            </Link>
+          </div>
         }
       />
       <DealerDashboardClient initialJobs={jobs} />

@@ -134,6 +134,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
   const [isPriority, setIsPriority] = useState(false);
   const [doNotClean, setDoNotClean] = useState(false);
   const [budgetLimit, setBudgetLimit] = useState("");
+  const [showBudgetLimit, setShowBudgetLimit] = useState(false);
   const [overrideDuplicate, setOverrideDuplicate] = useState(false);
   const dupTimerRef = React.useRef<ReturnType<typeof setTimeout>|null>(null);
   const [dupCheckReg, setDupCheckReg] = useState("");
@@ -476,61 +477,33 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
           </span>
         </button>
 
-        {/* ---- Do Not Clean ---- */}
-        <button
-          type="button"
-          onClick={() => setDoNotClean((v) => !v)}
-          className={cn(
-            "w-full rounded-lg border-2 px-4 py-3 text-left transition",
-            doNotClean
-              ? "border-red-500 bg-red-50"
-              : "border-line bg-white",
-          )}
-        >
-          <div className="flex items-center justify-between">
-            <span
-              className={cn(
-                "flex items-center gap-2 font-bold",
-                doNotClean ? "text-red-700" : "text-slate",
-              )}
-            >
-              <Ban className="h-5 w-5" />
-              {doNotClean ? "DO NOT CLEAN — Flag is ON" : "Do Not Clean this vehicle"}
-            </span>
-            <span
-              className={cn(
-                "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition",
-                doNotClean ? "bg-red-600" : "bg-line",
-              )}
-            >
-              <span
-                className={cn(
-                  "h-5 w-5 rounded-full bg-white transition",
-                  doNotClean && "translate-x-5",
-                )}
-              />
-            </span>
-          </div>
-          <p className={cn("mt-1 pl-7 text-sm", doNotClean ? "text-red-600 font-semibold" : "text-slate")}>
-            {doNotClean
-              ? "Valeters will see a red warning — this vehicle must not be washed"
-              : "Customer has requested no cleaning on this vehicle"}
-          </p>
-        </button>
-
-        {/* ---- Budget limit ---- */}
+        {/* ---- Budget limit — hidden until toggled ---- */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-navy">Budget limit (£) <span className="font-normal text-slate">(optional)</span></label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={budgetLimit}
-            onChange={(e) => setBudgetLimit(e.target.value)}
-            placeholder="e.g. 150.00"
-            className="h-12 w-full rounded-lg border border-line bg-white px-4 text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
-          />
-          <p className="mt-1 text-xs text-slate">Optional — you&apos;ll be alerted if the job exceeds this amount</p>
+          <button
+            type="button"
+            onClick={() => {
+              setShowBudgetLimit((v) => !v);
+              if (showBudgetLimit) setBudgetLimit("");
+            }}
+            className="text-sm font-medium text-slate hover:text-navy underline-offset-2 hover:underline"
+          >
+            {showBudgetLimit ? "Remove budget limit" : "+ Set a budget limit"}
+          </button>
+          {showBudgetLimit && (
+            <div className="mt-2">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={budgetLimit}
+                onChange={(e) => setBudgetLimit(e.target.value)}
+                placeholder="e.g. 150.00"
+                className="h-12 w-full rounded-lg border border-line bg-white px-4 text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+                autoFocus
+              />
+              <p className="mt-1 text-xs text-slate">You&apos;ll be alerted if the job exceeds this amount</p>
+            </div>
+          )}
         </div>
 
         {/* ---- Vehicle inspection ---- */}
@@ -767,6 +740,48 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
             </div>
           )}
         </div>
+
+        {/* ---- Do Not Clean — least used, sits at the bottom ---- */}
+        <button
+          type="button"
+          onClick={() => setDoNotClean((v) => !v)}
+          className={cn(
+            "w-full rounded-lg border-2 px-4 py-3 text-left transition",
+            doNotClean
+              ? "border-red-500 bg-red-50"
+              : "border-line bg-white",
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              className={cn(
+                "flex items-center gap-2 font-bold",
+                doNotClean ? "text-red-700" : "text-slate",
+              )}
+            >
+              <Ban className="h-5 w-5" />
+              {doNotClean ? "DO NOT CLEAN — Flag is ON" : "Do Not Clean this vehicle"}
+            </span>
+            <span
+              className={cn(
+                "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition",
+                doNotClean ? "bg-red-600" : "bg-line",
+              )}
+            >
+              <span
+                className={cn(
+                  "h-5 w-5 rounded-full bg-white transition",
+                  doNotClean && "translate-x-5",
+                )}
+              />
+            </span>
+          </div>
+          <p className={cn("mt-1 pl-7 text-sm", doNotClean ? "text-red-600 font-semibold" : "text-slate")}>
+            {doNotClean
+              ? "Valeters will see a red warning — this vehicle must not be washed"
+              : "Customer has requested no cleaning on this vehicle"}
+          </p>
+        </button>
 
         {create.error && (
           <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
