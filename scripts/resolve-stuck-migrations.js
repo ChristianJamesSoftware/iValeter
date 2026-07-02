@@ -11,9 +11,10 @@
  * Rows already rolled_back are left alone — they are already resolved.
  *
  * Run this BEFORE `prisma migrate deploy` on every Railway deploy.
+ *
+ * Uses @prisma/client (already a dependency of @ivaleter/db) so no extra
+ * packages are required — avoids the `Cannot find module 'pg'` crash.
  */
-
-const { Client } = require("pg");
 
 async function main() {
   const connectionString = process.env.DATABASE_URL;
@@ -22,12 +23,13 @@ async function main() {
     process.exit(0);
   }
 
-  const client = new Client({ connectionString });
-  await client.connect();
+  // Require inside main() so any load failure is caught by the .catch() handler
+  const { PrismaClient } = require("@prisma/client");
+  const prisma = new PrismaClient();
 
   try {
     // Find all stuck (unfinished, not rolled back) migrations
-    const { rows: stuck } = await client.query(`
+    const stuck = await prisma.$queryRawUnsafe(`
       SELECT id, migration_name
       FROM _prisma_migrations
       WHERE finished_at IS NULL
@@ -43,16 +45,16 @@ async function main() {
 
     for (const row of stuck) {
       console.log(`  → resolving: ${row.migration_name}`);
-      await client.query(`
+      await prisma.$executeRawUnsafe(`
         UPDATE _prisma_migrations
         SET rolled_back_at = NOW()
         WHERE id = $1
-      `, [row.id]);
+      `, row.id);
     }
 
     console.log("resolve-stuck-migrations: all stuck migrations resolved — safe to deploy");
   } finally {
-    await client.end();
+    await prisma.$disconnect();
   }
 }
 
