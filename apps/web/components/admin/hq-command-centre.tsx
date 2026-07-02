@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Send, Users, Loader2, ChevronRight } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Send, Users, Loader2, ChevronRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -81,6 +81,21 @@ export function HqCommandCentre({ sites }: HqCommandCentreProps) {
 
   return (
     <div className="space-y-6">
+      {/* CSI Support Services CTA */}
+      <Link
+        href="/admin/settings?tab=support"
+        className="flex items-center gap-4 rounded-xl border border-[#01696F]/30 bg-[#01696F]/5 p-4 hover:bg-[#01696F]/10 transition-colors mb-6"
+      >
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#01696F]/10 text-[#01696F]">
+          <Sparkles size={20} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-[#28251D]">CSI Support Services</p>
+          <p className="text-xs text-[#7A7974]">Exterior cleaning, showroom deep-clean, workshop degreasing and more</p>
+        </div>
+        <ChevronRight size={16} className="text-[#7A7974] flex-shrink-0" />
+      </Link>
+
       {/* Live Alerts — compact summary only */}
       <section>
         <h2 className="mb-3 font-heading text-sm font-black uppercase tracking-wider text-slate-500">

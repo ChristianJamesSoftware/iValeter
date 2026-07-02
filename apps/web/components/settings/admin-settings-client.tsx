@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/react";
 import { SettingsTabs } from "@/components/settings/tabs";
 import { TextField, SaveBar } from "@/components/settings/field";
@@ -8,6 +8,7 @@ import { ToggleRow } from "@/components/settings/toggle";
 import { AddOnsTab } from "@/components/settings/add-ons-tab";
 import { ManagementTeamTab } from "@/components/settings/management-team-tab";
 import { ValetLibraryTab } from "@/components/settings/valet-library-tab";
+import { SupportServicesTab } from "@/components/settings/support-services-tab";
 
 const TABS = [
   { key: "platform", label: "Platform" },
@@ -16,6 +17,7 @@ const TABS = [
   { key: "addons", label: "Add-Ons" },
   { key: "team", label: "Management Team" },
   { key: "library", label: "Valet Library" },
+  { key: "support", label: "Support Services" },
 ];
 
 const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
@@ -28,6 +30,12 @@ const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
 
 export function AdminSettingsClient() {
   const [tab, setTab] = useState("platform");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab");
+    if (t && TABS.some((tabItem) => tabItem.key === t)) setTab(t);
+  }, []);
   const query = trpc.platform.get.useQuery();
   const utils = trpc.useUtils();
   const update = trpc.platform.update.useMutation({
@@ -59,6 +67,7 @@ export function AdminSettingsClient() {
       {tab === "addons" && <AddOnsTab />}
       {tab === "team" && <ManagementTeamTab />}
       {tab === "library" && <ValetLibraryTab />}
+      {tab === "support" && <SupportServicesTab />}
     </div>
   );
 }

@@ -45,6 +45,8 @@ model Organisation {
   customerInvoices CustomerInvoice[]
   payRuns          PayRun[]
   xeroConnection   XeroConnection?
+  supportServices         SupportService[]
+  supportServiceBookings  SupportServiceBooking[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,15 +110,16 @@ model Site {
   accountManagerUserId String?
   accountManager       User?   @relation("AccountManagerSites", fields: [accountManagerUserId], references: [id])
 
-  departments      Department[]
-  bookings         Booking[]
-  users            User[]
-  clockEvents      ClockEvent[]
-  timesheets       Timesheet[]
-  customerInvoices CustomerInvoice[]
-  audits           Audit[]
-  weeklyReviews    WeeklyReview[]
-  vehicleSizeRates VehicleSizeRate[]
+  departments             Department[]
+  bookings                Booking[]
+  users                   User[]
+  clockEvents             ClockEvent[]
+  timesheets              Timesheet[]
+  customerInvoices        CustomerInvoice[]
+  audits                  Audit[]
+  weeklyReviews           WeeklyReview[]
+  vehicleSizeRates        VehicleSizeRate[]
+  supportServiceBookings  SupportServiceBooking[]
 
   @@index([organisationId])
 }
@@ -224,7 +227,8 @@ model User {
   messagesReceived     Message[]               @relation("MessageTo")
   overtimeRequests     OvertimeRequest[]
   accidents            ValeterAccident[]   @relation("ValeterAccidents")
-  feedbackReplies      BroadcastFeedbackReply[] @relation("FeedbackReplies")
+  feedbackReplies         BroadcastFeedbackReply[] @relation("FeedbackReplies")
+  supportServiceBookings  SupportServiceBooking[]
 
   @@index([organisationId])
   @@index([siteId])
@@ -1122,4 +1126,42 @@ model BroadcastFeedbackReply {
   @@index([organisationId])
   @@index([fromUserId])
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CSI SUPPORT SERVICES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SupportService {
+  id             String                   @id @default(cuid())
+  organisationId String
+  organisation   Organisation             @relation(fields: [organisationId], references: [id])
+  name           String
+  group          String
+  description    String?
+  isActive       Boolean                  @default(true)
+  createdAt      DateTime                 @default(now())
+  bookings       SupportServiceBooking[]
+
+  @@index([organisationId])
+}
+
+model SupportServiceBooking {
+  id             String         @id @default(cuid())
+  organisationId String
+  organisation   Organisation   @relation(fields: [organisationId], references: [id])
+  serviceId      String
+  service        SupportService @relation(fields: [serviceId], references: [id])
+  siteId         String
+  site           Site           @relation(fields: [siteId], references: [id])
+  scheduledDate  DateTime
+  notes          String?
+  contactName    String?
+  status         String         @default("REQUESTED")
+  createdAt      DateTime       @default(now())
+  createdById    String?
+  createdBy      User?          @relation(fields: [createdById], references: [id])
+
+  @@index([organisationId])
+  @@index([siteId])
 }
