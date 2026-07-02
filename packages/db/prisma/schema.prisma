@@ -58,6 +58,7 @@ model Organisation {
   supportServices         SupportService[]
   supportServiceBookings  SupportServiceBooking[]
   vehicleSizeConfigs      OrgVehicleSizeConfig[]
+  dealershipRequests      DealershipRequest[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,7 +257,9 @@ model User {
   overtimeRequests     OvertimeRequest[]
   accidents            ValeterAccident[]   @relation("ValeterAccidents")
   deductions           ValeterDeduction[]  @relation("ValeterDeductions")
-  bankChangeRequests   BankChangeRequest[] @relation("ValeterBankChanges")
+  bankChangeRequests       BankChangeRequest[]  @relation("ValeterBankChanges")
+  dealershipRequestsMade   DealershipRequest[]  @relation("DealershipRequestedBy")
+  dealershipRequestsReviewed DealershipRequest[] @relation("DealershipReviewedBy")
   feedbackReplies         BroadcastFeedbackReply[] @relation("FeedbackReplies")
   supportServiceBookings  SupportServiceBooking[]
 
@@ -1116,6 +1119,48 @@ model DealershipNote {
 
   @@index([dealershipId])
   @@index([contactDate])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEALERSHIP REQUESTS
+// Manager submits a new customer request; ops approves before it goes live
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum DealershipRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model DealershipRequest {
+  id             String                  @id @default(cuid())
+  organisationId String
+  organisation   Organisation            @relation(fields: [organisationId], references: [id])
+
+  // Basic details the manager fills in
+  name           String
+  address        String?
+  contactName    String?
+  contactEmail   String?
+  contactPhone   String?
+  notes          String?                 @db.Text
+
+  status         DealershipRequestStatus @default(PENDING)
+  rejectionNote  String?                 // ops note if rejected
+
+  // The live dealership created on approval (null until approved)
+  dealershipId   String?                 @unique
+
+  requestedById  String?
+  requestedBy    User?                   @relation("DealershipRequestedBy", fields: [requestedById], references: [id])
+  reviewedById   String?
+  reviewedBy     User?                   @relation("DealershipReviewedBy", fields: [reviewedById], references: [id])
+
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([organisationId])
+  @@index([status])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

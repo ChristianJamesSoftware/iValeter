@@ -27,6 +27,7 @@ import { supportServicesRouter } from "./routers/supportServices";
 import { vehicleSizeConfigRouter } from "./routers/vehicle-size-config";
 import { valeterDeductionsRouter } from "./routers/valeter-deductions";
 import { bankChangesRouter } from "./routers/bank-changes";
+import { dealershipRequestsRouter } from "./routers/dealership-requests";
 
 export const appRouter = router({
   auth: authRouter,
@@ -57,6 +58,7 @@ export const appRouter = router({
   vehicleSizeConfig: vehicleSizeConfigRouter,
   valeterDeductions: valeterDeductionsRouter,
   bankChanges: bankChangesRouter,
+  dealershipRequests: dealershipRequestsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Power, PlusCircle, Search, Building2, ChevronRight } from "lucide-react";
+import { Power, PlusCircle, Search, Building2, ChevronRight, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 import { AddDealershipModal } from "@/components/admin/add-dealership-modal";
@@ -342,10 +342,112 @@ function Skeleton() {
   );
 }
 
+// ── Tab: Customer Requests ────────────────────────────────────────────────
+function CustomerRequestsTab() {
+  const utils = trpc.useUtils();
+  const query = trpc.dealershipRequests.listAllPending.useQuery();
+  const approve = trpc.dealershipRequests.approve.useMutation({
+    onSuccess: () => utils.dealershipRequests.listAllPending.invalidate(),
+  });
+  const reject = trpc.dealershipRequests.reject.useMutation({
+    onSuccess: () => utils.dealershipRequests.listAllPending.invalidate(),
+  });
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectNote, setRejectNote]   = useState("");
+
+  if (query.isLoading) return <Skeleton />;
+  const requests = query.data ?? [];
+
+  if (requests.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-16 text-center">
+        <CheckCircle2 className="mx-auto mb-3 h-8 w-8 text-emerald-400" />
+        <p className="font-semibold text-slate-600">No pending customer requests</p>
+        <p className="mt-1 text-sm text-slate-400">Managers submit new customer requests from their portal</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {requests.map((r) => (
+        <div key={r.id} className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-navy">{r.name}</p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                  <Clock className="h-3 w-3" /> Pending
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-400">
+                {r.organisation.name} &middot; Submitted{" "}
+                {new Date(r.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                {r.requestedBy && ` by ${r.requestedBy.firstName} ${r.requestedBy.lastName}`}
+              </p>
+              <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                {r.address      && <><dt className="text-slate-400">Address</dt><dd className="text-navy">{r.address}</dd></>}
+                {r.contactName  && <><dt className="text-slate-400">Contact</dt><dd className="text-navy">{r.contactName}</dd></>}
+                {r.contactEmail && <><dt className="text-slate-400">Email</dt><dd className="text-navy">{r.contactEmail}</dd></>}
+                {r.contactPhone && <><dt className="text-slate-400">Phone</dt><dd className="text-navy">{r.contactPhone}</dd></>}
+                {r.notes        && <><dt className="col-span-2 text-slate-400">Notes</dt><dd className="col-span-2 text-navy">{r.notes}</dd></>}
+              </dl>
+            </div>
+          </div>
+
+          {rejectingId === r.id ? (
+            <div className="mt-4 space-y-2">
+              <textarea
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+                rows={2}
+                placeholder="Reason for rejection (optional)…"
+                className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setRejectingId(null); setRejectNote(""); }}
+                  className="rounded-lg border border-line px-4 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { reject.mutate({ id: r.id, note: rejectNote || undefined }); setRejectingId(null); setRejectNote(""); }}
+                  disabled={reject.isPending}
+                  className="rounded-lg bg-red-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60"
+                >
+                  Confirm Rejection
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => approve.mutate({ id: r.id })}
+                disabled={approve.isPending}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Approve
+              </button>
+              <button
+                onClick={() => setRejectingId(r.id)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-4 py-1.5 text-sm font-bold text-red-700 hover:bg-red-100"
+              >
+                <XCircle className="h-4 w-4" /> Reject
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Root export ─────────────────────────────────────────────────────────────
 const TABS = [
-  { key: "head-offices", label: "Head Offices" },
-  { key: "dealerships",  label: "Dealerships"  },
+  { key: "head-offices",      label: "Head Offices"      },
+  { key: "dealerships",       label: "Dealerships"       },
+  { key: "customer-requests", label: "Customer Requests" },
 ] as const;
 type TabKey = typeof TABS[number]["key"];
 
@@ -375,8 +477,9 @@ export function NetworkClient() {
       </div>
 
       {/* Tab content */}
-      {tab === "head-offices" && <HeadOfficesTab />}
-      {tab === "dealerships"  && <DealershipsTab />}
+      {tab === "head-offices"      && <HeadOfficesTab />}
+      {tab === "dealerships"       && <DealershipsTab />}
+      {tab === "customer-requests" && <CustomerRequestsTab />}
     </div>
   );
 }
