@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { ListChecks, Clock, Loader2, CheckCircle2, PlusCircle } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { getServerApi } from "@/lib/trpc/server";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { StatCard } from "@/components/brand/stat-card";
-import { DealershipBookingList } from "@/components/dealership/booking-list";
+import { DealerDashboardClient } from "@/components/dealership/dealer-dashboard-client";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +19,7 @@ function endOfToday() {
 
 export default async function DealershipDashboard() {
   const api = await getServerApi();
-  const [stats, bookings] = await Promise.all([
-    api.analytics.statCards(),
-    api.bookings.list({ dateFrom: startOfToday(), dateTo: endOfToday() }),
-  ]);
+  const bookings = await api.bookings.list({ dateFrom: startOfToday(), dateTo: endOfToday() });
 
   const jobs = bookings.map((b) => ({
     id: b.id,
@@ -55,18 +51,7 @@ export default async function DealershipDashboard() {
           </Link>
         }
       />
-
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard icon={ListChecks} title="Today's Total" value={stats.totalToday} accent="navy" />
-        <StatCard icon={Clock} title="Pending" value={stats.pending} accent="warning" />
-        <StatCard icon={Loader2} title="In Progress" value={stats.inProgress} accent="cyan" />
-        <StatCard icon={CheckCircle2} title="Completed" value={stats.completedToday} accent="success" />
-      </div>
-
-      <h2 className="mb-3 font-heading text-lg font-bold text-navy">
-        Today's bookings
-      </h2>
-      <DealershipBookingList initialJobs={jobs} />
+      <DealerDashboardClient initialJobs={jobs} />
     </div>
   );
 }
