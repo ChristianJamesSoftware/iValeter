@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Power, PlusCircle, Search, Building2, ChevronRight } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
@@ -349,7 +350,9 @@ const TABS = [
 type TabKey = typeof TABS[number]["key"];
 
 export function NetworkClient() {
-  const [tab, setTab] = useState<TabKey>("head-offices");
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "dealerships" ? "dealerships" : "head-offices";
+  const [tab, setTab] = useState<TabKey>(initialTab);
 
   return (
     <div className="mt-4 space-y-4">

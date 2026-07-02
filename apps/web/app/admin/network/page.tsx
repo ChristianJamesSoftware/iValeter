@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { NetworkClient } from "@/components/admin/network-client";
 import Link from "next/link";
@@ -20,7 +21,9 @@ export default function NetworkPage() {
           </Link>
         }
       />
-      <NetworkClient />
+      <Suspense fallback={null}>
+        <NetworkClient />
+      </Suspense>
     </div>
   );
 }
