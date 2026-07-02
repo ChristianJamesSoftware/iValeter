@@ -335,12 +335,13 @@ export const reportsRouter = router({
           readyByTime: { gte: input.dateFrom, lte: input.dateTo },
         },
         include: {
-          serviceType: { select: { durationMins: true } },
+          serviceType: { select: { id: true, name: true, durationMins: true } },
           department: { select: { id: true, name: true } },
         },
       });
 
       const byDeptMap: Record<string, { deptName: string; completed: number; totalMins: number }> = {};
+      const byServiceTypeMap: Record<string, { serviceTypeName: string; completed: number; totalAllocMins: number; totalActualMins: number }> = {};
       for (const b of completedBookings) {
         const deptId = b.department.id;
         if (!byDeptMap[deptId]) {
@@ -349,8 +350,24 @@ export const reportsRouter = router({
         const entry = byDeptMap[deptId]!;
         entry.completed += 1;
         entry.totalMins += b.serviceType.durationMins;
+
+        // by service type
+        const stId = b.serviceType.id;
+        if (!byServiceTypeMap[stId]) {
+          byServiceTypeMap[stId] = { serviceTypeName: b.serviceType.name, completed: 0, totalAllocMins: 0, totalActualMins: 0 };
+        }
+        const stEntry = byServiceTypeMap[stId]!;
+        stEntry.completed += 1;
+        stEntry.totalAllocMins += b.serviceType.durationMins;
+        // resolvedDurationMins is the actual allocated time (size-adjusted); fall back to serviceType.durationMins
+        stEntry.totalActualMins += (b as { resolvedDurationMins?: number | null }).resolvedDurationMins ?? b.serviceType.durationMins;
       }
       const byDepartment = Object.values(byDeptMap);
+      const byServiceType = Object.values(byServiceTypeMap).map((s) => ({
+        ...s,
+        avgAllocMins: s.completed > 0 ? Math.round(s.totalAllocMins / s.completed) : 0,
+        avgActualMins: s.completed > 0 ? Math.round(s.totalActualMins / s.completed) : 0,
+      })).sort((a, b) => b.completed - a.completed);
       const totalCompleted = completedBookings.length;
 
       // B. Today's daily hours utilised vs capacity
@@ -442,6 +459,7 @@ export const reportsRouter = router({
         dateTo: input.dateTo,
         totalCompleted,
         byDepartment,
+        byServiceType,
         todayAllocMins,
         todayCapMins,
         todayUtilPct,

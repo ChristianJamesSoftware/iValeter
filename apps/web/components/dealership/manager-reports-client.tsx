@@ -26,7 +26,7 @@ interface Props {
 }
 
 type PeriodKey = "today" | "week" | "month";
-type TabKey = "overview" | "forecast" | "department";
+type TabKey = "overview" | "forecast" | "department" | "valettype";
 
 const PERIODS: { label: string; key: PeriodKey }[] = [
   { label: "Today", key: "today" },
@@ -351,6 +351,7 @@ export function ManagerReportsClient({ siteId, siteName }: Props): React.JSX.Ele
             { key: "overview" as TabKey, label: "Overview" },
             { key: "forecast" as TabKey, label: "Forecast" },
             { key: "department" as TabKey, label: "Departments" },
+            { key: "valettype" as TabKey, label: "Valet Types" },
           ] as { key: TabKey; label: string }[]
         ).map((t) => (
           <button
@@ -515,6 +516,51 @@ export function ManagerReportsClient({ siteId, siteName }: Props): React.JSX.Ele
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Valet Types tab                                                     */}
+      {/* ------------------------------------------------------------------ */}
+      {activeTab === "valettype" && (
+        <div className="rounded-xl border border-line bg-white">
+          {data.byServiceType.length === 0 ? (
+            <div className="p-8 text-center text-slate">No completed valets for this period.</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate">Valet Type</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate">Completed</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate">Avg Allocated</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate">Avg Actual</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate">Variance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.byServiceType.map((s) => {
+                  const variance = s.avgActualMins - s.avgAllocMins;
+                  return (
+                    <tr key={s.serviceTypeName} className="border-b border-line last:border-0">
+                      <td className="px-5 py-4 font-medium text-navy">{s.serviceTypeName}</td>
+                      <td className="px-5 py-4 text-right text-slate">{s.completed}</td>
+                      <td className="px-5 py-4 text-right text-slate">{minsToHhMm(s.avgAllocMins)}</td>
+                      <td className="px-5 py-4 text-right font-medium text-navy">{minsToHhMm(s.avgActualMins)}</td>
+                      <td className="px-5 py-4 text-right">
+                        {variance === 0 ? (
+                          <span className="text-slate">—</span>
+                        ) : (
+                          <span className={variance > 0 ? "font-semibold text-amber-600" : "font-semibold text-emerald-600"}>
+                            {variance > 0 ? "+" : ""}{variance}m
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

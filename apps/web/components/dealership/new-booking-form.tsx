@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ShieldCheck, Sparkles, Droplets, Camera, Ban } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";

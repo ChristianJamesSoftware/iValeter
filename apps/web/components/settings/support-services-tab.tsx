@@ -111,6 +111,12 @@ export function SupportServicesTab() {
 
   return (
     <div className="space-y-6">
+      {/* Ops context banner */}
+      <div className="rounded-xl border border-[#01696F]/20 bg-[#01696F]/5 px-5 py-4">
+        <p className="text-sm font-semibold text-[#01696F]">CSI Service Catalogue — Ops Management</p>
+        <p className="mt-0.5 text-xs text-slate-500">Manage the list of services available for dealers to book via the customer platform. Toggle services on/off, add custom ones, and manage incoming booking requests below.</p>
+      </div>
+
       {/* Catalogue groups */}
       {GROUP_ORDER.map((group) => {
         const groupServices = grouped[group] ?? [];

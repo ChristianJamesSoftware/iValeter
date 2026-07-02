@@ -284,6 +284,57 @@ export const valetLibraryRouter = router({
       return { ok: true, created };
     }),
 
+  // ── Auto-sync Valet Library → ServiceType rows for the current session's site ──
+  // Called on booking form mount. Ensures every active ValetTypeTemplate has a
+  // corresponding ServiceType row in each department on the caller's site.
+  // departmentType filtering: ALL matches all depts; SALES/SERVICE/BODYSHOP only
+  // matches departments whose name contains those keywords (case-insensitive).
+  syncValetLibraryForSite: protectedProcedure
+    .input(z.object({ siteId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const [templates, site] = await Promise.all([
+        ctx.prisma.valetTypeTemplate.findMany({ where: { isActive: true } }),
+        ctx.prisma.site.findUnique({
+          where: { id: input.siteId, organisationId: ctx.session.organisationId },
+          include: {
+            departments: {
+              include: { serviceTypes: { where: { isActive: true }, select: { name: true } } },
+            },
+          },
+        }),
+      ]);
+      if (!site) return { created: 0 };
+
+      let created = 0;
+      for (const tmpl of templates) {
+        for (const dept of site.departments) {
+          // Filter by departmentType: ALL always matches; others match by keyword in dept name
+          if (tmpl.departmentType !== "ALL") {
+            const keyword = tmpl.departmentType.toLowerCase(); // "sales"|"service"|"bodyshop"
+            if (!dept.name.toLowerCase().includes(keyword)) continue;
+          }
+          // Skip if a service type with this name already exists in this dept
+          const exists = dept.serviceTypes.some(
+            (st) => st.name.toLowerCase() === tmpl.name.toLowerCase()
+          );
+          if (exists) continue;
+          await ctx.prisma.serviceType.create({
+            data: {
+              departmentId: dept.id,
+              name: tmpl.name,
+              description: tmpl.description ?? undefined,
+              category: tmpl.category,
+              durationMins: tmpl.defaultDurationMins,
+              nominalCode: tmpl.nominalCode ?? undefined,
+              isActive: true,
+            },
+          });
+          created++;
+        }
+      }
+      return { created };
+    }),
+
   deactivateValetTypeForDealership: superAdminProcedure
     .input(
       z.object({

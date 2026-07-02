@@ -18,7 +18,7 @@ const TABS = [
   { key: "addons", label: "Add-Ons" },
   { key: "team", label: "Management Team" },
   { key: "library", label: "Valet Library" },
-  { key: "support", label: "Support Services" },
+  { key: "support", label: "CSI Services" },
   { key: "vehicle-sizes", label: "Vehicle Sizes" },
 ];
 
