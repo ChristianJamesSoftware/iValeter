@@ -199,7 +199,6 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
     departmentId &&
     serviceTypeId &&
     vehicleReg.trim() &&
-    customerName.trim() &&
     readyByTime &&
     !create.isPending &&
     !hasDuplicate;
@@ -319,15 +318,6 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
             </Field>
           </div>
         )}
-
-        <Field label="Customer Name">
-          <input
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            placeholder="John Smith"
-            className="h-12 w-full rounded-lg border border-line bg-white px-4 text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
-          />
-        </Field>
 
         {sites.length > 1 && (
           <Field label="Site">
@@ -797,7 +787,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
               departmentId,
               serviceTypeId,
               vehicleReg: vehicleReg.trim(),
-              customerName: customerName.trim(),
+              customerName: undefined,
               readyByTime: new Date(readyByTime),
               isPriority,
               includeInspection,
