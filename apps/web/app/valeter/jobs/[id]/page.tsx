@@ -4,12 +4,12 @@ import {
   ChevronLeft,
   MapPin,
   Car,
-  User,
   CheckCircle2,
   Sparkles,
   Droplets,
   Camera,
   Ban,
+  type LucideIcon,
 } from "lucide-react";
 import { TRPCError } from "@trpc/server";
 import { getServerApi } from "@/lib/trpc/server";
@@ -121,7 +121,6 @@ export default async function ValeterJobDetail({
           </div>
         )}
         <section className="rounded-xl border border-line bg-white p-4">
-          <Row icon={User} label="Customer" value={booking.customerName} />
           <Row
             icon={Car}
             label="Vehicle"
@@ -215,7 +214,7 @@ function Row({
   label,
   value,
 }: {
-  icon: typeof User;
+  icon: LucideIcon;
   label: string;
   value: string;
 }) {

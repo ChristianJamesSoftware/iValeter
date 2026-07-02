@@ -57,9 +57,7 @@ export function ValeterJobList({ initialJobs }: { initialJobs: Job[] }) {
     const q = search.trim().toUpperCase();
     if (q) {
       result = result.filter(
-        (j) =>
-          j.vehicleReg.toUpperCase().includes(q) ||
-          j.customerName.toUpperCase().includes(q),
+        (j) => j.vehicleReg.toUpperCase().includes(q),
       );
     }
 
@@ -102,7 +100,7 @@ export function ValeterJobList({ initialJobs }: { initialJobs: Job[] }) {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search reg or customer…"
+          placeholder="Search by reg…"
           className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
         />
         {search && (
