@@ -7,7 +7,7 @@ export default function AdminClientsPage() {
   return (
     <div>
       <PageHeader
-        title="Clients"
+        title="Customer Team"
         subtitle="All dealership portal users across every site"
       />
       <AdminClientsList />

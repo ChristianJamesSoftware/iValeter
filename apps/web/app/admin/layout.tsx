@@ -6,7 +6,7 @@ const NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: "dashboard", section: "Platform" },
   { href: "/admin/network", label: "Customers", icon: "network" },
   { href: "/admin/team", label: "Valeting Team", icon: "team" },
-  { href: "/admin/clients", label: "Clients", icon: "clients" },
+  { href: "/admin/clients", label: "Customer Team", icon: "clients" },
 
   // Admin Tools
   { href: "/admin/quote-builder", label: "Quote Builder", icon: "quote", section: "Admin Tools" },
