@@ -83,4 +83,5 @@ CREATE UNIQUE INDEX "XeroConnection_organisationId_key" ON "XeroConnection"("org
 CREATE UNIQUE INDEX "XeroNominalMapping_organisationId_serviceTypeId_key" ON "XeroNominalMapping"("organisationId", "serviceTypeId");
 
 -- AddForeignKey
+ALTER TABLE "XeroConnection" DROP CONSTRAINT IF EXISTS "XeroConnection_organisationId_fkey";
 ALTER TABLE "XeroConnection" ADD CONSTRAINT "XeroConnection_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

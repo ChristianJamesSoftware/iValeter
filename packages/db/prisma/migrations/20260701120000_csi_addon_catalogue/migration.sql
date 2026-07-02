@@ -27,8 +27,10 @@ CREATE UNIQUE INDEX "DealershipAddOn_dealershipId_addOnId_key" ON "DealershipAdd
 CREATE INDEX "DealershipAddOn_dealershipId_idx" ON "DealershipAddOn"("dealershipId");
 
 -- AddForeignKey
+ALTER TABLE "DealershipAddOn" DROP CONSTRAINT IF EXISTS "DealershipAddOn_dealershipId_fkey";
 ALTER TABLE "DealershipAddOn" ADD CONSTRAINT "DealershipAddOn_dealershipId_fkey"
     FOREIGN KEY ("dealershipId") REFERENCES "Dealership"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
+ALTER TABLE "DealershipAddOn" DROP CONSTRAINT IF EXISTS "DealershipAddOn_addOnId_fkey";
 ALTER TABLE "DealershipAddOn" ADD CONSTRAINT "DealershipAddOn_addOnId_fkey"
     FOREIGN KEY ("addOnId") REFERENCES "AddOn"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

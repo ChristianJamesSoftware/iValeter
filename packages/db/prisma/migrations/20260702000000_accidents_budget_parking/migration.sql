@@ -24,5 +24,6 @@ CREATE TABLE IF NOT EXISTS "ValeterAccident" (
 );
 CREATE INDEX IF NOT EXISTS "ValeterAccident_valeterId_idx" ON "ValeterAccident"("valeterId");
 CREATE INDEX IF NOT EXISTS "ValeterAccident_incidentDate_idx" ON "ValeterAccident"("incidentDate");
+ALTER TABLE "ValeterAccident" DROP CONSTRAINT IF EXISTS "ValeterAccident_valeterId_fkey";
 ALTER TABLE "ValeterAccident" ADD CONSTRAINT "ValeterAccident_valeterId_fkey"
   FOREIGN KEY ("valeterId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

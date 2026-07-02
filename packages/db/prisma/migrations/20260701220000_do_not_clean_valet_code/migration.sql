@@ -16,6 +16,7 @@ ALTER TABLE "ValetTypeTemplate" ADD COLUMN IF NOT EXISTS "departmentType" "Valet
 
 -- Unique constraint on valetCode (allow NULLs)
 DO $$ BEGIN
+ALTER TABLE "ValetTypeTemplate" DROP CONSTRAINT IF EXISTS "ValetTypeTemplate_valetCode_key";
   ALTER TABLE "ValetTypeTemplate" ADD CONSTRAINT "ValetTypeTemplate_valetCode_key" UNIQUE ("valetCode");
 EXCEPTION WHEN duplicate_table THEN NULL;
 END $$;

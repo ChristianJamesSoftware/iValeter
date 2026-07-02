@@ -41,6 +41,9 @@ CREATE INDEX "OvertimeRequest_userId_idx" ON "OvertimeRequest"("userId");
 CREATE INDEX "OvertimeRequest_organisationId_idx" ON "OvertimeRequest"("organisationId");
 
 -- AddForeignKey
+ALTER TABLE "Message" DROP CONSTRAINT IF EXISTS "Message_fromUserId_fkey";
 ALTER TABLE "Message" ADD CONSTRAINT "Message_fromUserId_fkey" FOREIGN KEY ("fromUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Message" DROP CONSTRAINT IF EXISTS "Message_toUserId_fkey";
 ALTER TABLE "Message" ADD CONSTRAINT "Message_toUserId_fkey" FOREIGN KEY ("toUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "OvertimeRequest" DROP CONSTRAINT IF EXISTS "OvertimeRequest_userId_fkey";
 ALTER TABLE "OvertimeRequest" ADD CONSTRAINT "OvertimeRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -115,6 +115,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 
 DO $$ BEGIN
+ALTER TABLE "Site" DROP CONSTRAINT IF EXISTS "Site_accountManagerUserId_fkey";
   ALTER TABLE "Site" ADD CONSTRAINT "Site_accountManagerUserId_fkey"
     FOREIGN KEY ("accountManagerUserId") REFERENCES "User"("id")
     ON DELETE SET NULL ON UPDATE CASCADE;

@@ -35,6 +35,7 @@ ALTER TABLE "Site"
   ADD COLUMN "accountManagerUserId" TEXT;
 
 ALTER TABLE "Site"
+ALTER TABLE "Site" DROP CONSTRAINT IF EXISTS "Site_accountManagerUserId_fkey";
   ADD CONSTRAINT "Site_accountManagerUserId_fkey"
   FOREIGN KEY ("accountManagerUserId") REFERENCES "User"("id")
   ON DELETE SET NULL ON UPDATE CASCADE;

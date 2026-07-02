@@ -12,10 +12,12 @@ CREATE TABLE "Dealership" (
     CONSTRAINT "Dealership_pkey" PRIMARY KEY ("id")
 );
 CREATE INDEX "Dealership_organisationId_idx" ON "Dealership"("organisationId");
+ALTER TABLE "Dealership" DROP CONSTRAINT IF EXISTS "Dealership_organisationId_fkey";
 ALTER TABLE "Dealership" ADD CONSTRAINT "Dealership_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- Add dealershipId to Site
 ALTER TABLE "Site" ADD COLUMN "dealershipId" TEXT;
+ALTER TABLE "Site" DROP CONSTRAINT IF EXISTS "Site_dealershipId_fkey";
 ALTER TABLE "Site" ADD CONSTRAINT "Site_dealershipId_fkey" FOREIGN KEY ("dealershipId") REFERENCES "Dealership"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- Expand User fields

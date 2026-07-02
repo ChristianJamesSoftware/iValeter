@@ -214,49 +214,65 @@ CREATE UNIQUE INDEX "LeaveAllowance_userId_key" ON "LeaveAllowance"("userId");
 CREATE INDEX "Invoice_organisationId_idx" ON "Invoice"("organisationId");
 
 -- AddForeignKey
+ALTER TABLE "Site" DROP CONSTRAINT IF EXISTS "Site_organisationId_fkey";
 ALTER TABLE "Site" ADD CONSTRAINT "Site_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Department" DROP CONSTRAINT IF EXISTS "Department_siteId_fkey";
 ALTER TABLE "Department" ADD CONSTRAINT "Department_siteId_fkey" FOREIGN KEY ("siteId") REFERENCES "Site"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "User_organisationId_fkey";
 ALTER TABLE "User" ADD CONSTRAINT "User_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "User_siteId_fkey";
 ALTER TABLE "User" ADD CONSTRAINT "User_siteId_fkey" FOREIGN KEY ("siteId") REFERENCES "Site"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "ServiceType" DROP CONSTRAINT IF EXISTS "ServiceType_departmentId_fkey";
 ALTER TABLE "ServiceType" ADD CONSTRAINT "ServiceType_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "Department"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Booking" DROP CONSTRAINT IF EXISTS "Booking_siteId_fkey";
 ALTER TABLE "Booking" ADD CONSTRAINT "Booking_siteId_fkey" FOREIGN KEY ("siteId") REFERENCES "Site"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Booking" DROP CONSTRAINT IF EXISTS "Booking_departmentId_fkey";
 ALTER TABLE "Booking" ADD CONSTRAINT "Booking_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "Department"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Booking" DROP CONSTRAINT IF EXISTS "Booking_serviceTypeId_fkey";
 ALTER TABLE "Booking" ADD CONSTRAINT "Booking_serviceTypeId_fkey" FOREIGN KEY ("serviceTypeId") REFERENCES "ServiceType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Booking" DROP CONSTRAINT IF EXISTS "Booking_assignedToId_fkey";
 ALTER TABLE "Booking" ADD CONSTRAINT "Booking_assignedToId_fkey" FOREIGN KEY ("assignedToId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Booking" DROP CONSTRAINT IF EXISTS "Booking_createdById_fkey";
 ALTER TABLE "Booking" ADD CONSTRAINT "Booking_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "JobStatusHistory" DROP CONSTRAINT IF EXISTS "JobStatusHistory_bookingId_fkey";
 ALTER TABLE "JobStatusHistory" ADD CONSTRAINT "JobStatusHistory_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "Booking"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "JobStatusHistory" DROP CONSTRAINT IF EXISTS "JobStatusHistory_userId_fkey";
 ALTER TABLE "JobStatusHistory" ADD CONSTRAINT "JobStatusHistory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "JobPhoto" DROP CONSTRAINT IF EXISTS "JobPhoto_bookingId_fkey";
 ALTER TABLE "JobPhoto" ADD CONSTRAINT "JobPhoto_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "Booking"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "HolidayRequest" DROP CONSTRAINT IF EXISTS "HolidayRequest_userId_fkey";
 ALTER TABLE "HolidayRequest" ADD CONSTRAINT "HolidayRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "LeaveAllowance" DROP CONSTRAINT IF EXISTS "LeaveAllowance_userId_fkey";
 ALTER TABLE "LeaveAllowance" ADD CONSTRAINT "LeaveAllowance_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Invoice" DROP CONSTRAINT IF EXISTS "Invoice_organisationId_fkey";
 ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

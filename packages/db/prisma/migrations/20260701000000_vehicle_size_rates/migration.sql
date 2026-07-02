@@ -30,8 +30,10 @@ CREATE INDEX "VehicleSizeRate_serviceTypeId_idx" ON "VehicleSizeRate"("serviceTy
 CREATE UNIQUE INDEX "VehicleSizeRate_siteId_serviceTypeId_key" ON "VehicleSizeRate"("siteId", "serviceTypeId");
 
 -- AddForeignKey
+ALTER TABLE "VehicleSizeRate" DROP CONSTRAINT IF EXISTS "VehicleSizeRate_siteId_fkey";
 ALTER TABLE "VehicleSizeRate" ADD CONSTRAINT "VehicleSizeRate_siteId_fkey"
     FOREIGN KEY ("siteId") REFERENCES "Site"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
+ALTER TABLE "VehicleSizeRate" DROP CONSTRAINT IF EXISTS "VehicleSizeRate_serviceTypeId_fkey";
 ALTER TABLE "VehicleSizeRate" ADD CONSTRAINT "VehicleSizeRate_serviceTypeId_fkey"
     FOREIGN KEY ("serviceTypeId") REFERENCES "ServiceType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
