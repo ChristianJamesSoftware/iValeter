@@ -15,12 +15,14 @@ CREATE TABLE IF NOT EXISTS "DealershipNote" (
   CONSTRAINT "DealershipNote_pkey" PRIMARY KEY ("id")
 );
 
--- FK to Dealership
+-- FK to Dealership (drop first if partially applied from a previous failed migration)
+ALTER TABLE "DealershipNote" DROP CONSTRAINT IF EXISTS "DealershipNote_dealershipId_fkey";
 ALTER TABLE "DealershipNote"
   ADD CONSTRAINT "DealershipNote_dealershipId_fkey"
   FOREIGN KEY ("dealershipId") REFERENCES "Dealership"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- FK to User (nullable)
+-- FK to User (nullable) (drop first if partially applied from a previous failed migration)
+ALTER TABLE "DealershipNote" DROP CONSTRAINT IF EXISTS "DealershipNote_createdByUserId_fkey";
 ALTER TABLE "DealershipNote"
   ADD CONSTRAINT "DealershipNote_createdByUserId_fkey"
   FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
