@@ -20,7 +20,7 @@ export function PartnershipBanner() {
       {/* Dealer logo half */}
       <div className="flex flex-1 items-center justify-center border-r border-line px-6 py-4">
         {data.dealerLogoUrl ? (
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={data.dealerLogoUrl}
             alt={data.dealerName ?? "Dealership logo"}
@@ -47,7 +47,7 @@ export function PartnershipBanner() {
       {/* TV logo half */}
       <div className="flex flex-1 items-center justify-center border-l border-line px-6 py-4">
         {data.tvLogoUrl ? (
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={data.tvLogoUrl}
             alt="Total Valeting"
