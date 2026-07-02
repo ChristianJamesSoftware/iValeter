@@ -144,6 +144,7 @@ model Site {
   weeklyReviews           WeeklyReview[]
   vehicleSizeRates        VehicleSizeRate[]
   supportServiceBookings  SupportServiceBooking[]
+  expenses                 ValeterExpense[]
 
   @@index([organisationId])
 }
@@ -264,6 +265,7 @@ model User {
   feedbackReplies         BroadcastFeedbackReply[] @relation("FeedbackReplies")
   supportServiceBookings  SupportServiceBooking[]
   standingCharges         ValeterStandingCharge[]
+  expenses                 ValeterExpense[]
 
   @@index([organisationId])
   @@index([siteId])
@@ -1441,4 +1443,44 @@ model TimesheetExtraLine {
   updatedAt   DateTime  @updatedAt
 
   @@index([timesheetId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VALETER EXPENSES / RECEIPT SUBMISSIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Receipt submitted by a valeter for reimbursement — paid with weekly wages.
+model ValeterExpense {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siteId      String?
+  site        Site?         @relation(fields: [siteId], references: [id])
+
+  description String        // What the receipt is for
+  amountPence Int           // Amount requested in pence
+
+  receiptFileUrl String?    // URL to uploaded receipt image/PDF
+
+  /// Which week's wages this should be paid with (week starting Monday)
+  weekStarting DateTime
+
+  status      ExpenseStatus @default(PENDING)
+  reviewedByUserId String?
+  reviewedAt  DateTime?
+  reviewNote  String?       // Rejection reason if rejected
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([siteId])
+  @@index([weekStarting])
+  @@index([status])
 }
