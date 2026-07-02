@@ -171,16 +171,6 @@ export default async function ValeterJobDetail({
           }}
         />
 
-        {/* Budget limit badge */}
-        {booking.budgetLimit != null && (
-          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <span className="text-lg">💰</span>
-            <p className="text-sm font-semibold text-amber-800">
-              Budget limit: £{booking.budgetLimit.toFixed(2)} — alert if job cost exceeds this
-            </p>
-          </div>
-        )}
-
         {/* Before/After Photos */}
         <JobPhotosClient
           bookingId={booking.id}

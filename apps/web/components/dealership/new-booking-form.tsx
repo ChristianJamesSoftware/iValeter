@@ -133,8 +133,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
   const readyByTime = combineDateAndTime(bookingDate, bookingTime);
   const [isPriority, setIsPriority] = useState(false);
   const [doNotClean, setDoNotClean] = useState(false);
-  const [budgetLimit, setBudgetLimit] = useState("");
-  const [showBudgetLimit, setShowBudgetLimit] = useState(false);
+
   const [overrideDuplicate, setOverrideDuplicate] = useState(false);
   const dupTimerRef = React.useRef<ReturnType<typeof setTimeout>|null>(null);
   const [dupCheckReg, setDupCheckReg] = useState("");
@@ -467,35 +466,6 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
           </span>
         </button>
 
-        {/* ---- Budget limit — hidden until toggled ---- */}
-        <div>
-          <button
-            type="button"
-            onClick={() => {
-              setShowBudgetLimit((v) => !v);
-              if (showBudgetLimit) setBudgetLimit("");
-            }}
-            className="text-sm font-medium text-slate hover:text-navy underline-offset-2 hover:underline"
-          >
-            {showBudgetLimit ? "Remove budget limit" : "+ Set a budget limit"}
-          </button>
-          {showBudgetLimit && (
-            <div className="mt-2">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={budgetLimit}
-                onChange={(e) => setBudgetLimit(e.target.value)}
-                placeholder="e.g. 150.00"
-                className="h-12 w-full rounded-lg border border-line bg-white px-4 text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
-                autoFocus
-              />
-              <p className="mt-1 text-xs text-slate">You&apos;ll be alerted if the job exceeds this amount</p>
-            </div>
-          )}
-        </div>
-
         {/* ---- Vehicle inspection ---- */}
         <button
           type="button"
@@ -798,7 +768,7 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
               photographyPackage: includePhotography ? photographyPackage : null,
               vehicleSize: vehicleSize || undefined,
               doNotClean,
-              budgetLimit: budgetLimit ? parseFloat(budgetLimit) : null,
+              budgetLimit: null,
             })
           }
           className="h-14 w-full rounded-lg bg-cyan font-heading text-lg font-bold text-navy transition hover:bg-cyan-600 disabled:opacity-60"
