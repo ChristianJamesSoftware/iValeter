@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Building2, PlusCircle, X, Power } from "lucide-react";
+import { Building2, PlusCircle, X, Power, Link2, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ export function HeadOfficeDetail({ headOffice }: { headOffice: HeadOfficeData })
   const router = useRouter();
   const utils = trpc.useUtils();
   const [showForm, setShowForm] = useState(false);
+  const [showAttach, setShowAttach] = useState(false);
   const [isActive, setIsActive] = useState(headOffice.isActive);
 
   const dealershipsQ = trpc.organisations.getDealerships.useQuery({ id: headOffice.id });
@@ -36,6 +37,15 @@ export function HeadOfficeDetail({ headOffice }: { headOffice: HeadOfficeData })
     onSuccess: async () => {
       await utils.organisations.getDealerships.invalidate({ id: headOffice.id });
       setShowForm(false);
+    },
+  });
+
+  const allDealershipsQ = trpc.dealerships.listAll.useQuery({ showInactive: true }, { enabled: showAttach });
+  const reassign = trpc.dealerships.reassignToHeadOffice.useMutation({
+    onSuccess: async () => {
+      await utils.organisations.getDealerships.invalidate({ id: headOffice.id });
+      await utils.dealerships.listAll.invalidate();
+      setShowAttach(false);
     },
   });
 
@@ -77,13 +87,37 @@ export function HeadOfficeDetail({ headOffice }: { headOffice: HeadOfficeData })
               {dealerships.length}
             </span>
           </h2>
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-cyan px-4 text-sm font-semibold text-navy transition hover:bg-cyan-600"
-          >
-            <PlusCircle className="h-4 w-4" /> Add dealership
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setShowAttach((v) => !v); setShowForm(false); }}
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-cyan hover:text-cyan"
+            >
+              <Link2 className="h-4 w-4" /> Attach existing
+            </button>
+            <button
+              onClick={() => { setShowForm((v) => !v); setShowAttach(false); }}
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-cyan px-4 text-sm font-semibold text-navy transition hover:bg-cyan-600"
+            >
+              <PlusCircle className="h-4 w-4" /> Add new
+            </button>
+          </div>
         </div>
+
+        {showAttach && (
+          <div className="border-b border-slate-100 p-5">
+            <AttachDealershipPanel
+              headOfficeId={headOffice.id}
+              headOfficeName={headOffice.name}
+              currentIds={new Set(dealerships.map((d) => d.id))}
+              allDealerships={allDealershipsQ.data ?? []}
+              loading={allDealershipsQ.isLoading}
+              pending={reassign.isPending}
+              error={reassign.error?.message ?? null}
+              onAttach={(id) => reassign.mutate({ dealershipId: id, headOfficeId: headOffice.id })}
+              onCancel={() => setShowAttach(false)}
+            />
+          </div>
+        )}
 
         {showForm && (
           <div className="border-b border-slate-100 p-5">
@@ -144,6 +178,101 @@ export function HeadOfficeDetail({ headOffice }: { headOffice: HeadOfficeData })
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function AttachDealershipPanel({
+  headOfficeName,
+  currentIds,
+  allDealerships,
+  loading,
+  pending,
+  error,
+  onAttach,
+  onCancel,
+}: {
+  headOfficeId: string;
+  headOfficeName: string;
+  currentIds: Set<string>;
+  allDealerships: { id: string; name: string; organisation: { name: string }; isActive: boolean }[];
+  loading: boolean;
+  pending: boolean;
+  error: string | null;
+  onAttach: (id: string) => void;
+  onCancel: () => void;
+}) {
+  const [search, setSearch] = useState("");
+
+  const available = useMemo(() =>
+    allDealerships.filter(
+      (d) => !currentIds.has(d.id) &&
+        (search.trim() === "" ||
+          d.name.toLowerCase().includes(search.toLowerCase()) ||
+          d.organisation.name.toLowerCase().includes(search.toLowerCase())),
+    ),
+    [allDealerships, currentIds, search],
+  );
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h3 className="font-heading font-bold text-navy">Attach existing dealership</h3>
+          <p className="mt-0.5 text-xs text-slate-400">Move a dealership from another head office into <span className="font-semibold text-navy">{headOfficeName}</span></p>
+        </div>
+        <button onClick={onCancel} className="rounded-lg p-1 hover:bg-offwhite">
+          <X className="h-5 w-5 text-slate" />
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          autoFocus
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by dealership or current head office…"
+          className="h-10 w-full rounded-lg border border-line bg-white pl-9 pr-3 text-sm text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 placeholder:text-slate-400"
+        />
+      </div>
+
+      {loading ? (
+        <p className="py-6 text-center text-sm text-slate-400">Loading dealerships…</p>
+      ) : available.length === 0 ? (
+        <p className="py-6 text-center text-sm text-slate-400">
+          {search ? "No dealerships match that search." : "All dealerships are already attached to this head office."}
+        </p>
+      ) : (
+        <div className="max-h-72 overflow-y-auto rounded-xl border border-line">
+          {available.map((d, i) => (
+            <div
+              key={d.id}
+              className={cn(
+                "flex items-center justify-between px-4 py-3 hover:bg-offwhite transition",
+                i > 0 && "border-t border-line",
+              )}
+            >
+              <div>
+                <p className="text-sm font-semibold text-navy">{d.name}</p>
+                <p className="text-xs text-slate-400">Currently: {d.organisation.name}</p>
+              </div>
+              <button
+                disabled={pending}
+                onClick={() => onAttach(d.id)}
+                className="h-8 rounded-lg bg-cyan px-3 text-xs font-bold text-navy transition hover:bg-cyan-600 disabled:opacity-50"
+              >
+                Attach
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+      )}
     </div>
   );
 }

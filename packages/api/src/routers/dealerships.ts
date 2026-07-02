@@ -381,4 +381,17 @@ export const dealershipsRouter = router({
       tvLogoUrl:      tvConfig?.value      ?? null,
     };
   }),
+
+  /** Super-admin: move an existing dealership to a different head office */
+  reassignToHeadOffice: superAdminProcedure
+    .input(z.object({
+      dealershipId:     z.string(),
+      headOfficeId:     z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.dealership.update({
+        where: { id: input.dealershipId },
+        data:  { organisationId: input.headOfficeId },
+      });
+    }),
 });
