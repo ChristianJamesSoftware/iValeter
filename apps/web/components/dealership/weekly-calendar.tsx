@@ -267,7 +267,7 @@ export function WeeklyCalendar({
             dayIndex={selected.index}
             jobs={selected.jobs}
             isToday={selected.isToday}
-            onOpen={(id) => router.push(`/dealership/bookings/${id}`)}
+            onOpen={(id) => router.push(`/dealership/bookings/${id}?from=calendar`)}
           />
         </div>
       )}
@@ -321,7 +321,7 @@ export function WeeklyCalendar({
                   <BookingCard
                     key={j.id}
                     job={j}
-                    onOpen={(id) => router.push(`/dealership/bookings/${id}`)}
+                    onOpen={(id) => router.push(`/dealership/bookings/${id}?from=calendar`)}
                   />
                 ))
               )}

@@ -11,10 +11,14 @@ export const dynamic = "force-dynamic";
 
 export default async function DealershipBookingDetail({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
+  const { from } = await searchParams;
+  const fromCalendar = from === "calendar";
   const api = await getServerApi();
 
   let booking;
@@ -30,10 +34,10 @@ export default async function DealershipBookingDetail({
   return (
     <div>
       <Link
-        href="/dealership/bookings"
+        href={fromCalendar ? "/dealership/calendar" : "/dealership/bookings"}
         className="mb-4 inline-flex items-center gap-1 text-sm text-slate hover:text-navy"
       >
-        <ChevronLeft className="h-4 w-4" /> All bookings
+        <ChevronLeft className="h-4 w-4" /> {fromCalendar ? "Back to calendar" : "All bookings"}
       </Link>
 
       <div className="mb-6 flex items-center gap-3">
