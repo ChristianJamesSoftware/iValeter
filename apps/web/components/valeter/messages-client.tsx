@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc/react";
 import { Send, MessageCircle, ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
+import { SubmitReceiptClient } from "@/components/valeter/submit-receipt-client";
 
 const PULSE_TRIGGER = "How did this week go?";
 
@@ -108,6 +109,9 @@ export function MessagesClient({ meUserId }: { meUserId: string }) {
 
   return (
     <div className="space-y-4 px-4 pb-6">
+      {/* Receipt submission */}
+      <SubmitReceiptClient />
+
       {/* Inbox */}
       <div className="rounded-2xl bg-white/10">
         <div className="border-b border-white/10 px-5 py-4">
