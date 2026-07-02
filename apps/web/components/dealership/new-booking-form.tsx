@@ -6,47 +6,12 @@ import { AlertTriangle, ShieldCheck, Sparkles, Droplets, Camera, Ban } from "luc
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
-type PaintTier = "essential" | "standard" | "premium" | "ultimate";
 type PhotoPackage = "standard" | "premium" | "full";
 
 const PHOTO_PACKAGES: { key: PhotoPackage; name: string; count: number }[] = [
   { key: "standard", name: "Standard", count: 10 },
   { key: "premium", name: "Premium", count: 25 },
   { key: "full", name: "Full", count: 40 },
-];
-
-const PAINT_TIERS: {
-  key: PaintTier;
-  name: string;
-  duration: string;
-  description: string;
-  popular?: boolean;
-}[] = [
-  {
-    key: "essential",
-    name: "Essential",
-    duration: "6 months",
-    description: "Entry-level gloss and hydrophobic protection",
-    popular: true,
-  },
-  {
-    key: "standard",
-    name: "Standard",
-    duration: "1 year",
-    description: "Durable sealant for everyday driving",
-  },
-  {
-    key: "premium",
-    name: "Premium",
-    duration: "5 years",
-    description: "Ceramic-grade protection and deep shine",
-  },
-  {
-    key: "ultimate",
-    name: "Ultimate",
-    duration: "10 years",
-    description: "Showroom finish with maximum longevity",
-  },
 ];
 
 interface ServiceTypeOpt {
@@ -149,8 +114,7 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
   const [includeInspection, setIncludeInspection] = useState(false);
   const [includeFreshScent, setIncludeFreshScent] = useState(false);
   const [includePaintProtection, setIncludePaintProtection] = useState(false);
-  const [paintProtectionTier, setPaintProtectionTier] =
-    useState<PaintTier>("essential");
+  const [paintProtectionProductId, setPaintProtectionProductId] = useState<string | null>(null);
   const [includePhotography, setIncludePhotography] = useState(false);
   const [photographyPackage, setPhotographyPackage] =
     useState<PhotoPackage>("standard");
@@ -204,6 +168,7 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
 
   // Auto-sync valet library into booking form service types on mount / site change
   const syncLibrary = trpc.valetLibrary.syncValetLibraryForSite.useMutation();
+  const paintProductsQuery = trpc.paintProtection.list.useQuery();
   useEffect(() => {
     if (siteId) {
       syncLibrary.mutate({ siteId });
@@ -614,15 +579,18 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
               </div>
             </button>
 
-            {includePaintProtection && (
+            {includePaintProtection && (paintProductsQuery.data ?? []).length > 0 && (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {PAINT_TIERS.map((tier) => {
-                  const selected = paintProtectionTier === tier.key;
+                {(paintProductsQuery.data ?? []).map((product) => {
+                  const selected = paintProtectionProductId === product.id;
+                  const guaranteeLabel = product.durationMonths >= 12
+                    ? `${Math.round(product.durationMonths / 12)} yr${Math.round(product.durationMonths / 12) !== 1 ? "s" : ""}`
+                    : `${product.durationMonths} mo`;
                   return (
                     <button
-                      key={tier.key}
+                      key={product.id}
                       type="button"
-                      onClick={() => setPaintProtectionTier(tier.key)}
+                      onClick={() => setPaintProtectionProductId(product.id)}
                       className={cn(
                         "rounded-lg border-2 p-3 text-left transition",
                         selected
@@ -631,21 +599,18 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
                       )}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-heading font-bold text-navy">
-                          {tier.name}
-                        </span>
-                        {tier.popular && (
-                          <span className="rounded-full bg-cyan px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy">
-                            Popular
-                          </span>
+                        <span className="font-heading font-bold text-navy">{product.name}</span>
+                        {product.popular && (
+                          <span className="rounded-full bg-cyan px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy">Popular</span>
                         )}
                       </div>
-                      <p className="text-sm font-semibold text-cyan-600">
-                        {tier.duration}
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate">
-                        {tier.description}
-                      </p>
+                      <p className="text-sm font-semibold text-cyan-600">{guaranteeLabel}</p>
+                      {product.description && (
+                        <p className="mt-0.5 text-xs text-slate">{product.description}</p>
+                      )}
+                      {product.priceGbp > 0 && (
+                        <p className="mt-1 text-xs font-semibold text-navy">£{product.priceGbp.toFixed(2)}</p>
+                      )}
                     </button>
                   );
                 })}
@@ -783,9 +748,8 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
               isPriority,
               includeInspection,
               includeFreshScent,
-              paintProtectionTier: includePaintProtection
-                ? paintProtectionTier
-                : null,
+              paintProtectionTier: null,
+              paintProtectionProductId: includePaintProtection ? paintProtectionProductId : null,
               photographyPackage: includePhotography ? photographyPackage : null,
               vehicleSize: vehicleSize || undefined,
               doNotClean,

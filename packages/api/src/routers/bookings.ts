@@ -141,6 +141,7 @@ export const bookingsRouter = router({
         paintProtectionTier: z
           .enum(["essential", "standard", "premium", "ultimate"])
           .nullish(),
+        paintProtectionProductId: z.string().nullish(),
         photographyPackage: z.enum(["standard", "premium", "full"]).nullish(),
         vehicleSize: z.enum(["SMALL", "MEDIUM", "LARGE", "XL", "VAN"]).optional(),
         doNotClean: z.boolean().default(false),
@@ -200,6 +201,7 @@ export const bookingsRouter = router({
           includeInspection: input.includeInspection,
           includeFreshScent: input.includeFreshScent,
           paintProtectionTier: input.paintProtectionTier ?? null,
+          paintProtectionProductId: input.paintProtectionProductId ?? null,
           photographyPackage: input.photographyPackage ?? null,
           vehicleSize: input.vehicleSize ?? "LARGE",
           resolvedDurationMins,

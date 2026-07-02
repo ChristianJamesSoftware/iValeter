@@ -92,6 +92,14 @@ function todayString(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** Minimum allowed date for CSI bookings — 3 days from today */
+function minCsiDateString(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 3);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 const INPUT_CLS =
   "h-12 w-full rounded-lg border border-line bg-white px-4 text-navy outline-none transition focus:border-cyan focus:ring-2 focus:ring-cyan/30";
 
@@ -125,7 +133,7 @@ export function CsiBookingForm(): React.JSX.Element {
   const [selectedIds,     setSelectedIds]    = useState<Set<string>>(new Set());
   const [collapsed,       setCollapsed]      = useState<Set<string>>(new Set());
   const [siteId,          setSiteId]         = useState("");
-  const [requiredByDate,  setRequiredByDate]  = useState(todayString());
+  const [requiredByDate,  setRequiredByDate]  = useState(minCsiDateString());
   const [contactName,     setContactName]     = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
   const [notes,           setNotes]           = useState("");
@@ -185,7 +193,7 @@ export function CsiBookingForm(): React.JSX.Element {
 
   function handleMakeAnother() {
     setSubmitted(false); setSelectedIds(new Set()); setSiteId("");
-    setRequiredByDate(todayString()); setContactName("");
+    setRequiredByDate(minCsiDateString()); setContactName("");
     setSpecialRequests(""); setNotes(""); bookMultiple.reset();
   }
 
@@ -337,7 +345,7 @@ export function CsiBookingForm(): React.JSX.Element {
         </Field>
 
         <Field label="Date Required By" required>
-          <input type="date" value={requiredByDate} min={todayString()}
+          <input type="date" value={requiredByDate} min={minCsiDateString()}
             onChange={(e) => setRequiredByDate(e.target.value)} className={INPUT_CLS} />
         </Field>
 

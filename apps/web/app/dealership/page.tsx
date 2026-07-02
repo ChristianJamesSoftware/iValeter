@@ -47,6 +47,13 @@ export default async function DealershipDashboard() {
         subtitle="Live bookings for your site"
         action={
           <div className="flex items-center gap-3">
+            <Link
+              href="/dealership/bookings/new"
+              className="flex h-11 items-center gap-2 rounded-lg bg-cyan px-4 font-heading font-semibold text-navy transition hover:bg-cyan-600"
+            >
+              <PlusCircle className="h-5 w-5" />
+              Book Valet
+            </Link>
             <ImportBookingsButton />
             <Link
               href="/dealership/csi-booking/new"
@@ -54,13 +61,6 @@ export default async function DealershipDashboard() {
             >
               <Sparkles className="h-5 w-5" />
               CSI Booking
-            </Link>
-            <Link
-              href="/dealership/bookings/new"
-              className="flex h-11 items-center gap-2 rounded-lg bg-cyan px-4 font-heading font-semibold text-navy transition hover:bg-cyan-600"
-            >
-              <PlusCircle className="h-5 w-5" />
-              Book Valet
             </Link>
           </div>
         }
