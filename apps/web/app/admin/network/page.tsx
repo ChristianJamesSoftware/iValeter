@@ -9,7 +9,7 @@ export default function NetworkPage() {
   return (
     <div>
       <PageHeader
-        title="Network"
+        title="Customers"
         subtitle="Head offices and their dealerships"
         action={
           <Link

@@ -51,6 +51,7 @@ function HeadOfficesTab() {
                 <tr>
                   <th className={TH}>Head Office</th>
                   <th className={TH}>Dealerships</th>
+                  <th className={TH}>Sites</th>
                   <th className={TH}>Users</th>
                   <th className={TH}>Status</th>
                   <th className={TH} />
@@ -73,6 +74,7 @@ function HeadOfficesTab() {
                         <span className="font-bold text-slate-900">{o.name}</span>
                       </div>
                     </td>
+                    <td className="px-5 py-4 text-slate-600">{o.dealershipsCount}</td>
                     <td className="px-5 py-4 text-slate-600">{o.sitesCount}</td>
                     <td className="px-5 py-4 text-slate-600">{o.usersCount}</td>
                     <td className="px-5 py-4">
