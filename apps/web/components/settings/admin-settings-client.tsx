@@ -10,6 +10,7 @@ import { ManagementTeamTab } from "@/components/settings/management-team-tab";
 import { ValetLibraryTab } from "@/components/settings/valet-library-tab";
 import { SupportServicesTab } from "@/components/settings/support-services-tab";
 import { VehicleSizesTab } from "@/components/settings/vehicle-sizes-tab";
+import { PaintProtectionTab } from "@/components/settings/paint-protection-tab";
 
 
 const TABS = [
@@ -21,6 +22,7 @@ const TABS = [
   { key: "library", label: "Valet Library" },
   { key: "support", label: "CSI Services" },
   { key: "vehicle-sizes", label: "Vehicle Sizes" },
+  { key: "paint-protection", label: "Paint Protection" },
 ];
 
 const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
@@ -72,6 +74,7 @@ export function AdminSettingsClient() {
       {tab === "library" && <ValetLibraryTab />}
       {tab === "support" && <SupportServicesTab />}
       {tab === "vehicle-sizes" && <VehicleSizesTab />}
+      {tab === "paint-protection" && <PaintProtectionTab />}
 
     </div>
   );

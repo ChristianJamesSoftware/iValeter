@@ -109,14 +109,23 @@ function formatSlotLabel(time: string): string {
   return `${h12}:${m} ${period}`;
 }
 
-export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
+export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; userDepartmentId?: string }) {
   const router = useRouter();
   const [siteId, setSiteId] = useState(sites[0]?.id ?? "");
-  const [departmentId, setDepartmentId] = useState(
-    sites[0]?.departments[0]?.id ?? "",
-  );
+
+  // If a departmentId is assigned to this user, use it directly;
+  // otherwise default to the first department on the first site.
+  const defaultDeptId = userDepartmentId
+    ?? sites[0]?.departments[0]?.id
+    ?? "";
+  const [departmentId, setDepartmentId] = useState(defaultDeptId);
+
+  // Derive the correct initial service type from the resolved department
+  const defaultDept = userDepartmentId
+    ? sites[0]?.departments.find((d) => d.id === userDepartmentId)
+    : sites[0]?.departments[0];
   const [serviceTypeId, setServiceTypeId] = useState(
-    sites[0]?.departments[0]?.serviceTypes[0]?.id ?? "",
+    defaultDept?.serviceTypes[0]?.id ?? "",
   );
   type VehicleSizeOption = "" | "SMALL" | "MEDIUM" | "LARGE" | "XL" | "VAN";
   const [vehicleReg, setVehicleReg] = useState("");
@@ -339,15 +348,18 @@ export function NewBookingForm({ sites }: { sites: SiteOpt[] }) {
           </Field>
         )}
 
-        <Field label="Department">
-          <Select value={departmentId} onChange={onDeptChange}>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        {/* Department — hidden when the user is pre-assigned to one */}
+        {!userDepartmentId && (
+          <Field label="Department">
+            <Select value={departmentId} onChange={onDeptChange}>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
 
         <Field label="Service Type">
           <Select value={serviceTypeId} onChange={setServiceTypeId}>
