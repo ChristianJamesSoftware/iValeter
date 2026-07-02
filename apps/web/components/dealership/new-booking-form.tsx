@@ -108,6 +108,19 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
   const [isPriority, setIsPriority] = useState(false);
   const [doNotClean, setDoNotClean] = useState(false);
 
+  // When DNC is turned on, reset all other add-ons
+  function handleDoNotClean(v: boolean) {
+    setDoNotClean(v);
+    if (v) {
+      setIsPriority(false);
+      setIncludeInspection(false);
+      setIncludeFreshScent(false);
+      setIncludePaintProtection(false);
+      setPaintProtectionProductId(null);
+      setIncludePhotography(false);
+    }
+  }
+
   const [overrideDuplicate, setOverrideDuplicate] = useState(false);
   const dupTimerRef = React.useRef<ReturnType<typeof setTimeout>|null>(null);
   const [dupCheckReg, setDupCheckReg] = useState("");
@@ -414,10 +427,13 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
 
         <button
           type="button"
+          disabled={doNotClean}
           onClick={() => setIsPriority((v) => !v)}
           className={cn(
             "flex w-full items-center justify-between rounded-lg border-2 px-4 py-3 font-semibold transition",
-            isPriority
+            doNotClean
+              ? "border-line bg-white text-slate opacity-40 cursor-not-allowed"
+              : isPriority
               ? "border-danger bg-danger/10 text-danger"
               : "border-line bg-white text-slate",
           )}
@@ -444,10 +460,13 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
         {/* ---- Vehicle inspection ---- */}
         <button
           type="button"
+          disabled={doNotClean}
           onClick={() => setIncludeInspection((v) => !v)}
           className={cn(
             "w-full rounded-lg border-2 px-4 py-3 text-left transition",
-            includeInspection
+            doNotClean
+              ? "border-line bg-white opacity-40 cursor-not-allowed"
+              : includeInspection
               ? "border-warning bg-warning/10"
               : "border-line bg-white",
           )}
@@ -490,13 +509,15 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
             See it. Smell it. Feel it. Hear it.
           </p>
 
-          <div className="space-y-3">
+          <div className={cn("space-y-3", doNotClean && "opacity-40 pointer-events-none")}>
             {/* Fresh scent */}
             <button
               type="button"
+              disabled={doNotClean}
               onClick={() => setIncludeFreshScent((v) => !v)}
               className={cn(
                 "w-full rounded-lg border-2 px-4 py-3 text-left transition",
+                doNotClean ? "cursor-not-allowed" : "",
                 includeFreshScent
                   ? "border-success bg-success/10"
                   : "border-line bg-white",
@@ -624,9 +645,10 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
         </div>
 
         {/* ---- Photography ---- */}
-        <div className="rounded-xl border border-line bg-offwhite p-4">
+        <div className={cn("rounded-xl border border-line bg-offwhite p-4", doNotClean && "opacity-40 pointer-events-none")}>
           <button
             type="button"
+            disabled={doNotClean}
             onClick={() => setIncludePhotography((v) => !v)}
             className={cn(
               "w-full rounded-lg border-2 px-4 py-3 text-left transition",
@@ -694,7 +716,7 @@ export function NewBookingForm({ sites, userDepartmentId }: { sites: SiteOpt[]; 
         {/* ---- Do Not Clean — least used, sits at the bottom ---- */}
         <button
           type="button"
-          onClick={() => setDoNotClean((v) => !v)}
+          onClick={() => handleDoNotClean(!doNotClean)}
           className={cn(
             "w-full rounded-lg border-2 px-4 py-3 text-left transition",
             doNotClean

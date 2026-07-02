@@ -271,14 +271,6 @@ export function ImportBookingsModal({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
 
-              {/* Template preview */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">CSV format</p>
-                <pre className="text-xs text-slate-600 leading-relaxed font-mono">
-                  {buildCsv(tpl)}
-                </pre>
-              </div>
-
               <div className="flex items-center gap-3 pt-1">
                 <button
                   onClick={() => downloadCsv(tpl)}
@@ -301,8 +293,7 @@ export function ImportBookingsModal({ onClose }: { onClose: () => void }) {
           {step === "upload" && (
             <div className="space-y-4">
               <p className="text-sm text-slate-500">
-                Upload your completed <strong>{tpl.label}</strong> CSV file.
-                Columns: <code className="rounded bg-slate-100 px-1 text-xs">vehicle_reg, customer_name, date (YYYY-MM-DD), time (HH:MM)</code>
+                Upload your completed <strong>{tpl.label}</strong> file.
               </p>
 
               <button
@@ -311,7 +302,7 @@ export function ImportBookingsModal({ onClose }: { onClose: () => void }) {
                 className="flex w-full flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 py-10 transition hover:border-navy hover:bg-navy/5"
               >
                 <Upload className="h-8 w-8 text-slate-400" />
-                <p className="text-sm font-semibold text-slate-600">Click to choose a CSV file</p>
+                <p className="text-sm font-semibold text-slate-600">Click to choose your file</p>
                 <p className="text-xs text-slate-400">or drag and drop</p>
               </button>
 
