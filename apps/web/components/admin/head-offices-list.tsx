@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Power } from "lucide-react";
+import { Power, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
 export function HeadOfficesList() {
   const [showInactive, setShowInactive] = useState(false);
+  const [search, setSearch] = useState("");
   const utils = trpc.useUtils();
   const query = trpc.organisations.list.useQuery({ showInactive });
 
@@ -17,6 +18,9 @@ export function HeadOfficesList() {
 
   if (query.isLoading) return <p className="text-slate-400">Loading…</p>;
   const orgs = query.data ?? [];
+  const filtered = search.trim()
+    ? orgs.filter((o) => o.name.toLowerCase().includes(search.toLowerCase()))
+    : orgs;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
@@ -24,12 +28,23 @@ export function HeadOfficesList() {
         <h2 className="text-base font-bold text-slate-900">
           Head Offices
           <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-            {orgs.length}
+            {filtered.length}
           </span>
         </h2>
 
-        {/* Active / All toggle */}
-        <div className="flex items-center rounded-lg border border-slate-200 p-0.5 text-xs font-semibold">
+        <div className="flex items-center gap-3">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search head offices…"
+              className="h-9 w-52 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 placeholder:text-slate-400"
+            />
+          </div>
+          {/* Active / All toggle */}
+          <div className="flex items-center rounded-lg border border-slate-200 p-0.5 text-xs font-semibold">
           <button
             onClick={() => setShowInactive(false)}
             className={cn(
@@ -49,10 +64,13 @@ export function HeadOfficesList() {
             All
           </button>
         </div>
+        </div>
       </div>
 
-      {orgs.length === 0 ? (
-        <p className="px-5 py-16 text-center text-sm text-slate-400">No head offices yet.</p>
+      {filtered.length === 0 ? (
+        <p className="px-5 py-16 text-center text-sm text-slate-400">
+          {search.trim() ? `No head offices match "${search}"` : "No head offices yet."}
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -65,7 +83,7 @@ export function HeadOfficesList() {
               </tr>
             </thead>
             <tbody>
-              {orgs.map((o) => (
+              {filtered.map((o) => (
                 <tr
                   key={o.id}
                   className={cn(

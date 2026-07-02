@@ -345,6 +345,141 @@ function allUniq<T>(arr: T[], key: keyof T): number {
 
 // ─── Sites tab ────────────────────────────────────────────────────────────────
 
+function SiteRow({ s, onRefresh }: { s: DealershipData["sites"][number]; onRefresh: () => void }) {
+  const utils = trpc.useUtils();
+  const [expanded, setExpanded] = useState(false);
+  const [addingDept, setAddingDept] = useState(false);
+  const [newDeptName, setNewDeptName] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  const invalidate = () => { onRefresh(); utils.dealerships.getById.invalidate(); };
+
+  const addDept = trpc.sites.addDepartment.useMutation({
+    onSuccess: () => { setNewDeptName(""); setAddingDept(false); invalidate(); },
+  });
+  const deleteDept = trpc.sites.deleteDepartment.useMutation({ onSuccess: invalidate });
+  const renameDept = trpc.sites.renameDepartment.useMutation({
+    onSuccess: () => { setRenamingId(null); invalidate(); },
+  });
+
+  return (
+    <>
+      <tr
+        className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/60"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <td className={`${TD} font-semibold text-slate-900`}>
+          <span className="inline-flex items-center gap-2">
+            {expanded ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
+            {s.name}
+          </span>
+        </td>
+        <td className={TD}>{s.address ?? "—"}</td>
+        <td className={TD}>{s.departments.length}</td>
+        <td className={TD}>{s._count.bookings}</td>
+        <td className={TD}>{s._count.users}</td>
+      </tr>
+      {expanded && (
+        <tr className="border-b border-slate-100 bg-slate-50/40">
+          <td colSpan={5} className="px-5 py-4">
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Departments</p>
+              {s.departments.length === 0 && !addingDept && (
+                <p className="text-sm text-slate-400">No departments yet.</p>
+              )}
+              {s.departments.map((dept) => (
+                <div key={dept.id} className="flex items-center gap-2">
+                  {renamingId === dept.id ? (
+                    <>
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && renameValue.trim()) renameDept.mutate({ departmentId: dept.id, name: renameValue });
+                          if (e.key === "Escape") setRenamingId(null);
+                        }}
+                        className="h-8 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-500"
+                      />
+                      <button onClick={() => { if (renameValue.trim()) renameDept.mutate({ departmentId: dept.id, name: renameValue }); }}
+                        className="rounded-lg bg-slate-900 p-1.5 text-white hover:bg-slate-700">
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => setRenamingId(null)} className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:text-slate-600">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800">
+                        {dept.name}
+                        {dept.serviceTypes.length > 0 && (
+                          <span className="ml-2 text-xs text-slate-400">{dept.serviceTypes.length} service type{dept.serviceTypes.length !== 1 ? "s" : ""}</span>
+                        )}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setRenamingId(dept.id); setRenameValue(dept.name); }}
+                        className="rounded-lg border border-slate-200 p-1.5 text-slate-400 transition hover:border-slate-400 hover:text-slate-700"
+                        title="Rename"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${dept.name}"?`)) deleteDept.mutate({ departmentId: dept.id }); }}
+                        disabled={dept.serviceTypes.length > 0}
+                        className="rounded-lg border border-slate-200 p-1.5 text-slate-400 transition hover:border-red-300 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                        title={dept.serviceTypes.length > 0 ? "Cannot delete — has service types" : "Delete"}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+              {addingDept ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={newDeptName}
+                    onChange={(e) => setNewDeptName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newDeptName.trim()) addDept.mutate({ siteId: s.id, name: newDeptName });
+                      if (e.key === "Escape") { setAddingDept(false); setNewDeptName(""); }
+                    }}
+                    placeholder="Department name…"
+                    className="h-8 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-500"
+                  />
+                  <button
+                    onClick={() => { if (newDeptName.trim()) addDept.mutate({ siteId: s.id, name: newDeptName }); }}
+                    disabled={!newDeptName.trim() || addDept.isPending}
+                    className="rounded-lg bg-slate-900 p-1.5 text-white hover:bg-slate-700 disabled:opacity-50"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={() => { setAddingDept(false); setNewDeptName(""); }} className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:text-slate-600">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setAddingDept(true); }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-500 hover:text-slate-700"
+                >
+                  <PlusCircle className="h-3.5 w-3.5" /> Add department
+                </button>
+              )}
+              {(deleteDept.error ?? addDept.error ?? renameDept.error) && (
+                <p className="text-xs text-red-500">{(deleteDept.error ?? addDept.error ?? renameDept.error)?.message}</p>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
 function SitesTab({
   d, showAddSite, setShowAddSite, onSiteAdded,
 }: {
@@ -353,6 +488,9 @@ function SitesTab({
   setShowAddSite: (v: boolean) => void;
   onSiteAdded: () => void | Promise<void>;
 }) {
+  const utils = trpc.useUtils();
+  const refresh = () => utils.dealerships.getById.invalidate({ id: d.id });
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -394,13 +532,7 @@ function SitesTab({
           </thead>
           <tbody>
             {d.sites.map((s) => (
-              <tr key={s.id} className="hover:bg-slate-50/50">
-                <td className={`${TD} font-semibold text-slate-900`}>{s.name}</td>
-                <td className={TD}>{s.address ?? "—"}</td>
-                <td className={TD}>{s.departments.length}</td>
-                <td className={TD}>{s._count.bookings}</td>
-                <td className={TD}>{s._count.users}</td>
-              </tr>
+              <SiteRow key={s.id} s={s} onRefresh={refresh} />
             ))}
           </tbody>
         </table>
