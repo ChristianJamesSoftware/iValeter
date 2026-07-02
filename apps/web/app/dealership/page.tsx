@@ -3,6 +3,7 @@ import { PlusCircle, Sparkles } from "lucide-react";
 import { getServerApi } from "@/lib/trpc/server";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DealerDashboardClient } from "@/components/dealership/dealer-dashboard-client";
+import { CsiScoreBanner } from "@/components/dealership/csi-score-banner";
 
 export const dynamic = "force-dynamic";
 
@@ -34,10 +35,11 @@ export default async function DealershipDashboard() {
     assignedTo: b.assignedTo
       ? { firstName: b.assignedTo.firstName, lastName: b.assignedTo.lastName }
       : null,
+    qualityScore: b.qualityScore ?? null,
   }));
 
   return (
-    <div>
+    <div className="space-y-5">
       <PageHeader
         title="Today's Operations"
         subtitle="Live bookings for your site"
@@ -60,6 +62,7 @@ export default async function DealershipDashboard() {
           </div>
         }
       />
+      <CsiScoreBanner />
       <DealerDashboardClient initialJobs={jobs} />
     </div>
   );

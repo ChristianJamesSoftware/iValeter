@@ -352,6 +352,64 @@ export const bookingsRouter = router({
     }),
 
   /**
+   * CSI score for the dealer's site — rolling window.
+   * Returns average quality score, star breakdown, rated/total job count, and 7-day trend.
+   */
+  getCsiScore: dealershipProcedure
+    .input(z.object({ days: z.number().int().min(7).max(365).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const since = new Date(Date.now() - input.days * 24 * 60 * 60 * 1000);
+
+      const bookings = await ctx.prisma.booking.findMany({
+        where: {
+          ...scopeFor(ctx.session),
+          status: "COMPLETED",
+          completedAt: { gte: since },
+        },
+        select: { id: true, qualityScore: true, completedAt: true },
+        orderBy: { completedAt: "asc" },
+      });
+
+      const rated = bookings.filter((b) => b.qualityScore !== null);
+      const totalCompleted = bookings.length;
+      const totalRated = rated.length;
+
+      const avg =
+        totalRated > 0
+          ? Math.round((rated.reduce((s, b) => s + (b.qualityScore ?? 0), 0) / totalRated) * 10) / 10
+          : null;
+
+      // Star breakdown (1-5)
+      const breakdown: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      for (const b of rated) {
+        if (b.qualityScore) breakdown[b.qualityScore] = (breakdown[b.qualityScore] ?? 0) + 1;
+      }
+
+      // 7-day trend
+      const trend: { date: string; avg: number | null; count: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const dayStart = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setHours(23, 59, 59, 999);
+        const dayRated = rated.filter(
+          (b) => b.completedAt && b.completedAt >= dayStart && b.completedAt <= dayEnd,
+        );
+        trend.push({
+          date: dayStart.toISOString().slice(0, 10),
+          avg: dayRated.length > 0
+            ? Math.round((dayRated.reduce((s, b) => s + (b.qualityScore ?? 0), 0) / dayRated.length) * 10) / 10
+            : null,
+          count: dayRated.length,
+        });
+      }
+
+      const coverageRate = totalCompleted > 0 ? Math.round((totalRated / totalCompleted) * 100) : 0;
+
+      return { avg, totalRated, totalCompleted, coverageRate, breakdown, trend, days: input.days };
+    }),
+
+  /**
    * Photos for a booking. Dealership users only ever see photography-stage
    * photos — inspection photos are internal to the valeting company.
    */

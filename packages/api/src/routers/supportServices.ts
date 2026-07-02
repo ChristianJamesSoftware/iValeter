@@ -67,6 +67,33 @@ export const supportServicesRouter = router({
       });
     }),
 
+  // Book multiple services at once — creates one booking row per service
+  bookMultiple: dealershipProcedure
+    .input(
+      z.object({
+        serviceIds: z.array(z.string()).min(1),
+        siteId: z.string(),
+        scheduledDate: z.date(),
+        notes: z.string().optional(),
+        contactName: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { serviceIds, ...shared } = input;
+      return ctx.prisma.$transaction(
+        serviceIds.map((serviceId) =>
+          ctx.prisma.supportServiceBooking.create({
+            data: {
+              ...shared,
+              serviceId,
+              organisationId: ctx.session.organisationId,
+              createdById: ctx.session.userId,
+            },
+          }),
+        ),
+      );
+    }),
+
   // List bookings for admin
   listBookings: orgAdminProcedure.query(async ({ ctx }) => {
     return ctx.prisma.supportServiceBooking.findMany({
