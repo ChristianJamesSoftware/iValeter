@@ -28,12 +28,12 @@ async function main() {
   const prisma = new PrismaClient();
 
   try {
-    // Find all stuck (unfinished, not rolled back) migrations
+    // Find all unfinished migrations (stuck OR already rolled-back)
+    // Both cases block prisma migrate deploy
     const stuck = await prisma.$queryRawUnsafe(`
       SELECT id, migration_name
       FROM _prisma_migrations
       WHERE finished_at IS NULL
-        AND rolled_back_at IS NULL
     `);
 
     if (stuck.length === 0) {
@@ -44,15 +44,13 @@ async function main() {
     console.log(`resolve-stuck-migrations: found ${stuck.length} stuck migration(s):`);
 
     for (const row of stuck) {
-      console.log(`  → resolving: ${row.migration_name}`);
+      console.log(`  → removing unfinished row: ${row.migration_name}`);
       await prisma.$executeRawUnsafe(`
-        UPDATE _prisma_migrations
-        SET rolled_back_at = NOW()
-        WHERE id = $1
+        DELETE FROM _prisma_migrations WHERE id = $1
       `, row.id);
     }
 
-    console.log("resolve-stuck-migrations: all stuck migrations resolved — safe to deploy");
+    console.log("resolve-stuck-migrations: all unfinished migration rows removed — Prisma will re-run them with idempotent SQL");
   } finally {
     await prisma.$disconnect();
   }
