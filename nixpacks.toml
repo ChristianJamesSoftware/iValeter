@@ -11,4 +11,4 @@ cmds = [
 ]
 
 [start]
-cmd = "pnpm --filter @ivaleter/db migrate && node apps/web/.next/standalone/apps/web/server.js"
+cmd = "node scripts/resolve-stuck-migrations.js && pnpm --filter @ivaleter/db migrate && cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static && cp -r apps/web/public apps/web/.next/standalone/apps/web/public && HOSTNAME=0.0.0.0 node apps/web/.next/standalone/apps/web/server.js"
