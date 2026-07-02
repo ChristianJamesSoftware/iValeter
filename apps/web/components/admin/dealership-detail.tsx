@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ValeterCardModal } from "@/components/admin/valeter-card-modal";
 import {
   Building2, MapPin, Phone, Mail, User, PlusCircle, X,
@@ -62,7 +62,6 @@ interface DealershipData {
 
 const TABS = [
   { id: "overview",      label: "Overview",             icon: FileText },
-  { id: "sites",         label: "Sites",                icon: Layers },
   { id: "departments",   label: "Departments",          icon: LayoutGrid },
   { id: "valetTypes",    label: "Valet Types",          icon: Wrench },
   { id: "rates",         label: "Vehicle Rates",        icon: ClipboardList },
@@ -118,8 +117,12 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
       }
     : initial;
 
+  const [closingEdit, setClosingEdit] = useState(false);
   const updateDetails = trpc.dealerships.updateDetails.useMutation({
-    onSuccess: () => utils.dealerships.getById.invalidate({ id: d.id }),
+    onSuccess: () => {
+      setClosingEdit(false);
+      void utils.dealerships.getById.invalidate({ id: d.id });
+    },
   });
 
   // All users across all sites (deduplicated by user id)
@@ -226,18 +229,24 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
 
       {/* Tab panels */}
       {activeTab === "overview" && (
-        <OverviewTab d={d} onSave={(data) => updateDetails.mutate({
+        <OverviewTab d={d} closingEdit={closingEdit} onSave={(data) => { setClosingEdit(true); updateDetails.mutate({
           id: d.id,
           name: data.name ?? undefined,
           address: data.address ?? undefined,
           contactName: data.contactName ?? undefined,
           contactEmail: data.contactEmail ?? undefined,
           contactPhone: data.contactPhone ?? undefined,
-          specialInstructions: data.specialInstructions ?? undefined,
+          accountsContactName: data.accountsContactName ?? undefined,
+          accountsContactEmail: data.accountsContactEmail ?? undefined,
+          accountsContactPhone: data.accountsContactPhone ?? undefined,
+          paymentTermsDays: data.paymentTermsDays ?? undefined,
+          paymentTermsNote: data.paymentTermsNote ?? undefined,
+          creditLimit: data.creditLimit ?? undefined,
+          logoUrl: data.logoUrl ?? null,
           isActive: data.isActive,
-        })} saving={updateDetails.isPending} />
+        }); }} saving={updateDetails.isPending} />
       )}
-      {activeTab === "sites" && (
+      {false && (
         <SitesTab
           d={d}
           showAddSite={showAddSite}
@@ -269,13 +278,21 @@ const INPUT_CLS = "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 
 const LBL_CLS  = "mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400";
 
 function OverviewTab({
-  d, onSave, saving,
+  d, onSave, saving, closingEdit,
 }: {
   d: DealershipData;
   onSave: (data: Partial<DealershipData>) => void;
   saving: boolean;
+  closingEdit: boolean;
 }) {
   const [editing, setEditing] = useState(false);
+
+  // Close edit mode once the parent confirms the mutation succeeded
+  const prevClosing = useRef(false);
+  useEffect(() => {
+    if (prevClosing.current && !closingEdit) setEditing(false);
+    prevClosing.current = closingEdit;
+  }, [closingEdit]);
   const [form, setForm] = useState({
     name:                d.name,
     address:             d.address             ?? "",
@@ -320,7 +337,7 @@ function OverviewTab({
       creditLimit:      form.creditLimit ? parseFloat(form.creditLimit) : null,
       logoUrl:          form.logoUrl || null,
     });
-    setEditing(false);
+    // setEditing handled by useEffect watching closingEdit → false after onSuccess
   }
 
   return (
@@ -329,13 +346,28 @@ function OverviewTab({
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="font-bold text-slate-900">Dealership Details</h2>
-          <button
-            onClick={() => editing ? save() : setEditing(true)}
-            disabled={saving}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-          >
-            {editing ? <><Check className="h-3.5 w-3.5" /> Save</> : <><Edit2 className="h-3.5 w-3.5" /> Edit</>}
-          </button>
+          <div className="flex items-center gap-2">
+            {editing && (
+              <button
+                onClick={() => setEditing(false)}
+                disabled={saving}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={() => editing ? save() : setEditing(true)}
+              disabled={saving}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold transition disabled:opacity-50 ${
+                editing
+                  ? "bg-[#E8650A] text-white hover:bg-orange-700"
+                  : "bg-slate-900 text-white hover:bg-slate-700"
+              }`}
+            >
+              {saving ? "Saving…" : editing ? <><Check className="h-4 w-4" /> Save changes</> : <><Edit2 className="h-4 w-4" /> Edit</>}
+            </button>
+          </div>
         </div>
 
         {editing ? (
