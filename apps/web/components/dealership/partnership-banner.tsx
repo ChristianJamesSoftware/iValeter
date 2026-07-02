@@ -20,14 +20,12 @@ export function PartnershipBanner() {
       {/* Dealer logo half */}
       <div className="flex flex-1 items-center justify-center border-r border-line px-6 py-4">
         {data.dealerLogoUrl ? (
-          <div className="relative h-14 w-[160px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={data.dealerLogoUrl}
-              alt={data.dealerName ?? "Dealership logo"}
-              className="absolute inset-0 h-full w-full object-contain"
-            />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={data.dealerLogoUrl}
+            alt={data.dealerName ?? "Dealership logo"}
+            className="h-12 w-auto max-w-[160px] object-contain"
+          />
         ) : (
           <p className="text-sm font-semibold text-navy">{data.dealerName ?? "Dealership"}</p>
         )}
@@ -49,14 +47,12 @@ export function PartnershipBanner() {
       {/* TV logo half */}
       <div className="flex flex-1 items-center justify-center border-l border-line px-6 py-4">
         {data.tvLogoUrl ? (
-          <div className="relative h-14 w-[160px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={data.tvLogoUrl}
-              alt="Total Valeting"
-              className="absolute inset-0 h-full w-full object-contain"
-            />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={data.tvLogoUrl}
+            alt="Total Valeting"
+            className="h-12 w-auto max-w-[160px] object-contain"
+          />
         ) : (
           <p className="text-sm font-semibold text-navy">Total Valeting</p>
         )}
