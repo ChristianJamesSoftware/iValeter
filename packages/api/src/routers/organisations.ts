@@ -20,7 +20,7 @@ export const organisationsRouter = router({
     const orgs = await ctx.prisma.organisation.findMany({
       where: input?.showInactive ? undefined : { isActive: true },
       include: { _count: { select: { sites: true, users: true, dealerships: true } } },
-      orderBy: { createdAt: "desc" },
+      orderBy: { name: "asc" },
     });
     return orgs.map((o) => ({
       id: o.id,
