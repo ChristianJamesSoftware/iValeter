@@ -47,7 +47,7 @@ export default async function DealershipDetailPage({
     <div>
       <div className="mb-4 flex items-center justify-between">
         <Link
-          href="/admin/dealerships"
+          href="/admin/network?tab=dealerships"
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
         >
           <ChevronLeft className="h-4 w-4" /> All dealerships

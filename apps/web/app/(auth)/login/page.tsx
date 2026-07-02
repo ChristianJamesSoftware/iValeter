@@ -1,5 +1,5 @@
 import { LoginForm } from "./login-form";
-import { prisma } from "@ivaleter/db";
+import Link from "next/link";
 
 interface Props {
   searchParams: Promise<{ reset?: string }>;
@@ -7,10 +7,6 @@ interface Props {
 
 export default async function LoginPage({ searchParams }: Props) {
   const { reset } = await searchParams;
-
-  // Fetch TV logo from platform config (unauthenticated — login page is public)
-  const tvLogoRow = await prisma.platformConfig.findUnique({ where: { key: "TV_LOGO_URL" } }).catch(() => null);
-  const tvLogoUrl = tvLogoRow?.value ?? null;
 
   return (
     <main className="flex min-h-screen flex-col lg:flex-row">
@@ -45,23 +41,12 @@ export default async function LoginPage({ searchParams }: Props) {
           {/* Logo */}
           <div>
             <div className="flex items-center gap-3">
-              {tvLogoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={tvLogoUrl}
-                  alt="Total Valeting"
-                  className="h-12 max-w-[180px] object-contain"
-                />
-              ) : (
-                <>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#c8a96e]">
-                    <span className="text-sm font-black text-white tracking-tight">iV</span>
-                  </div>
-                  <span className="text-xl font-black tracking-tight text-slate-900">
-                    iValeter
-                  </span>
-                </>
-              )}
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#c8a96e]">
+                <span className="text-sm font-black text-white tracking-tight">iV</span>
+              </div>
+              <span className="text-xl font-black tracking-tight text-slate-900">
+                iValeter
+              </span>
             </div>
             <div className="mt-4 flex items-center gap-2">
               <div className="h-px w-6 bg-[#b8945a]" />
@@ -108,6 +93,19 @@ export default async function LoginPage({ searchParams }: Props) {
                 </span>
               ))}
             </div>
+          </div>
+
+          {/* Back to homepage */}
+          <div className="mb-6">
+            <Link
+              href="/home"
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#b8945a] hover:text-[#8a6a30] transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M19 12H5M12 5l-7 7 7 7"/>
+              </svg>
+              Back to website
+            </Link>
           </div>
 
           {/* Stats strip */}
