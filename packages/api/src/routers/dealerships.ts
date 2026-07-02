@@ -32,7 +32,11 @@ export const dealershipsRouter = router({
           sites: {
             include: {
               departments: {
-                include: { serviceTypes: { where: { isActive: true } } },
+                include: {
+                  serviceTypes: {
+                    select: { id: true, name: true, isActive: true, durationMins: true },
+                  },
+                },
               },
               users: {
                 where: { isActive: true },

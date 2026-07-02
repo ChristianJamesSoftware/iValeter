@@ -141,4 +141,53 @@ export const sitesRouter = router({
         data: { name: input.name.trim() },
       });
     }),
+
+  /**
+   * Toggle a service type on/off for a specific department.
+   * If the service type row doesn't exist yet (never synced), creates it first.
+   * Used by the department tag UI — blue = active, grey = excluded.
+   */
+  toggleServiceType: orgAdminProcedure
+    .input(
+      z.object({
+        departmentId:   z.string(),
+        serviceTypeId:  z.string().optional(), // existing row
+        templateName:   z.string(),            // valet type name (for upsert)
+        templateId:     z.string(),            // ValetTypeTemplate id
+        isActive:       z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verify department belongs to this org
+      const dept = await ctx.prisma.department.findFirst({
+        where: { id: input.departmentId, site: { organisationId: ctx.session.organisationId } },
+      });
+      if (!dept) throw new TRPCError({ code: "NOT_FOUND", message: "Department not found" });
+
+      if (input.serviceTypeId) {
+        // Row already exists — just toggle isActive
+        return ctx.prisma.serviceType.update({
+          where: { id: input.serviceTypeId },
+          data: { isActive: input.isActive },
+        });
+      }
+
+      // Row doesn\'t exist yet — fetch the template and create it (active or inactive)
+      const tmpl = await ctx.prisma.valetTypeTemplate.findUnique({
+        where: { id: input.templateId },
+      });
+      if (!tmpl) throw new TRPCError({ code: "NOT_FOUND", message: "Valet type template not found" });
+
+      return ctx.prisma.serviceType.create({
+        data: {
+          departmentId: dept.id,
+          name:         tmpl.name,
+          description:  tmpl.description ?? undefined,
+          category:     tmpl.category,
+          durationMins: tmpl.defaultDurationMins,
+          nominalCode:  tmpl.nominalCode ?? undefined,
+          isActive:     input.isActive,
+        },
+      });
+    }),
 });
