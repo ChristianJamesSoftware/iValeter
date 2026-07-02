@@ -239,7 +239,19 @@ export const organisationsRouter = router({
     .query(async ({ ctx, input }) => {
       return ctx.prisma.dealership.findMany({
         where: { organisationId: input.id, isActive: true },
-        include: { _count: { select: { sites: true } } },
+        include: {
+          _count: { select: { sites: true } },
+          sites: {
+            orderBy: { name: "asc" },
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              isActive: true,
+              _count: { select: { bookings: true, users: true } },
+            },
+          },
+        },
         orderBy: { name: "asc" },
       });
     }),

@@ -140,6 +140,16 @@ export const dealershipsRouter = router({
       return ctx.prisma.dealership.update({ where: { id }, data });
     }),
 
+  /** Super-admin: toggle active state on any dealership */
+  setActive: superAdminProcedure
+    .input(z.object({ id: z.string(), isActive: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.dealership.update({
+        where: { id: input.id },
+        data: { isActive: input.isActive },
+      });
+    }),
+
   /** Super-admin: list ALL dealerships across all head offices */
   listAll: superAdminProcedure
     .input(z.object({ showInactive: z.boolean().default(false) }).optional())

@@ -120,7 +120,7 @@ function DealershipsTab() {
   const [search, setSearch] = useState("");
   const utils = trpc.useUtils();
   const query = trpc.dealerships.listAll.useQuery({ showInactive });
-  const toggleActive = trpc.dealerships.update.useMutation({
+  const toggleActive = trpc.dealerships.setActive.useMutation({
     onSuccess: () => utils.dealerships.listAll.invalidate(),
   });
 
