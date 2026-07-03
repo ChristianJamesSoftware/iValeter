@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/dashboard/page-header";
-import { PayrollClient } from "@/components/admin/payroll-client";
+import { PayrollTabs } from "@/components/admin/payroll-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -15,14 +15,13 @@ function getMondayOfCurrentWeek(): string {
 
 export default function PayrollPage() {
   const weekStart = getMondayOfCurrentWeek();
-
   return (
     <div>
       <PageHeader
         title="Payroll"
-        subtitle="Review and approve weekly timesheets"
+        subtitle="Review timesheets, send to dealers, and export for payment"
       />
-      <PayrollClient initialWeekStart={weekStart} />
+      <PayrollTabs initialWeekStart={weekStart} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ const NAV: NavItem[] = [
   { href: "/dealership/csi-booking/new", label: "CSI Booking", icon: "support" },
   { href: "/dealership/bookings", label: "Bookings", icon: "bookings" },
   { href: "/dealership/reports", label: "Reports", icon: "reports" },
+  { href: "/dealership/timesheets", label: "Timesheets", icon: "payroll" },
   { href: "/dealership/team", label: "Team", icon: "team" },
   { href: "/dealership/support", label: "Support", icon: "support" },
 ];

@@ -147,6 +147,7 @@ model Site {
   vehicleSizeRates        VehicleSizeRate[]
   supportServiceBookings  SupportServiceBooking[]
   expenses                 ValeterExpense[]
+  siteWeekSubmissions      SiteWeekSubmission[]
 
   @@index([organisationId])
 }
@@ -1542,4 +1543,47 @@ model DealershipWeeklyTask {
   updatedAt    DateTime   @updatedAt
 
   @@index([dealershipId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SITE WEEK SUBMISSION
+// One record per site per week — tracks the bundle sent to the dealer for sign-off.
+// Created when ops hits "Send to Dealer". Dealer approves or raises a review note.
+// Auto-approved after 4 hours if no response.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum SiteSubmissionStatus {
+  PENDING_SEND      // all valeters approved, not yet sent
+  SENT              // sent to dealer, awaiting response
+  DEALER_ACCEPTED   // dealer signed off
+  DEALER_DISPUTED   // dealer raised a query
+  AUTO_ACCEPTED     // auto-approved after 4h
+}
+
+model SiteWeekSubmission {
+  id           String                @id @default(cuid())
+  siteId       String
+  site         Site                  @relation(fields: [siteId], references: [id])
+  weekStarting DateTime
+
+  status       SiteSubmissionStatus  @default(PENDING_SEND)
+
+  // Timestamps
+  sentAt             DateTime?   // when ops hit Send to Dealer
+  dealerRespondedAt  DateTime?
+  autoAcceptedAt     DateTime?
+
+  // Dealer response
+  dealerDisputeNote  String?     // filled when DEALER_DISPUTED
+
+  // Who sent it
+  sentByUserId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, weekStarting])
+  @@index([siteId])
+  @@index([weekStarting])
+  @@index([status])
 }
