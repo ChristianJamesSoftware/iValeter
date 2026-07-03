@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { trpc } from "@/lib/trpc/react";
 import { X, Clock, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TimesheetDeductionsPanel } from "@/components/admin/timesheet-deductions-panel";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -378,6 +379,17 @@ export function TimesheetDetailDrawer({
                   </div>
                 </section>
               )}
+
+              {/* ── Deductions ── */}
+              <section>
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Pay Deductions
+                </h3>
+                <TimesheetDeductionsPanel
+                  timesheetId={timesheetId}
+                  readOnly={data.status === "LOCKED"}
+                />
+              </section>
 
               {/* ── Customer approval status ── */}
               {data.sentToCustomerAt && (

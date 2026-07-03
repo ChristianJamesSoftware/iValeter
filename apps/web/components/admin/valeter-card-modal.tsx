@@ -599,6 +599,20 @@ function BankTab({ valeter, update, saving }: { valeter: ValeterData; update: (d
     bankReference:     valeter.bankReference     ?? "",
   });
 
+  const utils = trpc.useUtils();
+  const { data: pendingRequests } = trpc.bankChanges.listForValeter.useQuery({ valeterId: valeter.id });
+
+  const managerApprove = trpc.bankChanges.managerApprove.useMutation({
+    onSuccess: () => {
+      void utils.bankChanges.listForValeter.invalidate({ valeterId: valeter.id });
+    },
+  });
+  const rejectReq = trpc.bankChanges.reject.useMutation({
+    onSuccess: () => {
+      void utils.bankChanges.listForValeter.invalidate({ valeterId: valeter.id });
+    },
+  });
+
   function save() {
     update({
       bankSortCode:      form.bankSortCode      || null,
@@ -616,28 +630,104 @@ function BankTab({ valeter, update, saving }: { valeter: ValeterData; update: (d
     { key: "bankReference",     label: "Bank reference" },
   ];
 
+  const STATUS_LABELS: Record<string, string> = {
+    VALETER_REQUESTED: "Valeter requested — awaiting manager review",
+    PENDING:           "Manager approved — awaiting ops to apply",
+    APPROVED:          "Approved & applied",
+    REJECTED:          "Rejected",
+  };
+  const STATUS_COLOURS: Record<string, string> = {
+    VALETER_REQUESTED: "bg-amber-100 text-amber-700",
+    PENDING:           "bg-blue-100 text-blue-700",
+    APPROVED:          "bg-emerald-100 text-emerald-700",
+    REJECTED:          "bg-red-100 text-red-700",
+  };
+
   return (
-    <div>
-      <div className="mb-4 flex justify-end">
-        <button onClick={() => editing ? save() : setEditing(true)} disabled={saving}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50">
-          {editing ? <><Check className="h-3.5 w-3.5" />Save</> : <><Edit2 className="h-3.5 w-3.5" />Edit</>}
-        </button>
+    <div className="space-y-5">
+      {/* £25 admin charge notice */}
+      <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <div>
+          <p className="text-xs font-bold text-amber-800">£25 admin charge applies to every bank details change</p>
+          <p className="mt-0.5 text-xs text-amber-700">
+            The fee is deducted from the valeter's pay in the week the change is processed.
+            Changes submitted by the valeter via the app must be reviewed by account manager before ops apply them.
+          </p>
+        </div>
       </div>
-      {editing ? (
-        <div className="grid grid-cols-2 gap-4">
-          {fields.map(({ key, label }) => (
-            <div key={key}>
-              <label className={LABEL}>{label}</label>
-              <input value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))} className={`${INPUT} font-mono`} />
+
+      {/* Pending change requests from valeter */}
+      {pendingRequests && pendingRequests.filter((r) => r.status === "VALETER_REQUESTED" || r.status === "PENDING").map((req) => (
+        <div key={req.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+            <span className={cn(
+              "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+              STATUS_COLOURS[req.status] ?? "bg-slate-100 text-slate-600",
+            )}>
+              {STATUS_LABELS[req.status] ?? req.status}
+            </span>
+            {req.feeDeducted ? (
+              <span className="text-[10px] text-emerald-600 font-semibold">£25 deducted</span>
+            ) : (
+              <span className="text-[10px] text-amber-600 font-semibold">£25 pending deduction</span>
+            )}
+          </div>
+          <div className="px-4 py-3 space-y-2">
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div><p className="text-[10px] uppercase tracking-wider text-slate-400">Account name</p><p className="font-semibold text-slate-800">{req.newAccountName}</p></div>
+              <div><p className="text-[10px] uppercase tracking-wider text-slate-400">Sort code</p><p className="font-mono font-semibold text-slate-800">{req.newSortCode}</p></div>
+              <div><p className="text-[10px] uppercase tracking-wider text-slate-400">Account number</p><p className="font-mono font-semibold text-slate-800">{req.newAccountNumber}</p></div>
+              {req.evidenceUrl && (
+                <div><p className="text-[10px] uppercase tracking-wider text-slate-400">Evidence</p><a href={req.evidenceUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">View photo</a></div>
+              )}
             </div>
-          ))}
+            {req.status === "VALETER_REQUESTED" && (
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => managerApprove.mutate({ id: req.id, notes: "Approved by account manager" })}
+                  disabled={managerApprove.isPending}
+                  className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  <Check className="h-3 w-3" /> Approve — send to ops
+                </button>
+                <button
+                  onClick={() => rejectReq.mutate({ id: req.id, notes: "Rejected by account manager" })}
+                  disabled={rejectReq.isPending}
+                  className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {fields.map(({ key, label }) => <Row key={key} label={label} value={(valeter as Record<string, unknown>)[key] as string | null} mono />)}
+      ))}
+
+      {/* Current bank details */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <p className={LABEL}>Current bank details</p>
+          <button onClick={() => editing ? save() : setEditing(true)} disabled={saving}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50">
+            {editing ? <><Check className="h-3.5 w-3.5" />Save</> : <><Edit2 className="h-3.5 w-3.5" />Edit</>}
+          </button>
         </div>
-      )}
+        {editing ? (
+          <div className="grid grid-cols-2 gap-4">
+            {fields.map(({ key, label }) => (
+              <div key={key}>
+                <label className={LABEL}>{label}</label>
+                <input value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))} className={`${INPUT} font-mono`} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {fields.map(({ key, label }) => <Row key={key} label={label} value={(valeter as Record<string, unknown>)[key] as string | null} mono />)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

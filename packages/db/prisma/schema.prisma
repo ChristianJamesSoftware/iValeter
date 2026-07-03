@@ -150,6 +150,8 @@ model Site {
   expenses                 ValeterExpense[]
   siteWeekSubmissions      SiteWeekSubmission[]
   prospectValeters          ProspectValeter[]
+  equipment                 SiteEquipment[]
+  equipmentAudits           EquipmentAudit[]
 
   @@index([organisationId])
 }
@@ -271,6 +273,10 @@ model User {
   supportServiceBookings  SupportServiceBooking[]
   standingCharges         ValeterStandingCharge[]
   expenses                 ValeterExpense[]
+  equipmentResponsible     SiteEquipment[]        @relation("EquipmentResponsible")
+  stockChecksBy            EquipmentStockCheck[]  @relation("StockCheckBy")
+  auditsLed                EquipmentAudit[]       @relation("AuditConductedBy")
+  timesheetDeductionsAdded TimesheetDeduction[]   @relation("TimesheetDeductionAddedBy")
 
   @@index([organisationId])
   @@index([siteId])
@@ -580,6 +586,7 @@ model Timesheet {
 
   lines      TimesheetLine[]
   extraLines TimesheetExtraLine[]
+  deductions TimesheetDeduction[]
   payRunLine PayRunLine?
 
   @@unique([userId, weekStarting])
@@ -617,6 +624,41 @@ model TimesheetLine {
 // ─────────────────────────────────────────────────────────────────────────────
 // PAY RUNS
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIMESHEET DEDUCTIONS
+// Applied post-customer-approval: daily deductions, accident excess, uniform, etc.
+// finalPay = grossPay - sum(deductions)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TimesheetDeduction {
+  id          String    @id @default(cuid())
+  timesheetId String
+  timesheet   Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+
+  type        DeductionType
+  description String        // human-readable label e.g. "Uniform — week 1 of 4"
+  amountPence Int           // deduction amount in pence (positive = deduction from pay)
+
+  // Optional link back to source records
+  accidentId         String? // ValeterAccident.id if type == ACCIDENT
+  valeterDeductionId String? // ValeterDeduction.id if type == STANDING
+
+  addedByUserId String
+  addedBy       User   @relation("TimesheetDeductionAddedBy", fields: [addedByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([timesheetId])
+}
+
+enum DeductionType {
+  DAILY      // agreed daily deduction (e.g. £X/day for X days)
+  ACCIDENT   // accident excess recovery
+  UNIFORM    // uniform/equipment cost recovery
+  STANDING   // recurring weekly deduction (from ValeterDeduction)
+  OTHER      // ad-hoc ops-entered deduction
+}
 
 model PayRun {
   id             String       @id @default(cuid())
@@ -1354,9 +1396,10 @@ model BankChangeRequest {
 }
 
 enum BankChangeStatus {
-  PENDING
-  APPROVED
-  REJECTED
+  VALETER_REQUESTED  // valeter submitted via their app — awaiting account manager review
+  PENDING            // account manager approved — ops can now apply the change
+  APPROVED           // ops applied the new bank details
+  REJECTED           // rejected at any stage
 }
 
 // ─── Paint Protection Products ───────────────────────────────────────────────
@@ -1628,4 +1671,96 @@ model ProspectValeter {
 
   @@index([organisationId])
   @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SITE EQUIPMENT
+// Equipment registered on-site at a dealership.
+// Each item is tracked with delivery date, photo, responsible person,
+// and a monthly stock-check record.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SiteEquipment {
+  id           String   @id @default(cuid())
+  siteId       String
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  name         String            // e.g. "Karcher Pressure Washer"
+  description  String?           // make/model, serial number etc.
+  deliveredAt  DateTime?         // when delivered on site
+  photoUrl     String?           // equipment photo
+  responsibleUserId String?      // valeter / team leader responsible
+  responsibleUser   User?        @relation("EquipmentResponsible", fields: [responsibleUserId], references: [id])
+
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  stockChecks  EquipmentStockCheck[]
+  auditItems   EquipmentAuditItem[]
+
+  @@index([siteId])
+}
+
+/// Monthly stock check for a single piece of equipment.
+model EquipmentStockCheck {
+  id              String         @id @default(cuid())
+  equipmentId     String
+  equipment       SiteEquipment  @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  checkedByUserId String?
+  checkedBy       User?          @relation("StockCheckBy", fields: [checkedByUserId], references: [id])
+
+  checkedAt   DateTime           @default(now())
+  present     Boolean            // is the item on site?
+  condition   String?            // Good / Fair / Poor
+  notes       String?
+  photoUrl    String?
+
+  @@index([equipmentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EQUIPMENT SAFETY AUDITS
+// Team leader submits a weekly Monday safety audit covering all site equipment.
+// Each audit has one item-level result per piece of equipment.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AuditResult {
+  PASS
+  ADVISORY   // minor issue, note added
+  FAIL       // out of service / safety concern
+}
+
+model EquipmentAudit {
+  id          String   @id @default(cuid())
+  siteId      String
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  conductedByUserId String?
+  conductedBy       User?   @relation("AuditConductedBy", fields: [conductedByUserId], references: [id])
+
+  auditDate   DateTime         // the Monday the audit was for
+  submittedAt DateTime         @default(now())
+  overallPass Boolean          @default(true)  // false if any FAIL items
+  notes       String?          // overall audit notes
+
+  items       EquipmentAuditItem[]
+
+  @@index([siteId])
+  @@index([auditDate])
+}
+
+model EquipmentAuditItem {
+  id           String          @id @default(cuid())
+  auditId      String
+  audit        EquipmentAudit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  equipmentId  String
+  equipment    SiteEquipment   @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  result       AuditResult     @default(PASS)
+  notes        String?
+  photoUrl     String?
+
+  @@index([auditId])
+  @@index([equipmentId])
 }
