@@ -6,6 +6,33 @@ import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 import { TimesheetDetailDrawer } from "@/components/admin/timesheet-detail-drawer";
 
+// ─── Attendance pips ────────────────────────────────────────────────────────
+function AttendancePips({ present, absent, late }: { present: number; absent: number; late: number }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      {/* 5 day pips: green = present, red = absent */}
+      <div className="flex gap-0.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <span
+            key={i}
+            className={cn(
+              "inline-block h-2.5 w-2.5 rounded-full",
+              i < present ? "bg-emerald-500" : "bg-red-300",
+            )}
+            title={i < present ? "Present" : "Absent"}
+          />
+        ))}
+      </div>
+      {/* Counts row */}
+      <div className="flex items-center gap-2 text-[10px] leading-none text-slate-500">
+        <span className="font-semibold text-emerald-600">{present}d</span>
+        {absent > 0 && <span className="font-semibold text-red-500">{absent} off</span>}
+        {late > 0 && <span className="font-semibold text-amber-500">{late} late</span>}
+      </div>
+    </div>
+  );
+}
+
 interface PayrollClientProps {
   initialWeekStart: string;
 }
@@ -166,6 +193,7 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
             <tr className="border-b border-slate-100 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <th className="px-4 py-3 text-left">Valeter</th>
               <th className="px-4 py-3 text-left">Site</th>
+              <th className="px-4 py-3 text-center">Attendance</th>
               <th className="px-4 py-3 text-right">Reg. hrs</th>
               <th className="px-4 py-3 text-right">OT hrs</th>
               <th className="px-4 py-3 text-right">Est. pay</th>
@@ -176,7 +204,7 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
             {lines.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-4 py-8 text-center text-slate-400"
                 >
                   No timesheets for this week.
@@ -193,6 +221,13 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
                     {line.name}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{line.siteName}</td>
+                  <td className="px-4 py-3">
+                    <AttendancePips
+                      present={line.daysPresent}
+                      absent={line.daysAbsent}
+                      late={line.lateArrivals}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-700">
                     {line.regularHours.toFixed(1)}
                   </td>
@@ -219,7 +254,7 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
           {lines.length > 0 && (
             <tfoot>
               <tr className="border-t border-slate-100 bg-slate-50 text-xs font-bold text-slate-700">
-                <td colSpan={4} className="px-4 py-3 text-right">
+                <td colSpan={5} className="px-4 py-3 text-right">
                   Total estimate:
                 </td>
                 <td className="px-4 py-3 text-right tabular-nums">

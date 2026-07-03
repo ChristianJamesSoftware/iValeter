@@ -118,6 +118,10 @@ export const hqRouter = router({
     .input(z.object({ weekStart: z.string() }))
     .query(async ({ ctx, input }) => {
       const weekStartDate = new Date(input.weekStart);
+      // weekEnding = weekStart + 6 days (inclusive Sun)
+      const weekEndDate = new Date(weekStartDate);
+      weekEndDate.setDate(weekEndDate.getDate() + 6);
+      weekEndDate.setHours(23, 59, 59, 999);
 
       const timesheets = await ctx.prisma.timesheet.findMany({
         where: {
@@ -131,6 +135,7 @@ export const hqRouter = router({
               firstName: true,
               lastName: true,
               dailyRate: true,
+              contractedHours: true,
               site: { select: { id: true, name: true } },
             },
           },
@@ -140,14 +145,54 @@ export const hqRouter = router({
         orderBy: { weekStarting: "desc" },
       });
 
+      // Batch-fetch all clock events for all valeters in this week in one query
+      const userIds = timesheets.map((ts) => ts.userId);
+      const clockEvents = userIds.length > 0
+        ? await ctx.prisma.clockEvent.findMany({
+            where: {
+              userId: { in: userIds },
+              timestamp: { gte: weekStartDate, lte: weekEndDate },
+            },
+            orderBy: { timestamp: "asc" },
+          })
+        : [];
+
+      // Group clock events by userId → Set of distinct YYYY-MM-DD days present
+      // Also detect late arrivals (clock-in after 08:30 on a working day)
+      const presentDaysByUser = new Map<string, Set<string>>();
+      const lateCountByUser = new Map<string, number>();
+      const LATE_HOUR = 8;
+      const LATE_MINUTE = 30;
+
+      for (const ce of clockEvents) {
+        if (ce.type !== "CLOCK_IN") continue;
+        const dayKey = ce.timestamp.toISOString().slice(0, 10);
+        if (!presentDaysByUser.has(ce.userId)) presentDaysByUser.set(ce.userId, new Set());
+        presentDaysByUser.get(ce.userId)!.add(dayKey);
+
+        // Late check — Mon–Fri only (getUTCDay 1-5)
+        const dow = ce.timestamp.getUTCDay();
+        if (dow >= 1 && dow <= 5) {
+          const h = ce.timestamp.getUTCHours();
+          const m = ce.timestamp.getUTCMinutes();
+          if (h > LATE_HOUR || (h === LATE_HOUR && m >= LATE_MINUTE)) {
+            lateCountByUser.set(ce.userId, (lateCountByUser.get(ce.userId) ?? 0) + 1);
+          }
+        }
+      }
+
       const lines = timesheets.map((ts) => {
         const regularHours = ts.totalRegularHours;
         const overtimeHours = ts.totalOvertimeHours;
         const dailyRate = ts.user.dailyRate ?? 0;
-        // Estimate: daily rate / 8h * regular hours + 1.5x for overtime
         const hourlyRate = dailyRate > 0 ? dailyRate / 8 : 0;
         const totalEstimate =
           regularHours * hourlyRate + overtimeHours * hourlyRate * 1.5;
+
+        // Attendance — count Mon–Fri days in the week (5 working days)
+        const daysPresent = presentDaysByUser.get(ts.userId)?.size ?? 0;
+        const daysAbsent = Math.max(0, 5 - daysPresent);
+        const lateArrivals = lateCountByUser.get(ts.userId) ?? 0;
 
         return {
           userId: ts.user.id,
@@ -160,6 +205,10 @@ export const hqRouter = router({
           dailyRate,
           totalEstimate,
           status: ts.status,
+          // Attendance
+          daysPresent,
+          daysAbsent,
+          lateArrivals,
         };
       });
 
