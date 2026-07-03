@@ -10,12 +10,12 @@ const NAV: NavItem[] = [
   },
   { href: "/org/customers", label: "Customers", icon: "building", section: "Customers" },
   { href: "/org/team", label: "Valeting Team", icon: "team", section: "Team" },
-  { href: "/org/prospects", label: "Prospects", icon: "umbrella" },
   { href: "/org/dealership-team", label: "Customer Team", icon: "team" },
   { href: "/org/attendance", label: "Attendance", icon: "attendance" },
   { href: "/org/holiday", label: "Holiday", icon: "holiday" },
   { href: "/org/training", label: "Training", icon: "training" },
   { href: "/org/compliance", label: "Compliance", icon: "compliance" },
+  { href: "/org/prospects", label: "Opportunities", icon: "prospects" },
   {
     href: "/org/reports",
     label: "Reports",
