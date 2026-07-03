@@ -58,11 +58,14 @@ const STATUS_CHIP: Record<string, string> = {
   LOCKED: "bg-blue-100 text-blue-700",
 };
 
+type AttendanceFilter = "all" | "full" | "absent" | "late";
+
 export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [approveSuccess, setApproveSuccess] = useState(false);
   const [selectedTimesheetId, setSelectedTimesheetId] = useState<string | null>(null);
   const [initialised, setInitialised] = useState(false);
+  const [attendanceFilter, setAttendanceFilter] = useState<AttendanceFilter>("all");
 
   // Load all weeks that have submissions — auto-select most recent
   const { data: availableWeeks } = trpc.hq.payrollWeeks.useQuery();
@@ -86,9 +89,22 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
     },
   });
 
-  const lines = summary?.lines ?? [];
-  const hasSubmitted = lines.some((l) => l.status === "SUBMITTED");
-  const allApproved = lines.length > 0 && lines.every((l) => l.status === "APPROVED" || l.status === "LOCKED");
+  const allLines = summary?.lines ?? [];
+
+  // Attendance filter counts (for tab badges)
+  const countFull    = allLines.filter((l) => l.daysAbsent === 0 && l.lateArrivals === 0).length;
+  const countAbsent  = allLines.filter((l) => l.daysAbsent > 0).length;
+  const countLate    = allLines.filter((l) => l.lateArrivals > 0).length;
+
+  const lines = allLines.filter((l) => {
+    if (attendanceFilter === "full")   return l.daysAbsent === 0 && l.lateArrivals === 0;
+    if (attendanceFilter === "absent") return l.daysAbsent > 0;
+    if (attendanceFilter === "late")   return l.lateArrivals > 0;
+    return true;
+  });
+
+  const hasSubmitted = allLines.some((l) => l.status === "SUBMITTED");
+  const allApproved = allLines.length > 0 && allLines.every((l) => l.status === "APPROVED" || l.status === "LOCKED");
 
   return (
     <>
@@ -97,7 +113,7 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => setWeekStart(addDays(weekStart, -7))}
+          onClick={() => { setWeekStart(addDays(weekStart, -7)); setAttendanceFilter("all"); }}
           className="rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors hover:bg-slate-50"
           aria-label="Previous week"
         >
@@ -106,7 +122,7 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
         {availableWeeks && availableWeeks.length > 1 ? (
           <select
             value={weekStart}
-            onChange={(e) => setWeekStart(e.target.value)}
+            onChange={(e) => { setWeekStart(e.target.value); setAttendanceFilter("all"); }}
             className="min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-center text-sm font-semibold text-slate-900 outline-none focus:border-navy"
           >
             {availableWeeks.map((w) => (
@@ -120,7 +136,7 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
         )}
         <button
           type="button"
-          onClick={() => setWeekStart(addDays(weekStart, 7))}
+          onClick={() => { setWeekStart(addDays(weekStart, 7)); setAttendanceFilter("all"); }}
           className="rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors hover:bg-slate-50"
           aria-label="Next week"
         >
@@ -184,6 +200,39 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
             Export to Bank
           </button>
         </div>
+      </div>
+
+      {/* Attendance filter tabs */}
+      <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
+        {([
+          { key: "all",    label: "All",          count: allLines.length,  dot: null },
+          { key: "full",   label: "Full week",    count: countFull,        dot: "bg-emerald-500" },
+          { key: "absent", label: "Has absences", count: countAbsent,      dot: "bg-red-400" },
+          { key: "late",   label: "Late arrivals",count: countLate,        dot: "bg-amber-400" },
+        ] as { key: AttendanceFilter; label: string; count: number; dot: string | null }[]).map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setAttendanceFilter(tab.key)}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
+              attendanceFilter === tab.key
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-700",
+            )}
+          >
+            {tab.dot && (
+              <span className={cn("inline-block h-2 w-2 rounded-full", tab.dot)} />
+            )}
+            {tab.label}
+            <span className={cn(
+              "inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold tabular-nums",
+              attendanceFilter === tab.key ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600",
+            )}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Timesheets table */}
