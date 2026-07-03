@@ -60,6 +60,7 @@ model Organisation {
   vehicleSizeConfigs      OrgVehicleSizeConfig[]
   dealershipRequests      DealershipRequest[]
   prospectValeters         ProspectValeter[]
+  prospectBroadcasts       ProspectBroadcast[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -277,6 +278,7 @@ model User {
   stockChecksBy            EquipmentStockCheck[]  @relation("StockCheckBy")
   auditsLed                EquipmentAudit[]       @relation("AuditConductedBy")
   timesheetDeductionsAdded TimesheetDeduction[]   @relation("TimesheetDeductionAddedBy")
+  prospectBroadcastsSent   ProspectBroadcast[]    @relation("ProspectBroadcastSentBy")
 
   @@index([organisationId])
   @@index([siteId])
