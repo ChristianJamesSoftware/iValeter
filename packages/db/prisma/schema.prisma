@@ -1653,24 +1653,78 @@ model ProspectValeter {
   organisationId String
   organisation   Organisation    @relation(fields: [organisationId], references: [id])
 
+  // Core contact
   firstName   String
   lastName    String
   email       String?
-  phone       String?
-  notes       String?           // free-text notes
+  phone       String?           // mobile
+  town        String?           // town or area they are based in
 
+  // Experience & suitability
+  experience        String?   @db.Text // current / previous valeting experience
+  ukLicence         Boolean?           // holds UK driving licence
+  drives            Boolean?           // willing/able to drive on site
+  position          String?           // position they are interested in e.g. "Valeter", "Team Leader"
+  payRequirementMin Int?              // minimum pay expectation (pence per day)
+  payRequirementMax Int?              // maximum pay expectation (pence per day)
+
+  // Pipeline
+  notes       String?           @db.Text // general notes
   status      ProspectStatus    @default(NEW)
+  source      String?           // how they came to us e.g. "Area broadcast", "Referral", "Walk-in"
   siteId      String?           // preferred / intended site
   site        Site?             @relation(fields: [siteId], references: [id])
 
-  addedByUserId String?         // who added the prospect
+  addedByUserId     String?     // who added the prospect
   convertedToUserId String?     // set when onboarded → User
 
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
+  broadcastRecipients ProspectBroadcastRecipient[]
+
   @@index([organisationId])
   @@index([status])
+  @@index([town])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROSPECT BROADCAST
+// Group SMS/email blast to prospects in a given area when recruiting.
+// Recipients are drawn from ProspectValeter records matching town/area filter.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ProspectBroadcast {
+  id             String       @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+
+  subject        String                        // e.g. "Valeting positions available in Swindon"
+  message        String       @db.Text         // the message body
+  areaFilter     String?                       // town/area filter used to select recipients
+  statusFilter   String?                       // prospect status filter used (e.g. "NEW,CONTACTED")
+  recipientCount Int          @default(0)      // how many prospects received it
+
+  sentByUserId   String
+  sentBy         User         @relation("ProspectBroadcastSentBy", fields: [sentByUserId], references: [id])
+  sentAt         DateTime     @default(now())
+
+  recipients ProspectBroadcastRecipient[]
+
+  @@index([organisationId])
+  @@index([sentAt])
+}
+
+model ProspectBroadcastRecipient {
+  id          String              @id @default(cuid())
+  broadcastId String
+  broadcast   ProspectBroadcast   @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  prospectId  String
+  prospect    ProspectValeter     @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  sentAt      DateTime            @default(now())
+
+  @@unique([broadcastId, prospectId])
+  @@index([prospectId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
