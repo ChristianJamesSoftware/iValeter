@@ -31,6 +31,7 @@ import { dealershipRequestsRouter } from "./routers/dealership-requests";
 import { dayRatesRouter } from "./routers/day-rates";
 import { expensesRouter } from "./routers/expenses";
 import { siteSubmissionsRouter } from "./routers/site-submissions";
+import { prospectsRouter } from "./routers/prospects";
 
 export const appRouter = router({
   auth: authRouter,
@@ -65,6 +66,7 @@ export const appRouter = router({
   dayRates: dayRatesRouter,
   expenses: expensesRouter,
   siteSubmissions: siteSubmissionsRouter,
+  prospects: prospectsRouter,
 });
 
 export type AppRouter = typeof appRouter;

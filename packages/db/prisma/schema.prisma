@@ -59,6 +59,7 @@ model Organisation {
   supportServiceBookings  SupportServiceBooking[]
   vehicleSizeConfigs      OrgVehicleSizeConfig[]
   dealershipRequests      DealershipRequest[]
+  prospectValeters         ProspectValeter[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,6 +149,7 @@ model Site {
   supportServiceBookings  SupportServiceBooking[]
   expenses                 ValeterExpense[]
   siteWeekSubmissions      SiteWeekSubmission[]
+  prospectValeters          ProspectValeter[]
 
   @@index([organisationId])
 }
@@ -1585,5 +1587,45 @@ model SiteWeekSubmission {
   @@unique([siteId, weekStarting])
   @@index([siteId])
   @@index([weekStarting])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROSPECT VALETERS
+// Pre-registration pipeline — capture name, email, phone before they become
+// a full User. Can be converted to a User account once onboarded.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ProspectStatus {
+  NEW         // just added
+  CONTACTED   // ops/manager has been in touch
+  INTERVIEWED // met or spoken in depth
+  OFFERED     // offer made
+  ONBOARDED   // converted to full User account
+  DECLINED    // not proceeding
+}
+
+model ProspectValeter {
+  id             String          @id @default(cuid())
+  organisationId String
+  organisation   Organisation    @relation(fields: [organisationId], references: [id])
+
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  notes       String?           // free-text notes
+
+  status      ProspectStatus    @default(NEW)
+  siteId      String?           // preferred / intended site
+  site        Site?             @relation(fields: [siteId], references: [id])
+
+  addedByUserId String?         // who added the prospect
+  convertedToUserId String?     // set when onboarded → User
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([organisationId])
   @@index([status])
 }
