@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, CheckCircle2, Loader2, Download, Landmark } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,17 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [approveSuccess, setApproveSuccess] = useState(false);
   const [selectedTimesheetId, setSelectedTimesheetId] = useState<string | null>(null);
+  const [initialised, setInitialised] = useState(false);
+
+  // Load all weeks that have submissions — auto-select most recent
+  const { data: availableWeeks } = trpc.hq.payrollWeeks.useQuery();
+
+  useEffect(() => {
+    if (!initialised && availableWeeks && availableWeeks.length > 0 && availableWeeks[0]) {
+      setWeekStart(availableWeeks[0]);
+      setInitialised(true);
+    }
+  }, [availableWeeks, initialised]);
 
   const { data: summary, refetch } = trpc.hq.payrollSummary.useQuery(
     { weekStart },
@@ -65,9 +76,21 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <span className="min-w-[200px] text-center text-sm font-semibold text-slate-900">
-          {formatDateRange(weekStart)}
-        </span>
+        {availableWeeks && availableWeeks.length > 1 ? (
+          <select
+            value={weekStart}
+            onChange={(e) => setWeekStart(e.target.value)}
+            className="min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-center text-sm font-semibold text-slate-900 outline-none focus:border-navy"
+          >
+            {availableWeeks.map((w) => (
+              <option key={w} value={w}>{formatDateRange(w)}</option>
+            ))}
+          </select>
+        ) : (
+          <span className="min-w-[200px] text-center text-sm font-semibold text-slate-900">
+            {formatDateRange(weekStart)}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => setWeekStart(addDays(weekStart, 7))}

@@ -102,6 +102,18 @@ export const hqRouter = router({
   }),
 
   /** Payroll summary for a week */
+  /** Returns distinct week-starting dates that have at least one timesheet */
+  payrollWeeks: orgAdminProcedure.query(async ({ ctx }) => {
+    const weeks = await ctx.prisma.timesheet.findMany({
+      where: { user: { organisationId: ctx.session.organisationId } },
+      select: { weekStarting: true },
+      distinct: ["weekStarting"],
+      orderBy: { weekStarting: "desc" },
+      take: 12,
+    });
+    return weeks.map((w) => w.weekStarting.toISOString().slice(0, 10));
+  }),
+
   payrollSummary: orgAdminProcedure
     .input(z.object({ weekStart: z.string() }))
     .query(async ({ ctx, input }) => {
