@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { formatDate, greeting } from "@/lib/utils";
 import { ValeterJobList } from "@/components/valeter/job-list";
 import { ClockWidget } from "@/components/valeter/clock-widget";
+import { AddJobSheet } from "@/components/valeter/add-job-sheet";
 import { logoutAction } from "@/app/(auth)/login/actions";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,13 @@ export default async function ValeterHomePage() {
       </header>
 
       <div className="px-4 py-4">
+        {/* Add job button sits above the filter bar */}
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-500">
+            {jobs.filter((j) => j.status !== "COMPLETED").length} active
+          </p>
+          <AddJobSheet />
+        </div>
         <ValeterJobList initialJobs={jobs} />
       </div>
     </div>

@@ -6,6 +6,7 @@ import {
   protectedProcedure,
   dealershipProcedure,
   orgAdminProcedure,
+  valeterProcedure,
 } from "../trpc";
 import { resolveVehicleSizeValues, DEFAULT_SIZE_CONFIGS } from "./vehicle-size-config";
 
@@ -212,6 +213,129 @@ export const bookingsRouter = router({
           status: BookingStatus.PENDING,
         },
       });
+    }),
+
+  /**
+   * Valeter: list service types available for their organisation (for the add-job form).
+   */
+  valeterListServiceTypes: valeterProcedure
+    .query(async ({ ctx }) => {
+      // ServiceType is scoped through department -> site -> org
+      return ctx.prisma.serviceType.findMany({
+        where: {
+          department: {
+            site: { organisationId: ctx.session.organisationId },
+          },
+          isActive: true,
+        },
+        select: { id: true, name: true, durationMins: true },
+        orderBy: { name: "asc" },
+      });
+    }),
+
+  /**
+   * Valeter self-service: add a job directly from the valeter PWA.
+   * Simpler than the dealership create — valeter picks reg, vehicle size, service type
+   * and ready-by time. Job is created as PENDING on their own site, assigned to them.
+   */
+  valeterCreate: valeterProcedure
+    .input(
+      z.object({
+        vehicleReg:    z.string().min(1).max(12),
+        vehicleMake:   z.string().optional(),
+        vehicleModel:  z.string().optional(),
+        vehicleColour: z.string().optional(),
+        vehicleSize:   z.enum(["SMALL", "MEDIUM", "LARGE", "XL", "VAN"]).default("LARGE"),
+        serviceTypeId: z.string(),
+        customerName:  z.string().optional(),
+        keyNumber:     z.string().optional(),
+        vehicleLocation: z.string().optional(),
+        readyByTime:   z.string(), // ISO string — client sends local datetime string
+        notes:         z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.session.siteId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You must be assigned to a site to add a job.",
+        });
+      }
+
+      // Find the valeter's department (first department on their site)
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: ctx.session.siteId, organisationId: ctx.session.organisationId },
+        include: { departments: { take: 1, orderBy: { name: "asc" } } },
+      });
+      if (!site) throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+
+      const departmentId = site.departments[0]?.id;
+      if (!departmentId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No department found for your site. Ask your manager to set one up.",
+        });
+      }
+
+      // Resolve service type & size-adjusted pricing
+      const [serviceType, sizeConfigs] = await Promise.all([
+        ctx.prisma.serviceType.findFirst({
+          where: {
+            id: input.serviceTypeId,
+            department: { site: { organisationId: ctx.session.organisationId } },
+          },
+          select: { id: true, durationMins: true, chargeRate: true },
+        }),
+        ctx.prisma.orgVehicleSizeConfig.findMany({
+          where: { organisationId: ctx.session.organisationId },
+        }),
+      ]);
+      if (!serviceType) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Service type not found" });
+      }
+
+      const { resolvedDurationMins, resolvedPricePence } = resolveVehicleSizeValues(
+        sizeConfigs,
+        serviceType.durationMins ?? 60,
+        serviceType.chargeRate,
+        input.vehicleSize,
+      );
+
+      const booking = await ctx.prisma.booking.create({
+        data: {
+          organisationId:      ctx.session.organisationId,
+          siteId:              ctx.session.siteId,
+          departmentId,
+          serviceTypeId:       input.serviceTypeId,
+          vehicleReg:          input.vehicleReg.toUpperCase().trim(),
+          vehicleMake:         input.vehicleMake?.trim() ?? null,
+          vehicleModel:        input.vehicleModel?.trim() ?? null,
+          vehicleColour:       input.vehicleColour?.trim() ?? null,
+          vehicleSize:         input.vehicleSize,
+          customerName:        input.customerName?.trim() ?? "",
+          keyNumber:           input.keyNumber?.trim() ?? null,
+          vehicleLocation:     input.vehicleLocation?.trim() ?? null,
+          readyByTime:         new Date(input.readyByTime),
+          resolvedDurationMins,
+          resolvedPricePence,
+          assignedToId:        ctx.session.userId, // auto-assign to the valeter
+          createdById:         ctx.session.userId,
+          status:              BookingStatus.ASSIGNED, // straight to ASSIGNED since valeter is adding it
+        },
+      });
+
+      // Log the creation in status history
+      await ctx.prisma.jobStatusHistory.create({
+        data: {
+          bookingId:  booking.id,
+          fromStatus: null,
+          toStatus:   BookingStatus.ASSIGNED,
+          note:       "Job added by valeter via app",
+          userId:     ctx.session.userId,
+        },
+      });
+
+      return booking;
     }),
 
   /**
