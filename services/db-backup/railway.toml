@@ -1,0 +1,6 @@
+[build]
+dockerfilePath = "services/db-backup/Dockerfile"
+
+[deploy]
+cronSchedule = "0 2 * * *"
+restartPolicyType = "NEVER"
