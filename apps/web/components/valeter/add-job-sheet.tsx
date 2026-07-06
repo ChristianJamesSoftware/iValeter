@@ -29,9 +29,9 @@ function todayAtHour(h: number) {
 }
 
 const INP =
-  "h-11 w-full rounded-xl bg-white/10 px-4 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-500/50 transition";
+  "h-11 w-full rounded-xl bg-white/15 border border-white/10 px-4 text-sm text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-orange-500/60 focus:border-orange-500/40 transition";
 const LBL =
-  "mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-white/40";
+  "mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-white/60";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -113,10 +113,10 @@ export function AddJobSheet() {
             onClick={() => setOpen(false)}
           />
 
-          {/* Panel — slides up from bottom */}
-          <div className="relative mt-auto max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-[#1C1A16] shadow-2xl">
+          {/* Panel — slides up from bottom, max-w on tablet+ */}
+          <div className="relative mt-auto mx-auto max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-[#2A2720] shadow-2xl sm:rounded-3xl sm:mb-4">
             {/* Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-[#1C1A16] px-5 py-4">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-[#2A2720] px-5 py-4">
               <div className="flex items-center gap-2.5">
                 <Car className="h-4 w-4 text-orange-400" />
                 <h2 className="text-sm font-bold text-white">Add Job</h2>
@@ -170,8 +170,8 @@ export function AddJobSheet() {
                         className={cn(
                           "flex flex-col items-center rounded-xl border py-2.5 text-center transition",
                           form.vehicleSize === s.key
-                            ? "border-orange-500 bg-orange-500/20 text-orange-400"
-                            : "border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/70",
+                            ? "border-orange-500 bg-orange-500/25 text-orange-300"
+                            : "border-white/15 bg-white/10 text-white/70 hover:border-white/30 hover:text-white",
                         )}
                       >
                         <span className="text-xs font-bold">{s.label}</span>
