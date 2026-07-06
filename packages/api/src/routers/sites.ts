@@ -81,6 +81,47 @@ export const sitesRouter = router({
       });
     }),
 
+  setGeofence: orgAdminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusMetres: z.number().int().min(50).max(1000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.id, organisationId: ctx.session.organisationId },
+      });
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+      return ctx.prisma.site.update({
+        where: { id: site.id },
+        data: {
+          geofenceLat: input.lat,
+          geofenceLng: input.lng,
+          geofenceRadiusMetres: input.radiusMetres,
+        },
+      });
+    }),
+
+  clearGeofence: orgAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.id, organisationId: ctx.session.organisationId },
+      });
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+      return ctx.prisma.site.update({
+        where: { id: site.id },
+        data: { geofenceLat: null, geofenceLng: null, geofenceRadiusMetres: 200 },
+      });
+    }),
+
   setActive: orgAdminProcedure
     .input(z.object({ id: z.string(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {

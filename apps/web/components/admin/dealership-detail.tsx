@@ -4,11 +4,12 @@ import { useState, useRef, useEffect } from "react";
 import { ValeterCardModal } from "@/components/admin/valeter-card-modal";
 import {
   Building2, MapPin, Phone, Mail, User, PlusCircle, X,
-  FileText, Users, Layers, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2, StickyNote, Trash2, ChevronDown, ChevronUp, CalendarDays, Briefcase, CreditCard, BadgeCheck, LayoutGrid,
+  FileText, Users, Layers, ClipboardList, Beaker, Edit2, Check, Car, AlertCircle, CheckCircle2, StickyNote, Trash2, ChevronDown, ChevronUp, CalendarDays, Briefcase, CreditCard, BadgeCheck, LayoutGrid, Navigation,
 } from "lucide-react";
 import { DealershipAddOns } from "@/components/admin/dealership-addons";
 import { DealerDepartmentsTab } from "@/components/admin/dealer-departments-tab";
 import { DealerDayRatesTab } from "@/components/admin/dealer-day-rates-tab";
+import { DealerGeofenceTab } from "@/components/admin/dealer-geofence-tab";
 import { LogoUpload } from "@/components/ui/logo-upload";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,9 @@ interface SiteRow {
   users: TeamMember[];
   vehicleSizeRates: VehicleSizeRate[];
   _count: { bookings: number; users: number };
+  geofenceLat?: number | null;
+  geofenceLng?: number | null;
+  geofenceRadiusMetres?: number | null;
 }
 interface DealershipData {
   id: string;
@@ -68,6 +72,7 @@ const TABS = [
   { id: "rates",         label: "Vehicle Rates",        icon: ClipboardList },
   { id: "team",          label: "Site Team",            icon: Users },
   { id: "valeters",      label: "Valeters",             icon: Car },
+  { id: "geofence",      label: "Geofencing",           icon: Navigation },
   { id: "addons",        label: "Add-Ons",              icon: Beaker },
   { id: "instructions",  label: "Special Instructions", icon: FileText },
   { id: "notes",         label: "Contact Log",           icon: StickyNote },
@@ -249,6 +254,20 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
       {activeTab === "rates"      && <VehicleRatesTab rates={allRates} sites={d.sites} onSaved={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "team"       && <TeamTab members={allTeam} sites={d.sites} organisationId={d.organisation?.id ?? ""} onAdded={() => utils.dealerships.getById.invalidate({ id: d.id })} />}
       {activeTab === "valeters"    && <ValetersTab valeters={allValeters} />}
+      {activeTab === "geofence"   && (
+        <DealerGeofenceTab
+          sites={d.sites.map((s) => ({
+            id:                   s.id,
+            name:                 s.name,
+            address:              s.address,
+            geofenceLat:          s.geofenceLat ?? null,
+            geofenceLng:          s.geofenceLng ?? null,
+            geofenceRadiusMetres: s.geofenceRadiusMetres ?? null,
+          }))}
+          dealershipId={d.id}
+          onSaved={() => utils.dealerships.getById.invalidate({ id: d.id })}
+        />
+      )}
       {activeTab === "addons"     && <DealershipAddOns dealershipId={d.id} />}
       {activeTab === "notes" && <ContactLogTab dealershipId={d.id} />}
       {activeTab === "instructions" && (

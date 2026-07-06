@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc/react";
-import { MapPin, MapPinOff, Clock, AlertTriangle } from "lucide-react";
+import { MapPin, MapPinOff, Clock, AlertTriangle, WifiOff } from "lucide-react";
+import { enqueue } from "@/lib/offline-queue";
 
 interface SiteGeo {
   lat: number | null;
@@ -23,24 +24,30 @@ function haversineMetres(lat1: number, lng1: number, lat2: number, lng2: number)
 }
 
 export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow]             = useState(new Date());
   const [geoStatus, setGeoStatus] = useState<"checking" | "onsite" | "offsite" | "unavailable">("checking");
   const [distanceM, setDistanceM] = useState<number | null>(null);
-  const [clockedIn, setClockedIn] = useState(false);
+  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [clockedIn, setClockedIn]   = useState(false);
   const [clockInTime, setClockInTime] = useState<Date | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  // "queued" = action saved offline, waiting for sync
+  const [queuedState, setQueuedState] = useState<"none" | "queued-in" | "queued-out">("none");
 
   const utils = trpc.useUtils();
+
   const clockInMut = trpc.users.clockIn.useMutation({
     onSuccess: () => {
       setClockedIn(true);
       setClockInTime(new Date());
+      setQueuedState("none");
       void utils.valeterTimesheets.myCurrentWeek.invalidate();
     },
   });
   const clockOutMut = trpc.users.clockOut.useMutation({
     onSuccess: () => {
       setClockedIn(false);
+      setQueuedState("none");
       void utils.valeterTimesheets.myCurrentWeek.invalidate();
     },
   });
@@ -59,6 +66,7 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setGeoCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         if (!siteGeo || siteGeo.lat === null || siteGeo.lng === null) {
           setGeoStatus("unavailable");
           return;
@@ -76,6 +84,25 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
     checkGeo();
   }, [checkGeo]);
 
+  // When we come back online, if there's a queued state the SW will replay it.
+  // Update local UI immediately once we know it synced.
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.data?.type === "QUEUE_REPLAYED") {
+        if (queuedState === "queued-in") {
+          setClockedIn(true);
+          setClockInTime(new Date());
+        } else if (queuedState === "queued-out") {
+          setClockedIn(false);
+        }
+        setQueuedState("none");
+        void utils.valeterTimesheets.myCurrentWeek.invalidate();
+      }
+    }
+    navigator.serviceWorker?.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
+  }, [queuedState, utils]);
+
   const elapsed = clockInTime
     ? Math.floor((now.getTime() - clockInTime.getTime()) / 1000)
     : 0;
@@ -85,16 +112,40 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
 
   async function handleAction() {
     setActionLoading(true);
+    const payload = geoCoords
+      ? { lat: geoCoords.lat, lng: geoCoords.lng }
+      : {};
+
     try {
       if (clockedIn) {
-        await clockOutMut.mutateAsync({});
+        await clockOutMut.mutateAsync(payload);
       } else {
-        await clockInMut.mutateAsync({});
+        await clockInMut.mutateAsync(payload);
       }
+    } catch {
+      // Online attempt failed — check if we're offline
+      if (!navigator.onLine) {
+        // Queue it and give optimistic feedback
+        const type = clockedIn ? "CLOCK_OUT" : "CLOCK_IN";
+        await enqueue(type, payload);
+        if (clockedIn) {
+          // Optimistically show clocked out
+          setClockedIn(false);
+          setQueuedState("queued-out");
+        } else {
+          // Optimistically show clocked in
+          setClockedIn(true);
+          setClockInTime(new Date());
+          setQueuedState("queued-in");
+        }
+      }
+      // If online but errored, the mutation's error state handles it
     } finally {
       setActionLoading(false);
     }
   }
+
+  const isQueued = queuedState !== "none";
 
   const geoIcon =
     geoStatus === "onsite" ? (
@@ -134,6 +185,14 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
         </div>
       )}
 
+      {/* Queued offline notice */}
+      {isQueued && (
+        <div className="mt-3 flex items-start gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs text-white/70">
+          <WifiOff className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-300" />
+          Saved offline — will sync automatically when signal returns
+        </div>
+      )}
+
       {/* Elapsed timer */}
       {clockedIn && (
         <div className="mt-4 text-center">
@@ -141,12 +200,15 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
           <p className="mt-1 font-mono text-3xl font-black text-white">
             {hh}:{mm}:{ss}
           </p>
+          {isQueued && (
+            <p className="mt-0.5 text-[10px] text-amber-300">⏳ pending sync</p>
+          )}
         </div>
       )}
 
       {/* Action button */}
       <button
-        onClick={handleAction}
+        onClick={() => void handleAction()}
         disabled={actionLoading}
         className={`mt-4 h-14 w-full rounded-xl text-base font-black tracking-wide transition-colors disabled:opacity-60 ${
           clockedIn
