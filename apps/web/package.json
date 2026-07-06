@@ -13,6 +13,7 @@
     "@ivaleter/api": "workspace:*",
     "@ivaleter/config": "workspace:*",
     "@ivaleter/db": "workspace:*",
+    "@sentry/nextjs": "^10.63.0",
     "@tanstack/react-query": "^5.62.7",
     "@trpc/client": "^11.0.0-rc.660",
     "@trpc/react-query": "^11.0.0-rc.660",
