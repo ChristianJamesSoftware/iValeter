@@ -113,9 +113,6 @@ export function MessagesClient({ meUserId }: { meUserId: string }) {
       {/* Receipt submission */}
       <SubmitReceiptClient />
 
-      {/* Bank change request */}
-      <BankChangeRequest />
-
       {/* Inbox */}
       <div className="rounded-2xl bg-white/10">
         <div className="border-b border-white/10 px-5 py-4">
@@ -230,6 +227,9 @@ export function MessagesClient({ meUserId }: { meUserId: string }) {
           </div>
         </form>
       )}
+
+      {/* Bank change request */}
+      <BankChangeRequest />
 
       {/* FAQ */}
       <div className="overflow-hidden rounded-2xl bg-white/10">
