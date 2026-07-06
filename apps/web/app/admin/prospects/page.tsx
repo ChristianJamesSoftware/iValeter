@@ -16,8 +16,8 @@ export default async function AdminProspectsPage() {
   return (
     <div>
       <PageHeader
-        title="Prospect Valeters"
-        subtitle="Track potential recruits through the pipeline before onboarding"
+        title="Opportunities"
+        subtitle="Manage valeter opportunities — collect prospects, track your pipeline and send area broadcasts"
       />
       <ProspectsClient sites={sites.map((s) => ({ id: s.id, name: s.name }))} />
     </div>

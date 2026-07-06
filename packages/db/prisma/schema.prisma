@@ -1677,6 +1677,8 @@ model ProspectValeter {
   siteId      String?           // preferred / intended site
   site        Site?             @relation(fields: [siteId], references: [id])
 
+  employmentHistory String?   @db.Text // structured free-text of past employment
+
   addedByUserId     String?     // who added the prospect
   convertedToUserId String?     // set when onboarded → User
 
