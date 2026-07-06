@@ -1,4 +1,4 @@
-FROM postgres:16-alpine
+FROM postgres:18-alpine
 
 # Install AWS CLI (for S3-compatible R2 uploads) and bash
 RUN apk add --no-cache \
