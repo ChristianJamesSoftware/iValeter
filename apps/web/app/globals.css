@@ -51,6 +51,30 @@
 
 * {
   border-color: var(--color-line);
+  /* Remove grey iOS tap flash — it looks like a lag */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Eliminate 300ms tap delay on all interactive elements.
+   touch-action: manipulation tells the browser not to wait
+   to see if this is a double-tap zoom gesture. */
+a,
+button,
+[role="button"],
+label,
+select,
+textarea,
+input {
+  touch-action: manipulation;
+}
+
+/* Instant press feedback on every button/link.
+   Fires on touchstart so the user sees it before their finger lifts. */
+button:active,
+a:active,
+[role="button"]:active {
+  transform: scale(0.96);
+  transition: transform 80ms ease;
 }
 
 body {

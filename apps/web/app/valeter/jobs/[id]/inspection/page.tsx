@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { ChevronLeft, Camera, Check, RotateCcw } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -354,12 +355,12 @@ export default function InspectionPage() {
   return (
     <div className="min-h-screen bg-[#f8f9fb]">
       <header className="bg-navy px-4 pb-5 pt-6 text-white">
-        <button
-          onClick={() => router.push(`/valeter/jobs/${bookingId}`)}
+        <Link
+          href={`/valeter/jobs/${bookingId}`}
           className="mb-3 inline-flex items-center gap-1 text-sm text-white/70"
         >
           <ChevronLeft className="h-4 w-4" /> Back to job
-        </button>
+        </Link>
         <h1 className="font-heading text-2xl font-bold tracking-wide">
           Pre-Valet Inspection
         </h1>
