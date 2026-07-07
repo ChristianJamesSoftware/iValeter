@@ -5,6 +5,7 @@ import {
   fetchXeroAccounts,
   pushInvoiceToXero,
   syncInvoiceStatus,
+  buildXeroAuthUrl,
 } from "../lib/xero";
 
 export const xeroRouter = router({
@@ -25,6 +26,19 @@ export const xeroRouter = router({
       autoPush: conn.autoPush,
       createdAt: conn.createdAt,
     };
+  }),
+
+  /** Returns the Xero OAuth authorisation URL for this org. */
+  getAuthUrl: orgAdminProcedure.query(async ({ ctx }) => {
+    try {
+      const url = await buildXeroAuthUrl(ctx.session.organisationId);
+      return { url };
+    } catch (err) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: err instanceof Error ? err.message : "Xero not configured",
+      });
+    }
   }),
 
   disconnect: orgAdminProcedure.mutation(async ({ ctx }) => {
