@@ -9,6 +9,7 @@ import {
   valeterProcedure,
 } from "../trpc";
 import { resolveVehicleSizeValues, DEFAULT_SIZE_CONFIGS } from "./vehicle-size-config";
+import { autoCreateServiceCharges } from "./service-charges";
 
 const statusEnum = z.nativeEnum(BookingStatus);
 
@@ -550,6 +551,9 @@ export const bookingsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const booking = await ctx.prisma.booking.findFirst({
         where: { id: input.bookingId, ...scopeFor(ctx.session) },
+        include: {
+          paintProtectionProduct: { select: { priceGbp: true, name: true } },
+        },
       });
       if (!booking) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
@@ -595,6 +599,20 @@ export const bookingsRouter = router({
           note: input.note,
         },
       });
+
+      // Auto-create service charge requests for chargeable add-ons
+      if (input.toStatus === BookingStatus.COMPLETED) {
+        void autoCreateServiceCharges(ctx.prisma, {
+          id: booking.id,
+          organisationId: booking.organisationId,
+          siteId: booking.siteId ?? null,
+          assignedToId: booking.assignedToId ?? null,
+          createdById: booking.createdById,
+          paintProtectionProductId: booking.paintProtectionProductId ?? null,
+          includeFreshScent: booking.includeFreshScent,
+          paintProtectionProduct: booking.paintProtectionProduct ?? null,
+        });
+      }
 
       return updated;
     }),

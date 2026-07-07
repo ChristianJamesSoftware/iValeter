@@ -7,6 +7,7 @@ import { ClockWidget } from "@/components/valeter/clock-widget";
 import { AddJobSheet } from "@/components/valeter/add-job-sheet";
 import { LogoutButton } from "@/components/valeter/logout-button";
 import { OfflineQueueStatus } from "@/components/valeter/offline-queue-status";
+import { RecurringJobsSection } from "@/components/valeter/recurring-jobs-section";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,7 @@ export default async function ValeterHomePage() {
 
       <div className="px-4 py-4">
         <OfflineQueueStatus />
+        <RecurringJobsSection />
         <ValeterJobList initialJobs={jobs} />
       </div>
     </div>

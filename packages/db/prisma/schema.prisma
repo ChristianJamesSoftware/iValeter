@@ -56,6 +56,7 @@ model Organisation {
   payRuns          PayRun[]
   xeroConnection          XeroConnection?
   xeroExpenseNominalCodes XeroExpenseNominalCode[]
+  serviceChargeRequests   ServiceChargeRequest[]
   supportServices         SupportService[]
   supportServiceBookings  SupportServiceBooking[]
   vehicleSizeConfigs      OrgVehicleSizeConfig[]
@@ -63,6 +64,7 @@ model Organisation {
   prospectValeters         ProspectValeter[]
   prospectBroadcasts       ProspectBroadcast[]
   inspectionTemplates      InspectionTemplate[]
+  recurringJobTemplates    RecurringJobTemplate[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,11 +153,13 @@ model Site {
   vehicleSizeRates        VehicleSizeRate[]
   supportServiceBookings  SupportServiceBooking[]
   expenses                 ValeterExpense[]
+  serviceChargeRequests    ServiceChargeRequest[]
   siteWeekSubmissions      SiteWeekSubmission[]
   prospectValeters          ProspectValeter[]
   equipment                 SiteEquipment[]
   equipmentAudits           EquipmentAudit[]
   siteInspectionTemplates   SiteInspectionTemplate[]
+  recurringJobTemplates     RecurringJobTemplate[]
 
   @@index([organisationId])
 }
@@ -267,8 +271,9 @@ model User {
   receivedMessages     AccountManagerMessage[] @relation("MessageTo")
   messagesSent         Message[]               @relation("MessageFrom")
   messagesReceived     Message[]               @relation("MessageTo")
-  overtimeRequests     OvertimeRequest[]
-  accidents            ValeterAccident[]   @relation("ValeterAccidents")
+  overtimeRequests       OvertimeRequest[]
+  serviceChargeRequests  ServiceChargeRequest[] @relation("ServiceChargeRequests")
+  accidents              ValeterAccident[]      @relation("ValeterAccidents")
   deductions           ValeterDeduction[]  @relation("ValeterDeductions")
   bankChangeRequests       BankChangeRequest[]  @relation("ValeterBankChanges")
   dealershipRequestsMade   DealershipRequest[]  @relation("DealershipRequestedBy")
@@ -280,6 +285,9 @@ model User {
   equipmentResponsible     SiteEquipment[]        @relation("EquipmentResponsible")
   stockChecksBy            EquipmentStockCheck[]  @relation("StockCheckBy")
   auditsLed                EquipmentAudit[]       @relation("AuditConductedBy")
+  recurringJobsAssigned    RecurringJobTemplate[] @relation("RecurringJobAssignee")
+  recurringJobsCreated     RecurringJobTemplate[] @relation("RecurringJobCreator")
+  recurringJobsClaimed     RecurringJobOccurrence[] @relation("RecurringJobClaimer")
   timesheetDeductionsAdded TimesheetDeduction[]   @relation("TimesheetDeductionAddedBy")
   prospectBroadcastsSent   ProspectBroadcast[]    @relation("ProspectBroadcastSentBy")
 
@@ -418,9 +426,10 @@ model Booking {
   rollCount    Int       @default(0)
   lastRolledAt DateTime?
 
-  statusHistory JobStatusHistory[]
-  photos        JobPhoto[]
-  complaints    Complaint[]
+  statusHistory         JobStatusHistory[]
+  photos                JobPhoto[]
+  complaints            Complaint[]
+  serviceChargeRequests ServiceChargeRequest[]
 
   @@index([organisationId])
   @@index([siteId])
@@ -1088,6 +1097,76 @@ model OvertimeRequest {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SERVICE CHARGE REQUESTS
+// Raised automatically when a customer booking includes a chargeable add-on
+// (Paint Protection, CSI Add-On, Work Clothes, etc.).
+// SA approves → line added to valeter's timesheet extra lines for that week
+// → included in the weekly client bill.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ServiceChargeType {
+  PAINT_PROTECTION   // Paint Protection Sales — nominal 202
+  CSI_ADDON          // CSI Sales Add-Ons — nominal 203
+  WORK_CLOTHES       // Work Clothes — nominal 323
+  SUBCONTRACTOR      // Subcontractor Wages — nominal 321
+  OTHER              // Catch-all for manually raised charges
+}
+
+enum ServiceChargeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// A chargeable service item raised against a booking, pending SA approval.
+/// On approval, written to TimesheetExtraLine for the valeter's week
+/// and included in the next client invoice.
+model ServiceChargeRequest {
+  id             String              @id @default(cuid())
+  organisationId String
+  organisation   Organisation        @relation(fields: [organisationId], references: [id])
+
+  /// The booking that triggered this charge (may be null for manual charges)
+  bookingId      String?
+  booking        Booking?            @relation(fields: [bookingId], references: [id])
+
+  /// The valeter who performed the work (used to find their timesheet)
+  userId         String
+  user           User                @relation("ServiceChargeRequests", fields: [userId], references: [id])
+
+  siteId         String?
+  site           Site?               @relation(fields: [siteId], references: [id])
+
+  type           ServiceChargeType
+  description    String              // e.g. "Paint Protection — Porsche Cayenne AB21 XYZ"
+  amountPence    Int                 // charge to the client (inc. or exc. VAT per taxType)
+
+  /// ISO week start (Monday) this charge belongs to
+  weekStarting   DateTime
+
+  status         ServiceChargeStatus @default(PENDING)
+  reviewedByUserId String?
+  reviewedAt     DateTime?
+  reviewNote     String?
+
+  /// Set once written to timesheet extra lines
+  timesheetExtraLineId String?
+
+  /// Xero nominal code for this charge type (resolved on approval)
+  xeroNominalCodeId    String?
+  xeroNominalCode      XeroExpenseNominalCode? @relation(fields: [xeroNominalCodeId], references: [id])
+
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([organisationId])
+  @@index([userId])
+  @@index([bookingId])
+  @@index([weekStarting])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CSI SENSORY STANDARD ADD-ONS
 // Global add-on catalogue (managed by super admin).
 // DealershipAddOn tracks which add-ons are enabled per dealership.
@@ -1593,7 +1672,8 @@ model XeroExpenseNominalCode {
   taxType        String       @default("INPUT2")  // INPUT2 = 20% VAT reclaimable
   isDefault      Boolean      @default(false)    // one default per org
 
-  expenses       ValeterExpense[]
+  expenses              ValeterExpense[]
+  serviceChargeRequests ServiceChargeRequest[]
 
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -1989,4 +2069,119 @@ model SiteInspectionCheckOverride {
   createdAt DateTime @default(now())
 
   @@index([siteTemplateId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RECURRING JOB TEMPLATES
+// Account manager creates templates per site/dealership.
+// Each day, the system generates one RecurringJobOccurrence per active template
+// that is scheduled for that day.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum RecurringFrequency {
+  DAILY         // every working day (Mon–Fri by default unless customDays set)
+  SPECIFIC_DAYS // only on days in customDays e.g. ["MON","WED","FRI"]
+  EVERY_OTHER_DAY
+  WEEKLY        // same day each week
+  FORTNIGHTLY
+  MONTHLY       // same date each month (or 1st, last, etc.)
+}
+
+model RecurringJobTemplate {
+  id             String   @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+
+  siteId         String
+  site           Site         @relation(fields: [siteId], references: [id])
+
+  /// Human-readable name e.g. "Daily Showroom Walk", "Pitch Tyre Shine"
+  name           String
+
+  /// Longer description shown to the valeter on the job card
+  description    String?
+
+  frequency      RecurringFrequency @default(DAILY)
+
+  /// For SPECIFIC_DAYS: JSON array of day names ["MON","TUE","WED","THU","FRI"]
+  customDays     Json?   // string[]
+
+  /// "Must be done by" local time HH:MM — used for overdue detection
+  mustDoneByTime String  @default("17:00")
+
+  /// Optional: assign to a specific valeter. If null, any valeter can claim.
+  assignedToId   String?
+  assignedTo     User?   @relation("RecurringJobAssignee", fields: [assignedToId], references: [id])
+
+  isActive       Boolean @default(true)
+  createdById    String
+  createdBy      User    @relation("RecurringJobCreator", fields: [createdById], references: [id])
+
+  /// Audit checklist questions — JSON array of strings
+  /// e.g. ["Showroom floor clean?","Tyres shined?","Display cars wiped down?"]
+  auditQuestions Json?   // string[]
+
+  occurrences    RecurringJobOccurrence[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organisationId])
+  @@index([siteId])
+  @@index([isActive])
+}
+
+enum RecurringJobStatus {
+  PENDING    // generated, not yet claimed
+  CLAIMED    // valeter has accepted/started
+  COMPLETED  // valeter signed off (with audit answers)
+  MISSED     // deadline passed without completion
+}
+
+model RecurringJobOccurrence {
+  id         String   @id @default(cuid())
+  templateId String
+  template   RecurringJobTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  /// Date this occurrence is for (midnight UTC of that day)
+  dueDate    DateTime
+
+  status     RecurringJobStatus @default(PENDING)
+
+  /// Valeter who claimed/completed this occurrence
+  claimedById  String?
+  claimedBy    User?   @relation("RecurringJobClaimer", fields: [claimedById], references: [id])
+
+  claimedAt    DateTime?
+  completedAt  DateTime?
+
+  /// Photo evidence URL (uploaded by valeter)
+  photoUrl     String?
+
+  /// Free-text completion note from valeter
+  completionNote String?
+
+  auditAnswers   RecurringJobAuditAnswer[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([templateId, dueDate])
+  @@index([templateId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+/// One answer per audit question per occurrence
+model RecurringJobAuditAnswer {
+  id           String   @id @default(cuid())
+  occurrenceId String
+  occurrence   RecurringJobOccurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+
+  question     String   // copied from template.auditQuestions at time of completion
+  answer       Boolean  // true = Yes / confirmed, false = No / issue flagged
+
+  createdAt    DateTime @default(now())
+
+  @@index([occurrenceId])
 }

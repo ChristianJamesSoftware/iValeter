@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, CheckCircle2, XCircle, ChevronDown, ChevronUp, Receipt, ExternalLink } from "lucide-react";
+import {
+  Clock,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  ChevronUp,
+  Receipt,
+  ExternalLink,
+  BadgePoundSterling,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -14,8 +23,17 @@ function pence(p: number) {
   return `£${(p / 100).toFixed(2)}`;
 }
 
+// ─── SERVICE CHARGE TYPE LABEL ─────────────────────────────────────────────
+const SCR_TYPE_LABELS: Record<string, string> = {
+  PAINT_PROTECTION: "Paint Protection",
+  CSI_ADDON: "CSI Add-On",
+  WORK_CLOTHES: "Work Clothes",
+  SUBCONTRACTOR: "Subcontractor",
+  OTHER: "Other",
+};
+
 // ─── Reject note inline form ───────────────────────────────────────────────
-function RejectExpenseForm({
+function RejectForm({
   onConfirm,
   onCancel,
   isPending,
@@ -36,7 +54,7 @@ function RejectExpenseForm({
         className="flex-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs text-slate-800 outline-none focus:border-red-400"
       />
       <button
-        disabled={isPending || note.trim().length < 5}
+        disabled={isPending || note.trim().length < 3}
         onClick={() => onConfirm(note.trim())}
         className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
       >
@@ -50,14 +68,19 @@ function RejectExpenseForm({
 }
 
 // ─── Main panel ───────────────────────────────────────────────────────────
+type Tab = "overtime" | "receipts" | "serviceCharges";
+
 export function OvertimeRequestsPanel() {
   const [open, setOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overtime" | "receipts">("overtime");
+  const [activeTab, setActiveTab] = useState<Tab>("overtime");
   const [rejectingExpenseId, setRejectingExpenseId] = useState<string | null>(null);
+  const [rejectingScrId, setRejectingScrId] = useState<string | null>(null);
+
   const utils = trpc.useUtils();
 
   const { data: otRequests, isLoading: otLoading } = trpc.overtime.listPending.useQuery();
   const { data: pendingExpenses, isLoading: expLoading } = trpc.expenses.listPending.useQuery();
+  const { data: pendingScr, isLoading: scrLoading } = trpc.serviceCharges.listPending.useQuery();
 
   const reviewOT = trpc.overtime.review.useMutation({
     onSuccess: () => void utils.overtime.listPending.invalidate(),
@@ -74,9 +97,21 @@ export function OvertimeRequestsPanel() {
     },
   });
 
+  const approveScr = trpc.serviceCharges.approve.useMutation({
+    onSuccess: () => void utils.serviceCharges.listPending.invalidate(),
+  });
+
+  const rejectScr = trpc.serviceCharges.reject.useMutation({
+    onSuccess: () => {
+      void utils.serviceCharges.listPending.invalidate();
+      setRejectingScrId(null);
+    },
+  });
+
   const otPending = otRequests ?? [];
   const expPending = pendingExpenses ?? [];
-  const totalPending = otPending.length + expPending.length;
+  const scrPending = pendingScr ?? [];
+  const totalPending = otPending.length + expPending.length + scrPending.length;
 
   return (
     <div className="mb-6 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
@@ -101,6 +136,7 @@ export function OvertimeRequestsPanel() {
         <div className="border-t border-slate-100">
           {/* Tabs */}
           <div className="flex border-b border-slate-100 bg-slate-50 px-5 pt-2">
+            {/* Overtime tab */}
             <button
               onClick={() => setActiveTab("overtime")}
               className={cn(
@@ -118,6 +154,8 @@ export function OvertimeRequestsPanel() {
                 </span>
               )}
             </button>
+
+            {/* Receipts tab */}
             <button
               onClick={() => setActiveTab("receipts")}
               className={cn(
@@ -132,6 +170,25 @@ export function OvertimeRequestsPanel() {
               {expPending.length > 0 && (
                 <span className="ml-1 rounded-full bg-orange-100 px-1.5 text-[10px] font-bold text-orange-600">
                   {expPending.length}
+                </span>
+              )}
+            </button>
+
+            {/* Service Charges tab */}
+            <button
+              onClick={() => setActiveTab("serviceCharges")}
+              className={cn(
+                "flex items-center gap-1.5 border-b-2 pb-2.5 text-xs font-semibold transition-colors",
+                activeTab === "serviceCharges"
+                  ? "border-orange-500 text-orange-600"
+                  : "border-transparent text-slate-400 hover:text-slate-600",
+              )}
+            >
+              <BadgePoundSterling className="h-3.5 w-3.5" />
+              Service Charges
+              {scrPending.length > 0 && (
+                <span className="ml-1 rounded-full bg-orange-100 px-1.5 text-[10px] font-bold text-orange-600">
+                  {scrPending.length}
                 </span>
               )}
             </button>
@@ -257,7 +314,7 @@ export function OvertimeRequestsPanel() {
                       </td>
                       <td className="px-5 py-4">
                         {rejectingExpenseId === exp.id ? (
-                          <RejectExpenseForm
+                          <RejectForm
                             isPending={rejectExp.isPending}
                             onConfirm={(note) => rejectExp.mutate({ expenseId: exp.id, note })}
                             onCancel={() => setRejectingExpenseId(null)}
@@ -274,6 +331,102 @@ export function OvertimeRequestsPanel() {
                             </button>
                             <button
                               onClick={() => setRejectingExpenseId(exp.id)}
+                              className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100"
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          )}
+
+          {/* ── Service Charges tab ── */}
+          {activeTab === "serviceCharges" && (
+            scrLoading ? (
+              <p className="px-5 py-8 text-center text-sm text-slate-400">Loading…</p>
+            ) : scrPending.length === 0 ? (
+              <div className="px-5 py-8 text-center">
+                <BadgePoundSterling className="mx-auto mb-2 h-8 w-8 text-slate-200" />
+                <p className="text-sm text-slate-400">No pending service charges</p>
+                <p className="mt-1 text-xs text-slate-300">
+                  Paint Protection, CSI Add-Ons and Work Clothes auto-appear here when a job completes
+                </p>
+              </div>
+            ) : (
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Valeter</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Type</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Description</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Amount</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Week</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Nominal</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scrPending.map((scr) => (
+                    <tr key={scr.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+                      <td className="px-5 py-4 font-medium text-slate-900">
+                        {scr.user.firstName} {scr.user.lastName}
+                        {scr.site && (
+                          <span className="ml-1.5 text-xs text-slate-400">{scr.site.name}</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                          {SCR_TYPE_LABELS[scr.type] ?? scr.type}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-slate-700 max-w-[220px]">
+                        <p className="truncate text-xs">{scr.description}</p>
+                        {scr.booking && (
+                          <p className="text-[11px] text-slate-400">
+                            {scr.booking.vehicleReg} · {scr.booking.customerName}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        {scr.amountPence > 0 ? (
+                          <span className="font-bold text-slate-900">{pence(scr.amountPence)}</span>
+                        ) : (
+                          <span className="text-xs text-amber-600 font-semibold">Set on approval</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-xs text-slate-500">
+                        {fmtDate(scr.weekStarting)}
+                      </td>
+                      <td className="px-5 py-4 text-xs text-slate-500">
+                        {scr.xeroNominalCode
+                          ? `${scr.xeroNominalCode.xeroAccountCode} · ${scr.xeroNominalCode.name}`
+                          : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-5 py-4">
+                        {rejectingScrId === scr.id ? (
+                          <RejectForm
+                            isPending={rejectScr.isPending}
+                            onConfirm={(note) => rejectScr.mutate({ requestId: scr.id, reviewNote: note })}
+                            onCancel={() => setRejectingScrId(null)}
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => approveScr.mutate({ requestId: scr.id })}
+                              disabled={approveScr.isPending}
+                              className="flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => setRejectingScrId(scr.id)}
                               className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100"
                             >
                               <XCircle className="h-3.5 w-3.5" />

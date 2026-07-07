@@ -37,6 +37,8 @@ import { timesheetDeductionsRouter } from "./routers/timesheet-deductions";
 import { equipmentRouter } from "./routers/equipment";
 import { inspectionTemplatesRouter } from "./routers/inspection-templates";
 import { payrollRouter } from "./routers/payroll";
+import { serviceChargesRouter } from "./routers/service-charges";
+import { recurringJobsRouter } from "./routers/recurring-jobs";
 
 export const appRouter = router({
   auth: authRouter,
@@ -77,6 +79,8 @@ export const appRouter = router({
   equipment: equipmentRouter,
   inspectionTemplates: inspectionTemplatesRouter,
   payroll: payrollRouter,
+  serviceCharges: serviceChargesRouter,
+  recurringJobs: recurringJobsRouter,
 });
 
 export type AppRouter = typeof appRouter;
