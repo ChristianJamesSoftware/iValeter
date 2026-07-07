@@ -81,7 +81,7 @@ export function OvertimeRequestsPanel() {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => review.mutate({ id: req.id, decision: "APPROVED" })}
+                          onClick={() => review.mutate({ requestId: req.id, action: "APPROVED" })}
                           disabled={review.isPending}
                           className={cn(
                             "flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-600 disabled:opacity-50"
@@ -91,7 +91,7 @@ export function OvertimeRequestsPanel() {
                           Approve
                         </button>
                         <button
-                          onClick={() => review.mutate({ id: req.id, decision: "DECLINED" })}
+                          onClick={() => review.mutate({ requestId: req.id, action: "DECLINED" })}
                           disabled={review.isPending}
                           className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
                         >
