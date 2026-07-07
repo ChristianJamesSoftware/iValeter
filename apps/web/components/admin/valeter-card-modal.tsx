@@ -235,6 +235,7 @@ type ValeterData = NonNullable<RouterOutputs["users"]["getValeterById"]>;
 
 function OverviewTab({ valeter, update, saving }: { valeter: ValeterData; update: (d: Record<string, unknown>) => void; saving: boolean }) {
   const [editing, setEditing] = useState(false);
+  const { data: sites } = trpc.sites.list.useQuery();
   const [form, setForm] = useState({
     firstName: valeter.firstName,
     lastName:  valeter.lastName,
@@ -243,6 +244,7 @@ function OverviewTab({ valeter, update, saving }: { valeter: ValeterData; update
     jobTitle:  valeter.jobTitle ?? "",
     startDate: valeter.startDate ? new Date(valeter.startDate).toISOString().slice(0, 10) : "",
     contractComplete: valeter.contractComplete,
+    siteId:    valeter.site?.id ?? "",
   });
 
   function save() {
@@ -254,6 +256,7 @@ function OverviewTab({ valeter, update, saving }: { valeter: ValeterData; update
       jobTitle:  form.jobTitle  || null,
       startDate: form.startDate || null,
       contractComplete: form.contractComplete,
+      siteId:    form.siteId   || null,
     });
     setEditing(false);
   }
@@ -293,6 +296,19 @@ function OverviewTab({ valeter, update, saving }: { valeter: ValeterData; update
           {field("jobTitle",         "Job title")}
           {field("startDate",        "Start date", "date")}
           {field("contractComplete", "Contract complete", "checkbox")}
+          <div>
+            <label className={LABEL}>Site</label>
+            <select
+              value={form.siteId}
+              onChange={(e) => setForm((p) => ({ ...p, siteId: e.target.value }))}
+              className={INPUT}
+            >
+              <option value="">— No site —</option>
+              {(sites ?? []).map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
