@@ -459,35 +459,46 @@ export default function InspectionPage() {
               </div>
             </div>
 
-            {/* Guide card */}
-            <div className="rounded-2xl border-2 border-cyan bg-white overflow-hidden">
-              {/* Position label */}
-              <div className="bg-navy px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-widest text-cyan/80">
-                  Shot {index + 1} of {positions.length}
-                </p>
-                <h2 className="font-heading text-xl font-bold text-white mt-0.5">
+            {/* Guide card — collapsed once photo is taken */}
+            {photos[current.type] ? (
+              <div className="flex items-center gap-3 rounded-xl bg-navy px-4 py-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan text-navy text-xs font-bold">
+                  {index + 1}
+                </div>
+                <h2 className="font-heading text-base font-bold text-white">
                   {current.label}
                 </h2>
               </div>
-
-              {/* Car diagram */}
-              <div className="flex justify-center bg-offwhite py-4 border-b border-line">
-                <CarDiagram zone={current.zone} />
-              </div>
-
-              {/* Instructions */}
-              <div className="px-4 py-4 space-y-2">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy text-white text-xs font-bold">1</span>
-                  <p className="text-sm font-semibold text-navy">{current.instruction}</p>
+            ) : (
+              <div className="rounded-2xl border-2 border-cyan bg-white overflow-hidden">
+                {/* Position label */}
+                <div className="bg-navy px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-cyan/80">
+                    Shot {index + 1} of {positions.length}
+                  </p>
+                  <h2 className="font-heading text-xl font-bold text-white mt-0.5">
+                    {current.label}
+                  </h2>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan/20 text-navy text-xs font-bold">2</span>
-                  <p className="text-sm text-slate">{current.hint}</p>
+
+                {/* Car diagram */}
+                <div className="flex justify-center bg-offwhite py-4 border-b border-line">
+                  <CarDiagram zone={current.zone} />
+                </div>
+
+                {/* Instructions */}
+                <div className="px-4 py-4 space-y-2">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy text-white text-xs font-bold">1</span>
+                    <p className="text-sm font-semibold text-navy">{current.instruction}</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan/20 text-navy text-xs font-bold">2</span>
+                    <p className="text-sm text-slate">{current.hint}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Photo taken / take photo */}
             {photos[current.type] ? (
@@ -496,7 +507,7 @@ export default function InspectionPage() {
                 <img
                   src={photos[current.type]}
                   alt={current.label}
-                  className="w-full rounded-xl border-2 border-success object-cover max-h-64"
+                  className="w-full rounded-xl border-2 border-success object-cover max-h-52"
                 />
                 <div className="flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2 border border-success/30">
                   <Check className="h-4 w-4 text-success shrink-0" />
