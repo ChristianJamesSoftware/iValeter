@@ -296,6 +296,80 @@ export const hqRouter = router({
     });
   }),
 
+  /** Snapshot of a single site for the HQ slide-over — valeters + today's bookings */
+  siteSnapshot: orgAdminProcedure
+    .input(z.object({ siteId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const today = startOfToday();
+      const todayEnd = endOfToday();
+
+      const [site, valeters, bookings] = await Promise.all([
+        ctx.prisma.site.findUnique({
+          where: { id: input.siteId },
+          select: { id: true, name: true },
+        }),
+        ctx.prisma.user.findMany({
+          where: {
+            organisationId: ctx.session.organisationId,
+            siteId: input.siteId,
+            role: "valeter",
+            isActive: true,
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            clockEvents: {
+              where: { type: "CLOCK_IN", timestamp: { gte: today, lte: todayEnd } },
+              select: { id: true },
+              take: 1,
+            },
+          },
+          orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+        }),
+        ctx.prisma.booking.findMany({
+          where: {
+            organisationId: ctx.session.organisationId,
+            siteId: input.siteId,
+            readyByTime: { gte: today, lte: todayEnd },
+          },
+          select: {
+            id: true,
+            vehicleReg: true,
+            vehicleSize: true,
+            status: true,
+            readyByTime: true,
+            serviceType: { select: { name: true } },
+            customerName: true,
+            vehicleMake: true,
+            vehicleModel: true,
+            vehicleColour: true,
+          },
+          orderBy: { readyByTime: "asc" },
+        }),
+      ]);
+
+      return {
+        siteId: input.siteId,
+        siteName: site?.name ?? "",
+        valeters: valeters.map((v) => ({
+          id: v.id,
+          name: `${v.firstName} ${v.lastName}`,
+          clockedIn: v.clockEvents.length > 0,
+        })),
+        bookings: bookings.map((b) => ({
+          id: b.id,
+          vehicleReg: b.vehicleReg,
+          vehicleSize: b.vehicleSize ?? "",
+          status: b.status,
+          readyByTime: b.readyByTime?.toISOString() ?? null,
+          serviceType: b.serviceType?.name ?? "",
+          customerName: b.customerName ?? "",
+          vehicleDesc: [b.vehicleColour, b.vehicleMake, b.vehicleModel].filter(Boolean).join(" "),
+        })),
+      };
+    }),
+
   /** Approve all submitted timesheets for a week */
   payrollApproveAll: orgAdminProcedure
     .input(z.object({ weekStart: z.string() }))
