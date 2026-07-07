@@ -420,6 +420,126 @@ export const hqRouter = router({
       });
     }),
 
+  /**
+   * Send an SA_APPROVED timesheet to the client (dealer) for approval.
+   * Sets sentToCustomerAt and starts the 4-hour auto-accept clock.
+   */
+  sendToClient: superAdminProcedure
+    .input(z.object({ timesheetId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const ts = await ctx.prisma.timesheet.findUnique({
+        where: { id: input.timesheetId },
+        select: { id: true, status: true },
+      });
+      if (!ts) throw new Error("Timesheet not found");
+      if (ts.status !== "SA_APPROVED")
+        throw new Error("Timesheet must be SA_APPROVED before sending to client");
+      return ctx.prisma.timesheet.update({
+        where: { id: input.timesheetId },
+        data: { sentToCustomerAt: new Date() },
+      });
+    }),
+
+  /**
+   * Lock a timesheet after client approval and auto-apply all preset deductions
+   * from the valeter's card:
+   *   - dailyDeductions × days worked  → DAILY
+   *   - active ValeterDeductions (unsettled) → STANDING
+   *   - outstanding accident weeklyDeductions → ACCIDENT
+   */
+  lockAndApplyDeductions: superAdminProcedure
+    .input(z.object({ timesheetId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const ts = await ctx.prisma.timesheet.findUnique({
+        where: { id: input.timesheetId },
+        include: {
+          lines: { select: { regularHours: true, overtimeHours: true } },
+          user: {
+            select: {
+              id: true,
+              dailyDeductions: true,
+              deductions: {
+                where: { settled: false },
+                select: { id: true, description: true, weeklyAmount: true },
+              },
+              accidents: {
+                where: { settled: false, weeklyDeduction: { not: null } },
+                select: { id: true, description: true, weeklyDeduction: true },
+              },
+            },
+          },
+        },
+      });
+      if (!ts) throw new Error("Timesheet not found");
+      if (ts.status === "LOCKED") throw new Error("Timesheet is already locked");
+      if (!ts.customerAccepted && ts.status !== "SA_APPROVED")
+        throw new Error("Timesheet has not been approved by the client yet");
+
+      const daysWorked = ts.lines.filter(
+        (l: { regularHours: number; overtimeHours: number }) => l.regularHours > 0 || l.overtimeHours > 0
+      ).length;
+
+      const deductionsToCreate: {
+        timesheetId: string;
+        type: "DAILY" | "STANDING" | "ACCIDENT";
+        description: string;
+        amountPence: number;
+        valeterDeductionId?: string;
+        accidentId?: string;
+        addedByUserId: string;
+      }[] = [];
+
+      // 1. Daily deductions (e.g. van contribution)
+      if (ts.user.dailyDeductions && ts.user.dailyDeductions > 0 && daysWorked > 0) {
+        deductionsToCreate.push({
+          timesheetId: ts.id,
+          type: "DAILY",
+          description: `Daily deduction × ${daysWorked} day${daysWorked !== 1 ? "s" : ""}`,
+          amountPence: Math.round(ts.user.dailyDeductions * daysWorked * 100),
+          addedByUserId: ctx.session.userId,
+        });
+      }
+
+      // 2. Standing repayment plans (uniform, equipment, etc.)
+      for (const ded of ts.user.deductions) {
+        deductionsToCreate.push({
+          timesheetId: ts.id,
+          type: "STANDING",
+          description: ded.description,
+          amountPence: Math.round(ded.weeklyAmount * 100),
+          valeterDeductionId: ded.id,
+          addedByUserId: ctx.session.userId,
+        });
+      }
+
+      // 3. Accident excess weekly deductions
+      for (const acc of ts.user.accidents) {
+        if (acc.weeklyDeduction && acc.weeklyDeduction > 0) {
+          deductionsToCreate.push({
+            timesheetId: ts.id,
+            type: "ACCIDENT",
+            description: `Accident excess: ${acc.description ?? "recovery"}`,
+            amountPence: Math.round(acc.weeklyDeduction * 100),
+            accidentId: acc.id,
+            addedByUserId: ctx.session.userId,
+          });
+        }
+      }
+
+      // Apply in a transaction: create deductions + lock the timesheet
+      await ctx.prisma.$transaction([
+        ...deductionsToCreate.map((d) =>
+          ctx.prisma.timesheetDeduction.create({ data: d })
+        ),
+        ctx.prisma.timesheet.update({
+          where: { id: ts.id },
+          data: { status: "LOCKED" },
+        }),
+      ]);
+
+      return { locked: true, deductionsApplied: deductionsToCreate.length };
+    }),
+
   /** List feedback replies (SA only) */
   listFeedbackReplies: superAdminProcedure
     .input(

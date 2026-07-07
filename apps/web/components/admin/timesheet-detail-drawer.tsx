@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { trpc } from "@/lib/trpc/react";
-import { X, Clock, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
+import { X, Clock, CheckCircle2, AlertTriangle, RefreshCw, Send, Lock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TimesheetDeductionsPanel } from "@/components/admin/timesheet-deductions-panel";
 
@@ -111,10 +111,20 @@ export function TimesheetDetailDrawer({
   timesheetId: string;
   onClose: () => void;
 }) {
-  const { data, isLoading } = trpc.valeterTimesheets.getDetail.useQuery(
+  const utils = trpc.useUtils();
+
+  const { data, isLoading, refetch } = trpc.valeterTimesheets.getDetail.useQuery(
     { timesheetId },
     { enabled: !!timesheetId },
   );
+
+  const sendToClient = trpc.hq.sendToClient.useMutation({
+    onSuccess: () => { void refetch(); void utils.hq.payrollSummary.invalidate(); },
+  });
+
+  const lockAndApply = trpc.hq.lockAndApplyDeductions.useMutation({
+    onSuccess: () => { void refetch(); void utils.hq.payrollSummary.invalidate(); },
+  });
 
   // Close on Escape
   useEffect(() => {
@@ -160,6 +170,72 @@ export function TimesheetDetailDrawer({
             </button>
           </div>
         </div>
+
+        {/* Stage-action footer */}
+        {data && (
+          <div className="border-b border-slate-100 bg-white px-6 py-3">
+            {/* SA_APPROVED → Send to Client */}
+            {data.status === "SA_APPROVED" && !data.sentToCustomerAt && (
+              <div className="flex items-center gap-3">
+                <p className="flex-1 text-sm text-slate-600">
+                  Timesheet is fully approved internally. Send to the dealership for sign-off.
+                </p>
+                <button
+                  onClick={() => sendToClient.mutate({ timesheetId })}
+                  disabled={sendToClient.isPending}
+                  className="flex items-center gap-2 rounded-lg bg-[#0f172a] px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+                >
+                  {sendToClient.isPending
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Send className="h-4 w-4" />}
+                  Send to Client
+                </button>
+              </div>
+            )}
+
+            {/* Sent, awaiting client */}
+            {data.sentToCustomerAt && !data.customerAccepted && (
+              <div className="flex items-center gap-3 rounded-lg bg-amber-50 px-4 py-2.5">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                <p className="flex-1 text-sm text-amber-800">
+                  Sent to client — awaiting approval. Auto-approves after 4 hours.
+                </p>
+              </div>
+            )}
+
+            {/* Client approved → Lock & apply deductions */}
+            {data.customerAccepted && data.status !== "LOCKED" && (
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-emerald-700">
+                    {data.autoAccepted ? "Auto-approved (4h elapsed)" : "Client has approved this timesheet."}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Locking will auto-apply all preset deductions from the valeter&apos;s card.
+                  </p>
+                </div>
+                <button
+                  onClick={() => lockAndApply.mutate({ timesheetId })}
+                  disabled={lockAndApply.isPending}
+                  className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {lockAndApply.isPending
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Lock className="h-4 w-4" />}
+                  Lock &amp; Apply Deductions
+                </button>
+              </div>
+            )}
+
+            {/* Locked */}
+            {data.status === "LOCKED" && (
+              <div className="flex items-center gap-2 text-sm font-semibold text-blue-700">
+                <Lock className="h-4 w-4" />
+                Timesheet locked and ready for payroll export.
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">

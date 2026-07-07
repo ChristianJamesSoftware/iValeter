@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, Clock, Users, AlertTriangle, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, X, Clock, Users, AlertTriangle, Download, ChevronDown, ChevronUp, Building2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { StatCard } from "@/components/brand/stat-card";
+import { OvertimeRequestsPanel } from "@/components/org/overtime-requests-panel";
 
 type Status = "SUBMITTED" | "APPROVED" | "SA_APPROVED" | "DISPUTED" | "DRAFT" | "LOCKED";
 
@@ -47,7 +48,7 @@ const inputCls =
 
 export function AdminAttendanceClient() {
   const [weekStart, setWeekStart] = useState(mondayOf(new Date()));
-  const [filterStatus, setFilterStatus] = useState("APPROVED");
+  const [filterStatus, setFilterStatus] = useState("SUBMITTED");
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -59,6 +60,19 @@ export function AdminAttendanceClient() {
     status: filterStatus || undefined,
   });
 
+  // HO (org admin) first sign-off: SUBMITTED → APPROVED
+  const hoApprove = trpc.timesheets.orgApprove.useMutation({
+    onSuccess: () => utils.timesheets.superAdminList.invalidate(),
+  });
+  const hoReject = trpc.timesheets.orgReject.useMutation({
+    onSuccess: () => {
+      utils.timesheets.superAdminList.invalidate();
+      setRejectId(null);
+      setRejectNote("");
+    },
+  });
+
+  // SA final sign-off: APPROVED → SA_APPROVED
   const approve = trpc.timesheets.superAdminApprove.useMutation({
     onSuccess: () => utils.timesheets.superAdminList.invalidate(),
   });
@@ -72,6 +86,7 @@ export function AdminAttendanceClient() {
   });
 
   const rows = timesheets.data ?? [];
+  const submitted = rows.filter((r) => r.status === "SUBMITTED").length;
   const pending = rows.filter((r) => r.status === "APPROVED").length;
   const approved = rows.filter((r) => r.status === "SA_APPROVED").length;
   const disputed = rows.filter((r) => r.status === "DISPUTED").length;
@@ -104,11 +119,15 @@ export function AdminAttendanceClient() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
+      {/* Overtime requests panel */}
+      <OvertimeRequestsPanel />
+
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard icon={AlertTriangle} title="Awaiting SA Approval" value={pending} accent="navy" />
-        <StatCard icon={Check}         title="SA Approved"          value={approved} accent="success" />
-        <StatCard icon={X}             title="Disputed"             value={disputed} accent="navy" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <StatCard icon={Clock}         title="Submitted (HO review)" value={submitted} accent="cyan" />
+        <StatCard icon={AlertTriangle} title="Awaiting SA Approval"  value={pending}   accent="navy" />
+        <StatCard icon={Check}         title="SA Approved"           value={approved}  accent="success" />
+        <StatCard icon={X}             title="Disputed"              value={disputed}  accent="navy" />
       </div>
 
       {/* Filters */}
@@ -194,14 +213,15 @@ export function AdminAttendanceClient() {
                       <td className={TD}>{(r.totalOvertimeHours ?? 0).toFixed(2)} h</td>
                       <td className={TD}><StatusBadge status={r.status} /></td>
                       <td className={TD}>
-                        {r.status === "APPROVED" && (
+                        {/* Step 1: HO sign-off (SUBMITTED → APPROVED) */}
+                        {r.status === "SUBMITTED" && (
                           <div className="flex gap-1.5">
                             <button
-                              onClick={() => approve.mutate({ id: r.id })}
-                              disabled={approve.isPending}
-                              className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                              onClick={() => hoApprove.mutate({ id: r.id })}
+                              disabled={hoApprove.isPending}
+                              className="flex items-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
                             >
-                              <Check className="h-3.5 w-3.5" /> Approve
+                              <Building2 className="h-3.5 w-3.5" /> HO Approve
                             </button>
                             <button
                               onClick={() => { setRejectId(r.id); setRejectNote(""); }}
@@ -209,6 +229,25 @@ export function AdminAttendanceClient() {
                             >
                               <X className="h-3.5 w-3.5" /> Reject
                             </button>
+                          </div>
+                        )}
+                        {/* Step 2: SA final sign-off (APPROVED → SA_APPROVED) */}
+                        {r.status === "APPROVED" && (
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => approve.mutate({ id: r.id })}
+                              disabled={approve.isPending}
+                              className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                              <Check className="h-3.5 w-3.5" /> SA Approve
+                            </button>
+                            <button
+                              onClick={() => { setRejectId(r.id); setRejectNote(""); }}
+                              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                            >
+                              <X className="h-3.5 w-3.5" /> Reject
+                            </button>
+
                           </div>
                         )}
                         {r.status === "SA_APPROVED" && (
