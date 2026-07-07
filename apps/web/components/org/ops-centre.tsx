@@ -144,10 +144,13 @@ function LiveBoard({
                 {items.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-center text-xs text-slate-400">No jobs</p>
                 ) : items.map((b) => (
-                  <div
+                  <a
                     key={b.id}
+                    href={`/admin/bookings/${b.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className={cn(
-                      "rounded-xl border bg-white p-3.5 shadow-sm transition-all hover:border-orange-200 hover:shadow-md",
+                      "block rounded-xl border bg-white p-3.5 shadow-sm transition-all hover:border-orange-200 hover:shadow-md cursor-pointer",
                       b.isPriority ? "border-l-4 border-l-orange-500 bg-orange-50/30" : "border-slate-100",
                     )}
                   >
@@ -164,14 +167,14 @@ function LiveBoard({
                         </span>
                       ) : (
                         <button
-                          onClick={() => onAssign(b.id)}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAssign(b.id); }}
                           className="rounded-md bg-orange-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-orange-600"
                         >
                           Assign
                         </button>
                       )}
                     </div>
-                  </div>
+                  </a>
                 ))}
               </div>
             </div>
