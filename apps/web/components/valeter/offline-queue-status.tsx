@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { WifiOff, CheckCircle2, RefreshCw } from "lucide-react";
-import { getPendingActions, replayQueue, type QueuedAction } from "@/lib/offline-queue";
+import { getPendingActions, replayQueue, clearQueue, type QueuedAction } from "@/lib/offline-queue";
 
 const TYPE_LABELS: Record<string, string> = {
   CLOCK_IN:   "Clock in",
