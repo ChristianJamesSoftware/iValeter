@@ -4,13 +4,15 @@ import { HolidayStatus } from "@ivaleter/db";
 import { router, protectedProcedure, orgAdminProcedure } from "../trpc";
 
 export const holidayRouter = router({
-  /** A valeter submits a leave request for themselves. */
+  /** A valeter submits a time-off request for themselves. */
   submitRequest: protectedProcedure
     .input(
       z.object({
         startDate: z.date(),
         endDate: z.date(),
         reason: z.string().optional(),
+        replacementOrganised: z.boolean().default(false),
+        replacementName: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -26,6 +28,8 @@ export const holidayRouter = router({
           startDate: input.startDate,
           endDate: input.endDate,
           reason: input.reason,
+          replacementOrganised: input.replacementOrganised,
+          replacementName: input.replacementOrganised ? input.replacementName : undefined,
         },
       });
     }),
@@ -80,6 +84,28 @@ export const holidayRouter = router({
         data: { status: HolidayStatus.REJECTED, adminNote: input.adminNote },
       });
     }),
+
+  /** Manager saves cover person name to DB. */
+  setCover: orgAdminProcedure
+    .input(z.object({ id: z.string(), coverPersonName: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await assertInOrg(ctx, input.id);
+      return ctx.prisma.holidayRequest.update({
+        where: { id: input.id },
+        data: { coverPersonName: input.coverPersonName },
+      });
+    }),
+
+  /** Manager confirms cover is in place (sets coverConfirmedAt timestamp). */
+  confirmCover: orgAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertInOrg(ctx, input.id);
+      return ctx.prisma.holidayRequest.update({
+        where: { id: input.id },
+        data: { coverConfirmedAt: new Date() },
+      });
+    }),
 });
 
 async function assertInOrg(
@@ -90,6 +116,6 @@ async function assertInOrg(
     where: { id: requestId, user: { organisationId: ctx.session.organisationId } },
   });
   if (!req) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Holiday request not found" });
+    throw new TRPCError({ code: "NOT_FOUND", message: "Time off request not found" });
   }
 }

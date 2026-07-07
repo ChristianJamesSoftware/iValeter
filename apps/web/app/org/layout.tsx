@@ -13,7 +13,7 @@ const NAV: NavItem[] = [
   { href: "/org/dealership-team", label: "Customer Team", icon: "clients" },
   { href: "/org/team", label: "Valeting Team", icon: "team", section: "Team" },
   { href: "/org/attendance", label: "Attendance", icon: "attendance" },
-  { href: "/org/holiday", label: "Holiday", icon: "holiday" },
+  { href: "/org/holiday", label: "Time Off", icon: "holiday" },
   { href: "/org/training", label: "Training", icon: "training" },
   { href: "/org/compliance", label: "Compliance", icon: "compliance" },
   { href: "/org/prospects", label: "Opportunities", icon: "prospects" },

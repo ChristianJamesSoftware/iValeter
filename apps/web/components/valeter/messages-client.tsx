@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc/react";
 import { Send, MessageCircle, ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 import { SubmitReceiptClient } from "@/components/valeter/submit-receipt-client";
 import { BankChangeRequest } from "@/components/valeter/bank-change-request";
+import { TimeOffRequest } from "@/components/valeter/time-off-request";
 
 const PULSE_TRIGGER = "How did this week go?";
 
@@ -227,6 +228,9 @@ export function MessagesClient({ meUserId }: { meUserId: string }) {
           </div>
         </form>
       )}
+
+      {/* Time off request */}
+      <TimeOffRequest />
 
       {/* Bank change request */}
       <BankChangeRequest />

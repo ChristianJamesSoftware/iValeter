@@ -7,8 +7,8 @@ export default function OrgHolidayPage() {
   return (
     <div>
       <PageHeader
-        title="Holiday Management"
-        subtitle="Approve or reject team leave requests"
+        title="Time Off Requests"
+        subtitle="Approve or reject team time off requests"
       />
       <HolidayManager />
     </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, CalendarDays, FileText, MessageCircle, Banknote } from "lucide-react";
+import { ClipboardList, FileText, MessageCircle, Banknote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/react";
 
@@ -11,7 +11,6 @@ const ITEMS = [
   { href: "/valeter/timesheet", label: "Timesheet", icon: FileText },
   { href: "/valeter/pay-history", label: "Pay", icon: Banknote },
   { href: "/valeter/messages", label: "Messages", icon: MessageCircle },
-  { href: "/valeter/holiday", label: "Holiday", icon: CalendarDays },
 ];
 
 export function ValeterBottomNav() {
