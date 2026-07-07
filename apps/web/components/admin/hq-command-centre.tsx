@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, CheckCircle2, ChevronRight, ChevronDown, Users, Clock, Briefcase } from "lucide-react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -25,8 +26,138 @@ type SiteHealth = {
   coverOk: boolean;
 };
 
+type TrafficLight = "red" | "amber" | "green";
+
+function getSiteStatus(site: SiteHealth): TrafficLight {
+  const noCoverage = site.totalValeters > 0 && site.clockedIn === 0;
+  const underStaffed =
+    site.totalValeters > 0 &&
+    site.clockedIn > 0 &&
+    site.clockedIn < site.totalValeters / 2;
+  if (noCoverage) return "red";
+  if (underStaffed) return "amber";
+  return "green";
+}
+
+const TRAFFIC_CONFIG = {
+  red: {
+    label: "Needs Attention",
+    dot: "bg-red-500",
+    box: "border-red-200 bg-red-50 hover:bg-red-100",
+    boxActive: "border-red-300 bg-red-100",
+    count: "text-red-700",
+    chevron: "text-red-400",
+    row: "border-red-100 hover:bg-red-50",
+    badge: "bg-red-500",
+  },
+  amber: {
+    label: "Under-staffed",
+    dot: "bg-amber-400",
+    box: "border-amber-200 bg-amber-50 hover:bg-amber-100",
+    boxActive: "border-amber-300 bg-amber-100",
+    count: "text-amber-700",
+    chevron: "text-amber-400",
+    row: "border-amber-100 hover:bg-amber-50",
+    badge: "bg-amber-400",
+  },
+  green: {
+    label: "All Good",
+    dot: "bg-emerald-500",
+    box: "border-emerald-200 bg-emerald-50 hover:bg-emerald-100",
+    boxActive: "border-emerald-300 bg-emerald-100",
+    count: "text-emerald-700",
+    chevron: "text-emerald-400",
+    row: "border-emerald-100 hover:bg-emerald-50",
+    badge: "bg-emerald-500",
+  },
+};
+
+function TrafficBox({
+  status,
+  sites,
+}: {
+  status: TrafficLight;
+  sites: SiteHealth[];
+}) {
+  const [open, setOpen] = useState(false);
+  const cfg = TRAFFIC_CONFIG[status];
+
+  return (
+    <div className="rounded-2xl border shadow-sm overflow-hidden">
+      {/* Summary row — always visible */}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={sites.length === 0}
+        className={cn(
+          "w-full flex items-center gap-4 px-5 py-4 transition-colors",
+          open ? cfg.boxActive : cfg.box,
+          sites.length === 0 && "opacity-50 cursor-default",
+        )}
+      >
+        {/* Traffic light dot */}
+        <span className={cn("h-4 w-4 shrink-0 rounded-full", cfg.dot)} />
+
+        {/* Label + count */}
+        <div className="flex-1 text-left">
+          <p className="text-sm font-bold text-slate-800">{cfg.label}</p>
+          <p className={cn("text-2xl font-black leading-tight", cfg.count)}>
+            {sites.length}{" "}
+            <span className="text-sm font-semibold">
+              {sites.length === 1 ? "site" : "sites"}
+            </span>
+          </p>
+        </div>
+
+        {/* Chevron */}
+        {sites.length > 0 && (
+          open
+            ? <ChevronDown className={cn("h-4 w-4 shrink-0", cfg.chevron)} />
+            : <ChevronRight className={cn("h-4 w-4 shrink-0", cfg.chevron)} />
+        )}
+      </button>
+
+      {/* Expandable site list */}
+      {open && sites.length > 0 && (
+        <div className="bg-white divide-y divide-slate-100">
+          {sites.map((site) => (
+            <Link
+              key={site.siteId}
+              href={`/org?siteId=${site.siteId}`}
+              className={cn(
+                "flex items-center gap-4 px-5 py-3 transition-colors",
+                cfg.row,
+              )}
+            >
+              {/* Site name */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">
+                  {site.siteName}
+                </p>
+                <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {site.clockedIn}/{site.totalValeters} in
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Briefcase className="h-3 w-3" />
+                    {site.bookingsToday} jobs
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {site.capacityPct}%
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function HqCommandCentre() {
-  // Alerts — auto-refresh every 60s
   const { data: alerts } = trpc.hq.alerts.useQuery(undefined, {
     refetchInterval: 60_000,
   });
@@ -38,9 +169,14 @@ export function HqCommandCentre() {
   const displayAlerts = alerts ?? [];
   const displayHealth = siteHealth ?? [];
 
+  // Bucket sites by traffic light status
+  const red    = displayHealth.filter((s) => getSiteStatus(s) === "red");
+  const amber  = displayHealth.filter((s) => getSiteStatus(s) === "amber");
+  const green  = displayHealth.filter((s) => getSiteStatus(s) === "green");
+
   return (
     <div className="space-y-6">
-      {/* Live Alerts — compact summary only */}
+      {/* Live Alerts */}
       <section>
         <h2 className="mb-3 font-heading text-sm font-black uppercase tracking-wider text-slate-500">
           Live Alerts
@@ -93,95 +229,15 @@ export function HqCommandCentre() {
         )}
       </section>
 
-      {/* Site Health Grid */}
+      {/* Site Health — 3 traffic light boxes */}
       <section>
         <h2 className="mb-3 font-heading text-sm font-black uppercase tracking-wider text-slate-500">
           Site Health
         </h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {displayHealth.map((site) => {
-            const noCoverage = site.totalValeters > 0 && site.clockedIn === 0;
-            const underStaffed =
-              site.totalValeters > 0 &&
-              site.clockedIn > 0 &&
-              site.clockedIn < site.totalValeters / 2;
-
-            const statusColor = noCoverage
-              ? "border-red-200 bg-red-50"
-              : underStaffed
-                ? "border-amber-200 bg-amber-50"
-                : "border-slate-100 bg-white";
-
-            const barColor = noCoverage
-              ? "bg-red-500"
-              : underStaffed
-                ? "bg-amber-500"
-                : "bg-emerald-500";
-
-            return (
-              <div
-                key={site.siteId}
-                className={cn(
-                  "rounded-2xl border p-5 shadow-sm",
-                  statusColor,
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-base font-bold text-slate-900">
-                    {site.siteName}
-                  </h3>
-                  <span
-                    className={cn(
-                      "h-2 w-2 shrink-0 rounded-full",
-                      noCoverage
-                        ? "bg-red-500"
-                        : underStaffed
-                          ? "bg-amber-500"
-                          : "bg-emerald-500",
-                    )}
-                  />
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-                  <div>
-                    <p className="text-lg font-black text-slate-900">
-                      {site.totalValeters}
-                    </p>
-                    <p className="text-slate-500">Valeters</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-black text-slate-900">
-                      {site.clockedIn}
-                    </p>
-                    <p className="text-slate-500">Clocked in</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-black text-slate-900">
-                      {site.bookingsToday}
-                    </p>
-                    <p className="text-slate-500">Jobs today</p>
-                  </div>
-                </div>
-                {/* Capacity bar */}
-                <div className="mt-3">
-                  <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
-                    <span>Capacity</span>
-                    <span>{site.capacityPct}%</span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className={cn("h-1.5 rounded-full transition-all", barColor)}
-                      style={{ width: `${Math.min(100, site.capacityPct)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {displayHealth.length === 0 && (
-            <p className="col-span-full text-sm text-slate-400">
-              No sites found.
-            </p>
-          )}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <TrafficBox status="red"   sites={red}   />
+          <TrafficBox status="amber" sites={amber} />
+          <TrafficBox status="green" sites={green} />
         </div>
       </section>
     </div>
