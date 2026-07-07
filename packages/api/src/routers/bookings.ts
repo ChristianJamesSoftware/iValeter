@@ -220,15 +220,17 @@ export const bookingsRouter = router({
    */
   valeterListServiceTypes: valeterProcedure
     .query(async ({ ctx }) => {
-      // Scoped to the valeter's assigned site only.
-      // Falls back to org-wide if no site is set (shouldn't happen in production).
-      const siteFilter = ctx.session.siteId
-        ? { id: ctx.session.siteId, organisationId: ctx.session.organisationId }
-        : { organisationId: ctx.session.organisationId };
+      // Must be scoped to the valeter's assigned site — never fall back to org-wide.
+      if (!ctx.session.siteId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You are not assigned to a site. Please ask your manager to assign you to a site and log out then back in.",
+        });
+      }
 
       return ctx.prisma.serviceType.findMany({
         where: {
-          department: { site: siteFilter },
+          department: { site: { id: ctx.session.siteId, organisationId: ctx.session.organisationId } },
           isActive: true,
         },
         select: { id: true, name: true, durationMins: true },
