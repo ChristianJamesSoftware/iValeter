@@ -13,6 +13,7 @@ const TYPE_LABELS: Record<string, string> = {
 export function OfflineQueueStatus() {
   const [actions, setActions] = useState<QueuedAction[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
 
   async function refresh() {
