@@ -209,8 +209,9 @@ function SiteSlideOver({
         <div className="border-t border-slate-100 p-4">
           <Link
             href={`/org?siteId=${siteId}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-navy py-3 text-sm font-bold text-white transition hover:bg-navy/90"
-            onClick={onClose}
           >
             Open Full Site View
             <ChevronRight className="h-4 w-4" />
@@ -265,15 +266,17 @@ function TrafficBox({
           )}
         </button>
 
-        {/* Expandable site list — click opens slide-over, not navigation */}
+        {/* Expandable site list — opens in new tab */}
         {open && sites.length > 0 && (
           <div className="bg-white divide-y divide-slate-100">
             {sites.map((site) => (
-              <button
+              <Link
                 key={site.siteId}
-                onClick={() => setSelectedSiteId(site.siteId)}
+                href={`/org?siteId=${site.siteId}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={cn(
-                  "w-full flex items-center gap-4 px-5 py-3 transition-colors text-left",
+                  "flex items-center gap-4 px-5 py-3 transition-colors",
                   cfg.row,
                 )}
               >
@@ -297,7 +300,7 @@ function TrafficBox({
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
-              </button>
+              </Link>
             ))}
           </div>
         )}
