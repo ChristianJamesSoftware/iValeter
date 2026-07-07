@@ -4,18 +4,49 @@ import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure } fr
 
 export const dealershipsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.prisma.dealership.findMany({
-      where: { organisationId: ctx.session.organisationId, isActive: true },
+    // Total Valeting manages sites that are linked to dealerships.
+    // Dealerships belong to their own organisations (e.g. "Wollaston BMW Group"),
+    // NOT to Total Valeting. We therefore query via Site → Dealership.
+    const sites = await ctx.prisma.site.findMany({
+      where: {
+        organisationId: ctx.session.organisationId,
+        dealershipId: { not: null },
+        isActive: true,
+      },
       include: {
-        sites: {
-          include: {
-            _count: { select: { bookings: true, users: true } },
-          },
-        },
-        _count: { select: { sites: true } },
+        dealership: true,
+        _count: { select: { bookings: true, users: true } },
       },
       orderBy: { name: "asc" },
     });
+
+    // Group sites by dealership, de-duplicate
+    const dealershipMap = new Map<string, {
+      id: string; name: string; address: string | null;
+      contactName: string | null; contactEmail: string | null;
+      contactPhone: string | null; sites: typeof sites;
+    }>();
+
+    for (const site of sites) {
+      if (!site.dealership) continue;
+      const d = site.dealership;
+      if (!dealershipMap.has(d.id)) {
+        dealershipMap.set(d.id, {
+          id: d.id, name: d.name, address: d.address ?? null,
+          contactName: d.contactName ?? null, contactEmail: d.contactEmail ?? null,
+          contactPhone: d.contactPhone ?? null, sites: [],
+        });
+      }
+      dealershipMap.get(d.id)!.sites.push(site);
+    }
+
+    return Array.from(dealershipMap.values())
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((d) => ({
+        ...d,
+        _count: { sites: d.sites.length },
+        isActive: true,
+      }));
   }),
 
   getById: protectedProcedure

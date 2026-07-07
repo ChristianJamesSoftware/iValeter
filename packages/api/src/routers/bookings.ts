@@ -1094,4 +1094,37 @@ export const bookingsRouter = router({
 
       return { created, errors };
     }),
+
+  /**
+   * Org admin / dealer: add a freetext ops note to a booking.
+   * Stored as a JobStatusHistory row with fromStatus === toStatus so it shows
+   * in the audit trail without changing the booking state.
+   */
+  addNote: dealershipProcedure
+    .input(
+      z.object({
+        id:   z.string(),
+        note: z.string().min(1).max(1000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id: input.id, ...scopeFor(ctx.session) },
+        select: { id: true, status: true },
+      });
+      if (!booking)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+
+      await ctx.prisma.jobStatusHistory.create({
+        data: {
+          bookingId: booking.id,
+          userId:    ctx.session.userId,
+          fromStatus: booking.status,
+          toStatus:   booking.status,
+          note: input.note,
+        },
+      });
+
+      return { ok: true };
+    }),
 });

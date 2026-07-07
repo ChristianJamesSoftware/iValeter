@@ -7,8 +7,9 @@ import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 import { ValetTimingsClient } from "@/components/org/valet-timings-client";
 import { InactiveUsersClient } from "@/components/org/inactive-users-client";
+import { WeeklyKpiReport } from "@/components/org/weekly-kpi-report";
 
-type ReportsTab = "summary" | "timings" | "inactive" | "daysInPrep";
+type ReportsTab = "summary" | "timings" | "inactive" | "daysInPrep" | "weeklyKpi";
 
 export function ReportsClient() {
   const [activeTab, setActiveTab] = useState<ReportsTab>("summary");
@@ -17,7 +18,7 @@ export function ReportsClient() {
     <div className="space-y-0">
       {/* Tab bar */}
       <div className="mb-6 flex gap-1 border-b border-[#D4D1CA]">
-        {(["summary", "timings", "inactive", "daysInPrep"] as ReportsTab[]).map((tab) => (
+        {(["summary", "timings", "inactive", "daysInPrep", "weeklyKpi"] as ReportsTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -28,15 +29,16 @@ export function ReportsClient() {
                 : "border-transparent text-[#7A7974] hover:text-[#28251D]",
             )}
           >
-            {tab === "summary" ? "Summary" : tab === "timings" ? "Valet Timings" : tab === "inactive" ? "Inactive Users" : "Days in Prep"}
+            {tab === "summary" ? "Summary" : tab === "timings" ? "Valet Timings" : tab === "inactive" ? "Inactive Users" : tab === "daysInPrep" ? "Days in Prep" : "Weekly KPIs"}
           </button>
         ))}
       </div>
 
-      {activeTab === "summary" && <ReportsSummaryClient />}
-      {activeTab === "timings" && <ValetTimingsClient />}
-      {activeTab === "inactive" && <InactiveUsersClient />}
+      {activeTab === "summary"   && <ReportsSummaryClient />}
+      {activeTab === "timings"    && <ValetTimingsClient />}
+      {activeTab === "inactive"   && <InactiveUsersClient />}
       {activeTab === "daysInPrep" && <DaysInPrepClient />}
+      {activeTab === "weeklyKpi"  && <WeeklyKpiReport />}
     </div>
   );
 }
