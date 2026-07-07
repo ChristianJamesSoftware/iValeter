@@ -63,9 +63,7 @@ export default async function AdminDashboard() {
         />
       </div>
 
-      <HqCommandCentre
-        sites={sites.map((s) => ({ id: s.id, name: s.name }))}
-      />
+      <HqCommandCentre />
     </div>
   );
 }
