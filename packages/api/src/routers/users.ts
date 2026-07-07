@@ -11,6 +11,32 @@ function startOfToday(): Date {
   return d;
 }
 
+/**
+ * Generates a unique NatWest Bankline payroll reference for a valeter.
+ * Format: up to 5 chars of surname + up to 3 chars of firstname = max 8 chars, uppercase, no spaces.
+ * If there is a collision with an existing reference, appends a numeric suffix (e.g. ABBIWD2).
+ * Only alphanumeric characters are used.
+ */
+async function generateBankReference(
+  firstName: string,
+  lastName: string,
+  prisma: { user: { findFirst: (args: { where: { bankReference: string } }) => Promise<{ id: string } | null> } },
+): Promise<string> {
+  const clean = (s: string) => s.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  const sur = clean(lastName).substring(0, 5).padEnd(Math.min(clean(lastName).length, 5), "");
+  const fn = clean(firstName).substring(0, Math.max(1, 8 - sur.length));
+  const base = (sur + fn).substring(0, 8);
+
+  // Ensure uniqueness
+  let candidate = base;
+  let suffix = 2;
+  while (await prisma.user.findFirst({ where: { bankReference: candidate } })) {
+    candidate = (base.substring(0, 7) + suffix).substring(0, 8);
+    suffix++;
+  }
+  return candidate;
+}
+
 function generatePayId(firstName: string, lastName: string): string {
   const f = firstName
     .replace(/[^a-zA-Z]/g, "")
@@ -71,6 +97,10 @@ export const usersRouter = router({
         startDate: v.startDate,
         contractComplete: v.contractComplete,
         jobsToday: countMap.get(v.id) ?? 0,
+        bankReference: v.bankReference,
+        bankSortCode: v.bankSortCode,
+        bankAccountNumber: v.bankAccountNumber,
+        bankAccountName: v.bankAccountName,
       }));
     }),
 
@@ -140,6 +170,12 @@ export const usersRouter = router({
         ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
         : null;
 
+      // Auto-generate NatWest payroll reference for valeters
+      const bankReference =
+        input.role === Role.valeter
+          ? await generateBankReference(input.firstName, input.lastName, ctx.prisma)
+          : null;
+
       return ctx.prisma.user.create({
         data: {
           organisationId: ctx.session.organisationId,
@@ -161,6 +197,7 @@ export const usersRouter = router({
           startDate: input.startDate ? new Date(input.startDate) : null,
           contractComplete: input.contractComplete ?? false,
           jobTitle: input.jobTitle ?? null,
+          bankReference,
         },
       });
     }),
@@ -458,6 +495,12 @@ export const usersRouter = router({
       const needsReset = !input.password;
       const resetToken = needsReset ? randomBytes(32).toString("hex") : null;
       const resetExpiry = needsReset ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null;
+      // Auto-generate NatWest payroll reference for valeters
+      const bankRef =
+        input.role === Role.valeter
+          ? await generateBankReference(input.firstName, input.lastName, ctx.prisma)
+          : null;
+
       return ctx.prisma.user.create({
         data: {
           organisationId: input.organisationId,
@@ -474,6 +517,7 @@ export const usersRouter = router({
           jobTitle: input.jobTitle ?? null,
           dailyRate: input.dailyRate ?? null,
           dailyDeductions: input.dailyDeductions ?? null,
+          bankReference: bankRef,
         },
       });
     }),
