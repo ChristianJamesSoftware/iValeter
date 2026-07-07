@@ -113,6 +113,7 @@ function OccurrenceCard({ occ }: {
       name: string;
       description: string | null;
       mustDoneByTime: string;
+      estimatedMins: number | null;
       auditQuestions: unknown;
       assignedToId: string | null;
     };
@@ -160,6 +161,15 @@ function OccurrenceCard({ occ }: {
               : isMissed
               ? "Missed today"
               : `Must be done by ${occ.template.mustDoneByTime}${overdue ? " — OVERDUE" : ""}`}
+            {!isCompleted && !isMissed && occ.template.estimatedMins && (
+              <span className="ml-2 font-medium text-slate-500">
+                · ~{occ.template.estimatedMins < 60
+                  ? `${occ.template.estimatedMins}min`
+                  : occ.template.estimatedMins % 60 === 0
+                    ? `${occ.template.estimatedMins / 60}h`
+                    : `${Math.floor(occ.template.estimatedMins / 60)}h${occ.template.estimatedMins % 60}m`}
+              </span>
+            )}
           </p>
         </div>
 

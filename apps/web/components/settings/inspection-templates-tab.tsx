@@ -14,6 +14,9 @@ import {
   ClipboardList,
   Building2,
   X,
+  Pencil,
+  Copy,
+  Check,
 } from "lucide-react";
 import type { RouterOutputs } from "@/lib/trpc/react";
 
@@ -32,15 +35,131 @@ const TYPE_COLOURS: Record<string, string> = {
   CUSTOM: "bg-purple-50 text-purple-700 border-purple-100",
 };
 
-// ─── Add Check Item Form ─────────────────────────────────────────────────────
+const CATEGORIES = ["Identity & Documents", "Exterior", "Interior", "Mechanical", "Equipment", "Prep", "General"];
+const inputCls = "h-9 w-full rounded-lg border border-[#D4D1CA] bg-white px-3 text-sm text-[#28251D] outline-none focus:border-[#01696F] focus:ring-2 focus:ring-[#01696F]/20";
 
-function AddCheckItemForm({
-  templateId,
-  onClose,
-}: {
-  templateId: string;
-  onClose: () => void;
-}) {
+// ─── Inline check item edit row ───────────────────────────────────────────────
+
+function CheckItemRow({ item, templateId }: { item: CheckItem; templateId: string }) {
+  const utils = trpc.useUtils();
+  const [editing, setEditing] = useState(false);
+  const [label, setLabel] = useState(item.label);
+  const [category, setCategory] = useState(item.category ?? "General");
+  const [isRequired, setIsRequired] = useState(item.isRequired);
+  const [description, setDescription] = useState(item.description ?? "");
+  const [saved, setSaved] = useState(false);
+
+  const updateCheck = trpc.inspectionTemplates.updateCheckItem.useMutation({
+    onSuccess: () => {
+      void utils.inspectionTemplates.listTemplates.invalidate();
+      setSaved(true);
+      setTimeout(() => { setSaved(false); setEditing(false); }, 800);
+    },
+  });
+  const toggleActive = trpc.inspectionTemplates.updateCheckItem.useMutation({
+    onSuccess: () => void utils.inspectionTemplates.listTemplates.invalidate(),
+  });
+  const deleteCheck = trpc.inspectionTemplates.deleteCheckItem.useMutation({
+    onSuccess: () => void utils.inspectionTemplates.listTemplates.invalidate(),
+  });
+
+  if (editing) {
+    return (
+      <div className={`border-b border-[#F0EDE8] px-3 py-3 last:border-0 bg-[#01696F]/5 ${!item.isActive ? "opacity-60" : ""}`}>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Check label"
+              className={inputCls}
+            />
+          </div>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className={inputCls}
+          >
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-[#28251D]">
+            <input
+              type="checkbox"
+              checked={isRequired}
+              onChange={(e) => setIsRequired(e.target.checked)}
+              className="h-4 w-4 rounded border-[#D4D1CA] text-[#01696F]"
+            />
+            Required check
+          </label>
+          <div className="sm:col-span-2">
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Guidance note (optional)"
+              className={inputCls}
+            />
+          </div>
+        </div>
+        {updateCheck.error && <p className="mt-1 text-xs text-red-600">{updateCheck.error.message}</p>}
+        <div className="mt-2 flex gap-2 justify-end">
+          <button onClick={() => setEditing(false)} className="h-7 px-3 rounded-lg text-xs text-slate-500 hover:bg-slate-100 transition">Cancel</button>
+          <button
+            onClick={() => updateCheck.mutate({ id: item.id, label, category, isRequired, description: description || undefined })}
+            disabled={updateCheck.isPending || label.trim().length < 2}
+            className="flex h-7 items-center gap-1 rounded-lg bg-[#01696F] px-3 text-xs font-semibold text-white transition hover:bg-[#015a5f] disabled:opacity-50"
+          >
+            {updateCheck.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : saved ? <Check className="h-3 w-3" /> : null}
+            {saved ? "Saved" : "Save"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex items-start gap-2.5 border-b border-[#F0EDE8] px-3 py-2.5 last:border-0 ${!item.isActive ? "opacity-50" : ""}`}>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-[#28251D]">
+          {item.label}
+          {item.isRequired && <span className="ml-1.5 text-[10px] font-semibold text-[#E8650A]">REQUIRED</span>}
+        </p>
+        {item.description && <p className="text-xs text-slate-400 mt-0.5">{item.description}</p>}
+        {item.category && item.category !== "General" && (
+          <p className="text-[10px] text-slate-300 uppercase tracking-wide mt-0.5">{item.category}</p>
+        )}
+      </div>
+      {/* Edit */}
+      <button
+        onClick={() => setEditing(true)}
+        title="Edit check"
+        className="rounded-md p-1 text-slate-300 hover:bg-slate-100 hover:text-[#01696F] transition shrink-0"
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </button>
+      {/* Hide/show */}
+      <button
+        onClick={() => toggleActive.mutate({ id: item.id, isActive: !item.isActive })}
+        title={item.isActive ? "Hide check" : "Show check"}
+        className="rounded-md p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-500 transition shrink-0"
+      >
+        {item.isActive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+      </button>
+      {/* Delete */}
+      <button
+        onClick={() => { if (!confirm(`Remove "${item.label}"?`)) return; deleteCheck.mutate({ id: item.id }); }}
+        disabled={deleteCheck.isPending}
+        title="Remove check"
+        className="rounded-md p-1 text-slate-300 hover:bg-red-50 hover:text-red-400 transition disabled:opacity-40 shrink-0"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Add Check Item Form ──────────────────────────────────────────────────────
+
+function AddCheckItemForm({ templateId, onClose }: { templateId: string; onClose: () => void }) {
   const utils = trpc.useUtils();
   const [label, setLabel] = useState("");
   const [category, setCategory] = useState("General");
@@ -48,13 +167,8 @@ function AddCheckItemForm({
   const [description, setDescription] = useState("");
 
   const addMut = trpc.inspectionTemplates.addCheckItem.useMutation({
-    onSuccess: () => {
-      void utils.inspectionTemplates.listTemplates.invalidate();
-      onClose();
-    },
+    onSuccess: () => { void utils.inspectionTemplates.listTemplates.invalidate(); onClose(); },
   });
-
-  const categories = ["Identity & Documents", "Exterior", "Interior", "Mechanical", "Equipment", "Prep", "General"];
 
   return (
     <div className="rounded-xl border border-[#E8650A]/20 bg-[#E8650A]/5 p-4 space-y-3 mt-2">
@@ -62,63 +176,30 @@ function AddCheckItemForm({
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="block text-xs font-medium text-slate-600 mb-1">Label *</label>
-          <input
-            type="text"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="e.g. VIN verified against invoice"
-            className="h-9 w-full rounded-lg border border-[#D4D1CA] bg-white px-3 text-sm text-[#28251D] outline-none focus:border-[#01696F] focus:ring-2 focus:ring-[#01696F]/20"
-          />
+          <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. VIN verified against invoice" className={inputCls} />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="h-9 w-full rounded-lg border border-[#D4D1CA] bg-white px-3 text-sm text-[#28251D] outline-none focus:border-[#01696F]"
-          >
-            {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls}>
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div className="flex items-end gap-3 pb-0.5">
           <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={isRequired}
-              onChange={(e) => setIsRequired(e.target.checked)}
-              className="h-4 w-4 rounded border-[#D4D1CA] text-[#01696F] focus:ring-[#01696F]"
-            />
+            <input type="checkbox" checked={isRequired} onChange={(e) => setIsRequired(e.target.checked)} className="h-4 w-4 rounded border-[#D4D1CA] text-[#01696F]" />
             <span className="text-sm text-[#28251D]">Required check</span>
           </label>
         </div>
         <div className="sm:col-span-2">
           <label className="block text-xs font-medium text-slate-600 mb-1">Description <span className="font-normal text-slate-400">(optional)</span></label>
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Guidance note for the valeter"
-            className="h-9 w-full rounded-lg border border-[#D4D1CA] bg-white px-3 text-sm text-[#28251D] outline-none focus:border-[#01696F] focus:ring-2 focus:ring-[#01696F]/20"
-          />
+          <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Guidance note for the valeter" className={inputCls} />
         </div>
       </div>
-      {addMut.error && (
-        <p className="text-xs text-red-600">{addMut.error.message}</p>
-      )}
+      {addMut.error && <p className="text-xs text-red-600">{addMut.error.message}</p>}
       <div className="flex gap-2 justify-end">
+        <button onClick={onClose} className="h-8 px-3 rounded-lg text-sm text-slate-500 hover:bg-slate-100 transition">Cancel</button>
         <button
-          onClick={onClose}
-          className="h-8 px-3 rounded-lg text-sm text-slate-500 hover:bg-slate-100 transition"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={() => {
-            if (label.trim().length < 2) return;
-            addMut.mutate({ templateId, label, category, isRequired, description: description || undefined });
-          }}
+          onClick={() => { if (label.trim().length < 2) return; addMut.mutate({ templateId, label, category, isRequired, description: description || undefined }); }}
           disabled={addMut.isPending || label.trim().length < 2}
           className="flex h-8 items-center gap-1.5 rounded-lg bg-[#E8650A] px-4 text-sm font-semibold text-white transition hover:bg-[#c9560a] disabled:opacity-50"
         >
@@ -136,33 +217,33 @@ function TemplateCard({ template }: { template: Template }) {
   const utils = trpc.useUtils();
   const [expanded, setExpanded] = useState(false);
   const [showAddCheck, setShowAddCheck] = useState(false);
-  const [savedItem, setSavedItem] = useState<string | null>(null);
+  const [editingHeader, setEditingHeader] = useState(false);
+
+  // Header edit state
+  const [editName, setEditName] = useState(template.name);
+  const [editDesc, setEditDesc] = useState(template.description ?? "");
+  const [editType, setEditType] = useState(template.type);
+  const [headerSaved, setHeaderSaved] = useState(false);
 
   const updateTemplate = trpc.inspectionTemplates.updateTemplate.useMutation({
-    onSuccess: () => void utils.inspectionTemplates.listTemplates.invalidate(),
+    onSuccess: () => {
+      void utils.inspectionTemplates.listTemplates.invalidate();
+      setHeaderSaved(true);
+      setTimeout(() => { setHeaderSaved(false); setEditingHeader(false); }, 800);
+    },
   });
   const deleteTemplate = trpc.inspectionTemplates.deleteTemplate.useMutation({
     onSuccess: () => void utils.inspectionTemplates.listTemplates.invalidate(),
   });
-  const updateCheck = trpc.inspectionTemplates.updateCheckItem.useMutation({
-    onSuccess: () => {
-      void utils.inspectionTemplates.listTemplates.invalidate();
-    },
-  });
-  const deleteCheck = trpc.inspectionTemplates.deleteCheckItem.useMutation({
+  const duplicateTemplate = trpc.inspectionTemplates.duplicateTemplate.useMutation({
     onSuccess: () => void utils.inspectionTemplates.listTemplates.invalidate(),
   });
-
-  function flashSaved(id: string) {
-    setSavedItem(id);
-    setTimeout(() => setSavedItem(null), 2000);
-  }
 
   // Group check items by category
   const grouped = template.checkItems.reduce<Record<string, CheckItem[]>>((acc, item) => {
     const cat = item.category ?? "General";
     if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(item);
+    acc[cat]!.push(item);
     return acc;
   }, {});
 
@@ -171,25 +252,19 @@ function TemplateCard({ template }: { template: Template }) {
   return (
     <div className={`rounded-xl border ${template.isActive ? "border-[#D4D1CA]" : "border-slate-200 opacity-60"} bg-white overflow-hidden`}>
       {/* Header */}
-      <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-slate-50 transition"
-        onClick={() => setExpanded(!expanded)}
-      >
-        {expanded
-          ? <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
-          : <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
-        }
+      <div className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50/50 transition">
+        <button onClick={() => setExpanded(!expanded)} className="shrink-0">
+          {expanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+        </button>
         <ClipboardList className="h-4 w-4 shrink-0 text-[#E8650A]" />
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(!expanded)}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-[#28251D]">{template.name}</span>
             <span className={`inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full border ${TYPE_COLOURS[template.type] ?? "bg-slate-50 text-slate-600 border-slate-200"}`}>
               {TYPE_LABELS[template.type] ?? template.type}
             </span>
             {!template.isActive && (
-              <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
-                Inactive
-              </span>
+              <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">Inactive</span>
             )}
           </div>
           <p className="text-xs text-slate-500 mt-0.5 truncate">
@@ -198,19 +273,36 @@ function TemplateCard({ template }: { template: Template }) {
             {template.description && ` · ${template.description}`}
           </p>
         </div>
+        {/* Actions */}
         <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          {/* Edit header */}
+          <button
+            onClick={() => { setEditingHeader(true); setExpanded(true); setEditName(template.name); setEditDesc(template.description ?? ""); setEditType(template.type); }}
+            title="Edit template"
+            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#01696F] transition"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          {/* Duplicate */}
+          <button
+            onClick={() => { if (!confirm(`Duplicate "${template.name}"?`)) return; duplicateTemplate.mutate({ id: template.id }); }}
+            disabled={duplicateTemplate.isPending}
+            title="Duplicate template"
+            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition disabled:opacity-40"
+          >
+            {duplicateTemplate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+          </button>
+          {/* Toggle active */}
           <button
             onClick={() => updateTemplate.mutate({ id: template.id, isActive: !template.isActive })}
-            title={template.isActive ? "Deactivate template" : "Activate template"}
+            title={template.isActive ? "Deactivate" : "Activate"}
             className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
           >
             {template.isActive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
           </button>
+          {/* Delete */}
           <button
-            onClick={() => {
-              if (!confirm(`Delete "${template.name}"? ${siteCount > 0 ? "It will be deactivated as sites are using it." : "This cannot be undone."}`)) return;
-              deleteTemplate.mutate({ id: template.id });
-            }}
+            onClick={() => { if (!confirm(`Delete "${template.name}"? ${siteCount > 0 ? "It will be deactivated as sites are using it." : "This cannot be undone."}`)) return; deleteTemplate.mutate({ id: template.id }); }}
             disabled={deleteTemplate.isPending}
             title="Delete template"
             className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition disabled:opacity-40"
@@ -220,9 +312,48 @@ function TemplateCard({ template }: { template: Template }) {
         </div>
       </div>
 
-      {/* Expanded check items */}
+      {/* Expanded content */}
       {expanded && (
         <div className="border-t border-[#F0EDE8] px-4 pb-4">
+
+          {/* Inline template editor */}
+          {editingHeader && (
+            <div className="mt-3 mb-4 rounded-xl border border-[#01696F]/20 bg-[#01696F]/5 p-4 space-y-3">
+              <p className="text-xs font-semibold text-[#1C1A16] uppercase tracking-wide">Edit Template</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Template Name *</label>
+                  <input value={editName} onChange={(e) => setEditName(e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Type</label>
+                  <select value={editType} onChange={(e) => setEditType(e.target.value as "PDI" | "USED_TRANSFER" | "CUSTOM")} className={inputCls}>
+                    <option value="PDI">PDI — New Vehicle</option>
+                    <option value="USED_TRANSFER">Used Vehicle Transfer</option>
+                    <option value="CUSTOM">Custom</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+                  <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Short description…" className={inputCls} />
+                </div>
+              </div>
+              {updateTemplate.error && <p className="text-xs text-red-600">{updateTemplate.error.message}</p>}
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setEditingHeader(false)} className="h-8 px-3 rounded-lg text-sm text-slate-500 hover:bg-slate-100 transition">Cancel</button>
+                <button
+                  onClick={() => updateTemplate.mutate({ id: template.id, name: editName, description: editDesc || undefined, isActive: undefined })}
+                  disabled={updateTemplate.isPending || editName.trim().length < 2}
+                  className="flex h-8 items-center gap-1.5 rounded-lg bg-[#01696F] px-4 text-sm font-semibold text-white transition hover:bg-[#015a5f] disabled:opacity-50"
+                >
+                  {updateTemplate.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : headerSaved ? <Check className="h-3.5 w-3.5" /> : null}
+                  {headerSaved ? "Saved" : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Check items */}
           {template.checkItems.length === 0 ? (
             <p className="py-4 text-center text-sm text-slate-400">No checks yet — add one below.</p>
           ) : (
@@ -230,45 +361,9 @@ function TemplateCard({ template }: { template: Template }) {
               {Object.entries(grouped).map(([cat, items]) => (
                 <div key={cat}>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">{cat}</p>
-                  <div className="rounded-lg border border-[#F0EDE8] divide-y divide-[#F0EDE8]">
+                  <div className="rounded-lg border border-[#F0EDE8] overflow-hidden">
                     {(items as CheckItem[]).map((item) => (
-                      <div key={item.id} className={`flex items-start gap-2.5 px-3 py-2.5 ${!item.isActive ? "opacity-50" : ""}`}>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[#28251D]">
-                            {item.label}
-                            {item.isRequired && (
-                              <span className="ml-1.5 text-[10px] font-semibold text-[#E8650A]">REQUIRED</span>
-                            )}
-                          </p>
-                          {item.description && (
-                            <p className="text-xs text-slate-400 mt-0.5">{item.description}</p>
-                          )}
-                        </div>
-                        {savedItem === item.id && (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                        )}
-                        <button
-                          onClick={() => {
-                            updateCheck.mutate({ id: item.id, isActive: !item.isActive });
-                            flashSaved(item.id);
-                          }}
-                          title={item.isActive ? "Hide check" : "Show check"}
-                          className="rounded-md p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-500 transition shrink-0"
-                        >
-                          {item.isActive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (!confirm(`Remove "${item.label}"?`)) return;
-                            deleteCheck.mutate({ id: item.id });
-                          }}
-                          disabled={deleteCheck.isPending}
-                          title="Remove check"
-                          className="rounded-md p-1 text-slate-300 hover:bg-red-50 hover:text-red-400 transition disabled:opacity-40 shrink-0"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      <CheckItemRow key={item.id} item={item} templateId={template.id} />
                     ))}
                   </div>
                 </div>
@@ -302,10 +397,7 @@ function AddTemplateForm({ onClose }: { onClose: () => void }) {
   const [description, setDescription] = useState("");
 
   const createMut = trpc.inspectionTemplates.createTemplate.useMutation({
-    onSuccess: () => {
-      void utils.inspectionTemplates.listTemplates.invalidate();
-      onClose();
-    },
+    onSuccess: () => { void utils.inspectionTemplates.listTemplates.invalidate(); onClose(); },
   });
 
   return (
@@ -314,21 +406,11 @@ function AddTemplateForm({ onClose }: { onClose: () => void }) {
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Template Name *</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. PDI — New Vehicle"
-            className="h-9 w-full rounded-lg border border-[#D4D1CA] bg-white px-3 text-sm text-[#28251D] outline-none focus:border-[#01696F] focus:ring-2 focus:ring-[#01696F]/20"
-          />
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. PDI — New Vehicle" className={inputCls} />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Type</label>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as "PDI" | "USED_TRANSFER" | "CUSTOM")}
-            className="h-9 w-full rounded-lg border border-[#D4D1CA] bg-white px-3 text-sm text-[#28251D] outline-none focus:border-[#01696F]"
-          >
+          <select value={type} onChange={(e) => setType(e.target.value as "PDI" | "USED_TRANSFER" | "CUSTOM")} className={inputCls}>
             <option value="PDI">PDI — New Vehicle</option>
             <option value="USED_TRANSFER">Used Vehicle Transfer</option>
             <option value="CUSTOM">Custom</option>
@@ -336,27 +418,14 @@ function AddTemplateForm({ onClose }: { onClose: () => void }) {
         </div>
         <div className="sm:col-span-2">
           <label className="block text-xs font-medium text-slate-600 mb-1">Description <span className="font-normal text-slate-400">(optional)</span></label>
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Short description of this template"
-            className="h-9 w-full rounded-lg border border-[#D4D1CA] bg-white px-3 text-sm text-[#28251D] outline-none focus:border-[#01696F] focus:ring-2 focus:ring-[#01696F]/20"
-          />
+          <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short description of this template" className={inputCls} />
         </div>
       </div>
-      {createMut.error && (
-        <p className="text-xs text-red-600">{createMut.error.message}</p>
-      )}
+      {createMut.error && <p className="text-xs text-red-600">{createMut.error.message}</p>}
       <div className="flex gap-2 justify-end">
-        <button onClick={onClose} className="h-8 px-3 rounded-lg text-sm text-slate-500 hover:bg-slate-100 transition">
-          Cancel
-        </button>
+        <button onClick={onClose} className="h-8 px-3 rounded-lg text-sm text-slate-500 hover:bg-slate-100 transition">Cancel</button>
         <button
-          onClick={() => {
-            if (name.trim().length < 2) return;
-            createMut.mutate({ name, type, description: description || undefined });
-          }}
+          onClick={() => { if (name.trim().length < 2) return; createMut.mutate({ name, type, description: description || undefined }); }}
           disabled={createMut.isPending || name.trim().length < 2}
           className="flex h-8 items-center gap-1.5 rounded-lg bg-[#01696F] px-4 text-sm font-semibold text-white transition hover:bg-[#015a5f] disabled:opacity-50"
         >
@@ -394,15 +463,11 @@ export function InspectionTemplatesTab() {
           Vehicle Inspection Templates
         </p>
         <p className="text-xs text-slate-600">
-          Create checklist templates for PDI (new vehicles from manufacturer) and Used Vehicle Transfers.
-          Once created, assign them to specific sites — and each site can hide individual checks or add their own.
+          Create and edit checklist templates for PDI (new vehicles) and Used Vehicle Transfers.
+          Click the <Pencil className="inline h-3 w-3" /> icon to edit a template or any check item.
+          Use <Copy className="inline h-3 w-3" /> to duplicate a template as a starting point for a new one.
+          Once created, assign them to specific dealership sites.
         </p>
-        <div className="mt-2 flex flex-wrap gap-2 text-xs">
-          <span className="flex items-center gap-1 text-slate-500">
-            <Building2 className="h-3.5 w-3.5" />
-            Site-level customisation is managed inside each site&apos;s settings page.
-          </span>
-        </div>
       </div>
 
       {/* Active templates */}
@@ -431,7 +496,7 @@ export function InspectionTemplatesTab() {
         </button>
       )}
 
-      {/* Inactive templates (collapsed section) */}
+      {/* Inactive templates */}
       {inactiveTemplates.length > 0 && (
         <details className="rounded-xl border border-slate-200">
           <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-400 hover:text-slate-600 transition select-none list-none flex items-center gap-2">

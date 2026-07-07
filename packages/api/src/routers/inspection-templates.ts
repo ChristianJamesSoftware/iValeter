@@ -104,6 +104,43 @@ export const inspectionTemplatesRouter = router({
       return ctx.prisma.inspectionTemplate.delete({ where: { id: input.id } });
     }),
 
+  /** Admin: duplicate a template with all its check items */
+  duplicateTemplate: orgAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const src = await ctx.prisma.inspectionTemplate.findFirst({
+        where: { id: input.id, organisationId: ctx.session.organisationId },
+        include: { checkItems: { orderBy: { sortOrder: "asc" } } },
+      });
+      if (!src) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const copy = await ctx.prisma.inspectionTemplate.create({
+        data: {
+          organisationId: ctx.session.organisationId,
+          name: `${src.name} (copy)`,
+          description: src.description,
+          type: src.type,
+          isActive: true,
+          sortOrder: src.sortOrder,
+        },
+      });
+
+      if (src.checkItems.length > 0) {
+        await ctx.prisma.inspectionCheckItem.createMany({
+          data: src.checkItems.map((item) => ({
+            templateId: copy.id,
+            label: item.label,
+            description: item.description,
+            category: item.category,
+            isRequired: item.isRequired,
+            sortOrder: item.sortOrder,
+          })),
+        });
+      }
+
+      return copy;
+    }),
+
   // ── Check Items ────────────────────────────────────────────────────────────
 
   /** Admin: add a check item to a template */

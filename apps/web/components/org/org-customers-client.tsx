@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Building2, Phone, Mail, MapPin, Plus, Clock, CheckCircle2, XCircle, X, ChevronRight } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Building2, Phone, Mail, MapPin, Plus, Clock, CheckCircle2, XCircle, X, ChevronRight, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -144,6 +144,7 @@ function AddCustomerModal({ onClose, onSuccess }: { onClose: () => void; onSucce
 export function OrgCustomersClient({ initialDealerships, initialRequests }: Props) {
   const [showModal, setShowModal] = useState(false);
   const [tab, setTab]             = useState<"active" | "requests">("active");
+  const [search, setSearch]       = useState("");
 
   const requestsQuery = trpc.dealershipRequests.list.useQuery(undefined, {
     initialData: initialRequests as never,
@@ -187,12 +188,25 @@ export function OrgCustomersClient({ initialDealerships, initialRequests }: Prop
       {/* Active dealerships tab */}
       {tab === "active" && (
         <div className="space-y-3">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search customers…"
+              className="h-10 w-full rounded-xl border border-line bg-white pl-9 pr-4 text-sm text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+            />
+          </div>
           {initialDealerships.length === 0 && (
             <div className="rounded-2xl border border-dashed border-line bg-slate-50 py-12 text-center text-sm text-slate-400">
               No active customers yet
             </div>
           )}
-          {initialDealerships.map((d) => (
+          {initialDealerships
+            .filter((d) => !search.trim() || d.name.toLowerCase().includes(search.toLowerCase()) || d.contactName?.toLowerCase().includes(search.toLowerCase()) || d.contactEmail?.toLowerCase().includes(search.toLowerCase()))
+            .map((d) => (
             <div key={d.id} className="rounded-2xl border border-line bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -231,12 +245,25 @@ export function OrgCustomersClient({ initialDealerships, initialRequests }: Prop
       {/* Requests tab */}
       {tab === "requests" && (
         <div className="space-y-3">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search requests…"
+              className="h-10 w-full rounded-xl border border-line bg-white pl-9 pr-4 text-sm text-navy outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/30"
+            />
+          </div>
           {requests.length === 0 && (
             <div className="rounded-2xl border border-dashed border-line bg-slate-50 py-12 text-center text-sm text-slate-400">
               No requests submitted yet
             </div>
           )}
-          {requests.map((r) => (
+          {requests
+            .filter((r) => !search.trim() || r.name.toLowerCase().includes(search.toLowerCase()) || r.contactName?.toLowerCase().includes(search.toLowerCase()))
+            .map((r) => (
             <div key={r.id} className="rounded-2xl border border-line bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>

@@ -2113,6 +2113,9 @@ model RecurringJobTemplate {
   /// "Must be done by" local time HH:MM — used for overdue detection
   mustDoneByTime String  @default("17:00")
 
+  /// Estimated time to complete this job in minutes — used for calendar allocation and reporting
+  estimatedMins  Int?
+
   /// Optional: assign to a specific valeter. If null, any valeter can claim.
   assignedToId   String?
   assignedTo     User?   @relation("RecurringJobAssignee", fields: [assignedToId], references: [id])

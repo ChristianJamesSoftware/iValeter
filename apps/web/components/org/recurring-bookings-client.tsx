@@ -55,6 +55,7 @@ type TemplateFormData = {
   frequency: Frequency;
   customDays: string[];
   mustDoneByTime: string;
+  estimatedMins: string; // stored as string in form, parsed to int on save
   assignedToId: string;
   auditQuestions: string[];
 };
@@ -62,7 +63,7 @@ type TemplateFormData = {
 const BLANK_FORM: TemplateFormData = {
   siteId: "", name: "", description: "", frequency: "DAILY",
   customDays: ["MON","TUE","WED","THU","FRI"],
-  mustDoneByTime: "09:00", assignedToId: "", auditQuestions: [""],
+  mustDoneByTime: "09:00", estimatedMins: "", assignedToId: "", auditQuestions: [""],
 };
 
 function TemplateForm({
@@ -170,6 +171,25 @@ function TemplateForm({
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Must Be Done By</label>
           <select value={form.mustDoneByTime} onChange={(e) => set("mustDoneByTime", e.target.value)} className={inputCls}>
             {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+
+        {/* Estimated time */}
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Estimated Time <span className="normal-case font-normal text-slate-400">(minutes)</span>
+          </label>
+          <select
+            value={form.estimatedMins}
+            onChange={(e) => set("estimatedMins", e.target.value)}
+            className={inputCls}
+          >
+            <option value="">Not set</option>
+            {[10,15,20,30,45,60,90,120,150,180,240,300,360,420,480].map((m) => (
+              <option key={m} value={String(m)}>
+                {m < 60 ? `${m} min` : m % 60 === 0 ? `${m / 60}h` : `${Math.floor(m/60)}h ${m%60}min`}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -412,6 +432,7 @@ function TemplatesTable({
         frequency: editingTemplate.frequency as Frequency,
         customDays: (editingTemplate.customDays as string[] | null) ?? [],
         mustDoneByTime: editingTemplate.mustDoneByTime,
+        estimatedMins: editingTemplate.estimatedMins ? String(editingTemplate.estimatedMins) : "",
         assignedToId: editingTemplate.assignedToId ?? "",
         auditQuestions: (editingTemplate.auditQuestions as string[] | null) ?? [""],
       }
@@ -428,6 +449,7 @@ function TemplatesTable({
         ? (data.customDays as ("MON"|"TUE"|"WED"|"THU"|"FRI"|"SAT"|"SUN")[])
         : undefined,
       mustDoneByTime: data.mustDoneByTime,
+      estimatedMins: data.estimatedMins ? parseInt(data.estimatedMins, 10) : undefined,
       assignedToId: data.assignedToId || undefined,
       auditQuestions: qs.length > 0 ? qs : undefined,
     });
@@ -445,6 +467,7 @@ function TemplatesTable({
         ? (data.customDays as ("MON"|"TUE"|"WED"|"THU"|"FRI"|"SAT"|"SUN")[])
         : undefined,
       mustDoneByTime: data.mustDoneByTime,
+      estimatedMins: data.estimatedMins ? parseInt(data.estimatedMins, 10) : null,
       assignedToId: data.assignedToId || null,
       auditQuestions: qs.length > 0 ? qs : undefined,
     });
@@ -496,7 +519,7 @@ function TemplatesTable({
           <table className="w-full min-w-[700px] text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50">
               <tr>
-                {["Job", "Site", "Frequency", "Done By", "Assigned To", "Checklist", "Status", ""].map((h) => (
+                {["Job", "Site", "Frequency", "Done By", "Est. Time", "Assigned To", "Checklist", "Status", ""].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{h}</th>
                 ))}
               </tr>
@@ -518,6 +541,15 @@ function TemplatesTable({
                       )}
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-900">{t.mustDoneByTime}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {t.estimatedMins
+                        ? t.estimatedMins < 60
+                          ? `${t.estimatedMins}m`
+                          : t.estimatedMins % 60 === 0
+                            ? `${t.estimatedMins / 60}h`
+                            : `${Math.floor(t.estimatedMins / 60)}h ${t.estimatedMins % 60}m`
+                        : <span className="text-slate-300">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-xs text-slate-600">
                       {t.assignedTo ? `${t.assignedTo.firstName} ${t.assignedTo.lastName}` : <span className="text-slate-300">Any</span>}
                     </td>
