@@ -42,6 +42,7 @@ export const overtimeRouter = router({
       where: { organisationId: ctx.session.organisationId, status: "PENDING" },
       include: {
         user: { select: { firstName: true, lastName: true, payId: true, site: { select: { name: true } } } },
+        overtimeReason: { select: { label: true } },
       },
       orderBy: { createdAt: "desc" },
     });
