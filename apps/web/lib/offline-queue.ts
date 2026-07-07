@@ -172,14 +172,21 @@ export async function replayQueue(): Promise<{ replayed: number; failed: number;
 // ── HTTP execution (no React) ─────────────────────────────────────────────────
 
 async function trpcPost(procedure: string, input: unknown): Promise<void> {
-  const res = await fetch(`/api/trpc/${procedure}`, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ json: input }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`tRPC ${procedure} failed: ${res.status} ${text}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000); // 10s timeout
+  try {
+    const res = await fetch(`/api/trpc/${procedure}`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ json: input }),
+      signal:  controller.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`tRPC ${procedure} failed: ${res.status} ${text}`);
+    }
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -212,4 +219,17 @@ export async function pendingCount(): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+// ── Clear entire queue (e.g. after logout or stuck items) ─────────────────────
+
+export async function clearQueue(): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx  = db.transaction(STORE_NAME, "readwrite");
+    const req = tx.objectStore(STORE_NAME).clear();
+    req.onsuccess = () => resolve();
+    req.onerror   = () => reject(req.error);
+  });
+  db.close();
 }

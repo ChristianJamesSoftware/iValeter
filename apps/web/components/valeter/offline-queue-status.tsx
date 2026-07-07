@@ -52,16 +52,25 @@ export function OfflineQueueStatus() {
             {actions.length} unsynced action{actions.length !== 1 ? "s" : ""}
           </span>
         </div>
-        <button
-          onClick={() => void handleSync()}
-          disabled={syncing || !navigator.onLine}
-          className="flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-amber-600 disabled:opacity-50"
-        >
-          {syncing
-            ? <><RefreshCw className="h-3 w-3 animate-spin" />Syncing…</>
-            : <><CheckCircle2 className="h-3 w-3" />Sync now</>
-          }
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => void handleSync()}
+            disabled={syncing || clearing || !navigator.onLine}
+            className="flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-amber-600 disabled:opacity-50"
+          >
+            {syncing
+              ? <><RefreshCw className="h-3 w-3 animate-spin" />Syncing…</>
+              : <><CheckCircle2 className="h-3 w-3" />Sync</>
+            }
+          </button>
+          <button
+            onClick={async () => { setClearing(true); await clearQueue(); await refresh(); setClearing(false); }}
+            disabled={syncing || clearing}
+            className="rounded-lg border border-amber-300 px-2 py-1 text-xs font-bold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
+          >
+            {clearing ? "…" : "Clear"}
+          </button>
+        </div>
       </div>
       <ul className="mt-2 space-y-1">
         {actions.map((a) => (
