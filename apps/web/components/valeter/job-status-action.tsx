@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, ShieldAlert, Camera, Check, WifiOff } from "lucide-react";
+import { CheckCircle2, ShieldAlert, Camera, Check, WifiOff, PlayCircle } from "lucide-react";
 import type { BookingStatus } from "@ivaleter/db";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,13 @@ export function JobStatusAction({ booking }: { booking: JobActionBooking }) {
     },
   });
   const confirmAddOns = trpc.bookings.confirmAddOns.useMutation();
+  const selfAssign = trpc.bookings.valeterSelfAssign.useMutation({
+    onSuccess: async () => {
+      setOptimisticStatus("ASSIGNED");
+      await utils.bookings.invalidate();
+      router.refresh();
+    },
+  });
 
   // Listen for SW queue replay confirmation — refresh data
   useEffect(() => {
@@ -156,8 +163,26 @@ export function JobStatusAction({ booking }: { booking: JobActionBooking }) {
 
   if (status === "PENDING" || !action) {
     return (
-      <div className="rounded-xl border border-dashed border-line bg-white p-5 text-center text-slate">
-        Waiting to be assigned by your manager.
+      <div className="space-y-3">
+        <div className="rounded-xl border border-dashed border-line bg-white px-4 py-3 text-center text-sm text-slate">
+          Not yet assigned — you can take this job yourself.
+        </div>
+        <button
+          onClick={() => {
+            setOptimisticStatus("ASSIGNED");
+            selfAssign.mutate({ id: booking.id });
+          }}
+          disabled={selfAssign.isPending}
+          className="flex h-16 w-full items-center justify-center gap-3 rounded-2xl bg-cyan font-heading text-xl font-bold text-navy shadow-lg transition active:scale-[0.98] hover:bg-cyan-600 disabled:opacity-60"
+        >
+          <PlayCircle className="h-6 w-6" />
+          {selfAssign.isPending ? "Taking job…" : "Take This Job"}
+        </button>
+        {selfAssign.error && (
+          <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+            {selfAssign.error.message}
+          </p>
+        )}
       </div>
     );
   }

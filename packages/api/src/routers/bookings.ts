@@ -371,6 +371,43 @@ export const bookingsRouter = router({
     }),
 
   /**
+   * Valeter: self-assign a PENDING job on their site that has no assignee yet.
+   * Also handles the case where they ARE already the assignee (idempotent).
+   * Advances straight to ASSIGNED so they can start immediately.
+   */
+  valeterSelfAssign: valeterProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.session.siteId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No site assigned to your account" });
+      }
+      const booking = await ctx.prisma.booking.findFirst({
+        where: {
+          id: input.id,
+          siteId: ctx.session.siteId,
+          organisationId: ctx.session.organisationId,
+          status: BookingStatus.PENDING,
+        },
+      });
+      if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found or already taken" });
+
+      const updated = await ctx.prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: BookingStatus.ASSIGNED, assignedToId: ctx.session.userId },
+      });
+      await ctx.prisma.jobStatusHistory.create({
+        data: {
+          bookingId: booking.id,
+          fromStatus: BookingStatus.PENDING,
+          toStatus: BookingStatus.ASSIGNED,
+          userId: ctx.session.userId,
+          note: "Self-assigned by valeter",
+        },
+      });
+      return updated;
+    }),
+
+  /**
    * List bookings that are overdue — not COMPLETED/CANCELLED and readyByTime
    * was more than 48 hours ago. Used by the account manager reallocation view.
    */
