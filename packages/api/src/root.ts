@@ -35,6 +35,7 @@ import { siteSubmissionsRouter } from "./routers/site-submissions";
 import { prospectsRouter } from "./routers/prospects";
 import { timesheetDeductionsRouter } from "./routers/timesheet-deductions";
 import { equipmentRouter } from "./routers/equipment";
+import { inspectionTemplatesRouter } from "./routers/inspection-templates";
 
 export const appRouter = router({
   auth: authRouter,
@@ -73,6 +74,7 @@ export const appRouter = router({
   prospects: prospectsRouter,
   timesheetDeductions: timesheetDeductionsRouter,
   equipment: equipmentRouter,
+  inspectionTemplates: inspectionTemplatesRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -61,6 +61,7 @@ model Organisation {
   dealershipRequests      DealershipRequest[]
   prospectValeters         ProspectValeter[]
   prospectBroadcasts       ProspectBroadcast[]
+  inspectionTemplates      InspectionTemplate[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,6 +154,7 @@ model Site {
   prospectValeters          ProspectValeter[]
   equipment                 SiteEquipment[]
   equipmentAudits           EquipmentAudit[]
+  siteInspectionTemplates   SiteInspectionTemplate[]
 
   @@index([organisationId])
 }
@@ -1837,4 +1839,107 @@ model EquipmentAuditItem {
 
   @@index([auditId])
   @@index([equipmentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VEHICLE INSPECTION TEMPLATES
+// Org-level templates (e.g. "PDI — New Vehicle", "Used Transfer Inspection").
+// Each template has an ordered list of check items.
+// Sites opt in to templates and can override individual checks.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model InspectionTemplate {
+  id             String       @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  name        String              // e.g. "PDI — New Vehicle"
+  description String?             // e.g. "Checklist for vehicles arriving on transporter"
+  type        InspectionType      // PDI | USED_TRANSFER | CUSTOM
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  checkItems    InspectionCheckItem[]
+  siteTemplates SiteInspectionTemplate[]
+
+  @@index([organisationId])
+}
+
+enum InspectionType {
+  PDI            // New vehicle arriving from manufacturer/transporter
+  USED_TRANSFER  // Used vehicle arriving from another dealership/auction
+  CUSTOM         // Anything else
+}
+
+model InspectionCheckItem {
+  id         String             @id @default(cuid())
+  templateId String
+  template   InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  label       String              // e.g. "Spare Key Present"
+  description String?             // optional hint for the valeter
+  category    String              // e.g. "Accessories", "Documents", "Exterior", "Interior"
+  isRequired  Boolean @default(true)
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  siteOverrides SiteInspectionCheckOverride[]
+
+  @@index([templateId])
+}
+
+/// Which inspection templates are active at a given site.
+model SiteInspectionTemplate {
+  id         String             @id @default(cuid())
+  siteId     String
+  site       Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  templateId String
+  template   InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  isEnabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  checkOverrides SiteInspectionCheckOverride[]
+
+  @@unique([siteId, templateId])
+  @@index([siteId])
+}
+
+enum InspectionCheckOverrideType {
+  HIDDEN  // remove a default check for this site
+  ADDED   // add a site-specific extra check
+}
+
+/// Per-site overrides to individual check items.
+/// HIDDEN = default check suppressed at this site.
+/// ADDED  = extra check added only at this site (checkItemId is null; label/category stored inline).
+model SiteInspectionCheckOverride {
+  id                     String                     @id @default(cuid())
+  siteTemplateId         String
+  siteTemplate           SiteInspectionTemplate     @relation(fields: [siteTemplateId], references: [id], onDelete: Cascade)
+
+  overrideType           InspectionCheckOverrideType
+
+  // For HIDDEN: reference to the default check being suppressed
+  checkItemId            String?
+  checkItem              InspectionCheckItem?       @relation(fields: [checkItemId], references: [id], onDelete: Cascade)
+
+  // For ADDED: inline definition of the extra check
+  label                  String?
+  description            String?
+  category               String?
+  isRequired             Boolean @default(true)
+  sortOrder              Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([siteTemplateId])
 }

@@ -12,6 +12,7 @@ import { SupportServicesTab } from "@/components/settings/support-services-tab";
 import { VehicleSizesTab } from "@/components/settings/vehicle-sizes-tab";
 import { PaintProtectionTab } from "@/components/settings/paint-protection-tab";
 import { OvertimeReasonsTab } from "@/components/settings/overtime-reasons-tab";
+import { InspectionTemplatesTab } from "@/components/settings/inspection-templates-tab";
 import { LogoUpload } from "@/components/ui/logo-upload";
 
 
@@ -26,6 +27,7 @@ const TABS = [
   { key: "vehicle-sizes", label: "Vehicle Sizes" },
   { key: "paint-protection", label: "Paint Protection" },
   { key: "overtime-reasons", label: "Overtime Reasons" },
+  { key: "inspection-templates", label: "Inspection Templates" },
 ];
 
 const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
@@ -78,6 +80,7 @@ export function AdminSettingsClient() {
       {tab === "vehicle-sizes" && <VehicleSizesTab />}
       {tab === "paint-protection" && <PaintProtectionTab />}
       {tab === "overtime-reasons" && <OvertimeReasonsTab />}
+      {tab === "inspection-templates" && <InspectionTemplatesTab />}
 
     </div>
   );

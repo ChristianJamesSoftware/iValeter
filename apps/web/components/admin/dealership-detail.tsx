@@ -10,6 +10,7 @@ import { DealershipAddOns } from "@/components/admin/dealership-addons";
 import { DealerDepartmentsTab } from "@/components/admin/dealer-departments-tab";
 import { DealerDayRatesTab } from "@/components/admin/dealer-day-rates-tab";
 import { DealerGeofenceTab } from "@/components/admin/dealer-geofence-tab";
+import { DealerInspectionsTab } from "@/components/admin/dealer-inspections-tab";
 import { LogoUpload } from "@/components/ui/logo-upload";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,7 @@ const TABS = [
   { id: "geofence",      label: "Geofencing",           icon: Navigation },
   { id: "addons",        label: "Add-Ons",              icon: Beaker },
   { id: "instructions",  label: "Special Instructions", icon: FileText },
+  { id: "inspections",  label: "Inspections",           icon: ClipboardList },
   { id: "notes",         label: "Contact Log",           icon: StickyNote },
 ] as const;
 
@@ -269,6 +271,12 @@ export function DealershipDetail({ dealership: initial }: { dealership: Dealersh
         />
       )}
       {activeTab === "addons"     && <DealershipAddOns dealershipId={d.id} />}
+      {activeTab === "inspections" && (
+        <DealerInspectionsTab
+          sites={d.sites.map((s) => ({ id: s.id, name: s.name }))}
+          dealershipId={d.id}
+        />
+      )}
       {activeTab === "notes" && <ContactLogTab dealershipId={d.id} />}
       {activeTab === "instructions" && (
         <InstructionsTab
