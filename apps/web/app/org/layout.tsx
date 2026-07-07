@@ -8,7 +8,6 @@ const NAV: NavItem[] = [
     label: "Recurring Bookings",
     icon: "recurring",
   },
-  { href: "/org/site-view", label: "Site View", icon: "building" },
   { href: "/org/customers", label: "Customers", icon: "building", section: "Customers" },
   { href: "/org/dealership-team", label: "Customer Team", icon: "clients" },
   { href: "/org/team", label: "Valeting Team", icon: "team", section: "Team" },
