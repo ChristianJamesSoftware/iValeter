@@ -14,12 +14,14 @@ import { VehicleSizesTab } from "@/components/settings/vehicle-sizes-tab";
 import { PaintProtectionTab } from "@/components/settings/paint-protection-tab";
 import { OvertimeReasonsTab } from "@/components/settings/overtime-reasons-tab";
 import { InspectionTemplatesTab } from "@/components/settings/inspection-templates-tab";
+import { NominalCodesTab } from "@/components/settings/nominal-codes-tab";
 import { LogoUpload } from "@/components/ui/logo-upload";
 
 
 const TABS = [
   { key: "platform", label: "Platform" },
   { key: "integrations", label: "Integrations" },
+  { key: "nominal-codes", label: "Nominal Codes" },
   { key: "flags", label: "Feature Flags" },
   { key: "addons", label: "Add-Ons" },
   { key: "team", label: "Management Team" },
@@ -82,6 +84,7 @@ export function AdminSettingsClient() {
       {tab === "paint-protection" && <PaintProtectionTab />}
       {tab === "overtime-reasons" && <OvertimeReasonsTab />}
       {tab === "inspection-templates" && <InspectionTemplatesTab />}
+      {tab === "nominal-codes" && <NominalCodesTab />}
 
     </div>
   );

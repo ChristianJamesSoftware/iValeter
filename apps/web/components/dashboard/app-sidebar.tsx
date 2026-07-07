@@ -16,6 +16,8 @@ export interface NavItem {
   section?: string;
   /** Highlight with the orange accent (e.g. Impersonate User). */
   accent?: boolean;
+  /** Live badge count — shown as a red pill next to the label. */
+  badge?: number;
 }
 
 function initials(first: string, last: string) {
@@ -64,8 +66,16 @@ export function AppSidebar({
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
                 )}
               >
-                <Icon className="h-4 w-4" />
-                {item.label}
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1 truncate">{item.label}</span>
+                {item.badge != null && item.badge > 0 && (
+                  <span className={cn(
+                    "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
+                    active ? "bg-white/30 text-white" : "bg-red-500 text-white",
+                  )}>
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
               </Link>
             </div>
           );

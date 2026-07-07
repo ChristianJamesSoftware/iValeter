@@ -353,3 +353,78 @@ export async function syncInvoiceStatus(invoiceId: string): Promise<void> {
     });
   }
 }
+
+/**
+ * Push a batch of approved valeter expense receipts to Xero as a single
+ * ACCPAY (purchase) invoice under the org's default consumables nominal code.
+ * One invoice per valeter per week — all receipts as separate line items.
+ * VAT is reclaimed at INPUT2 (20%) so each line is tax-exclusive.
+ */
+export async function pushExpensesToXero(params: {
+  organisationId: string;
+  valeterName: string;
+  weekStarting: Date;
+  expenses: Array<{ id: string; description: string; amountPence: number }>;
+}): Promise<void> {
+  const { organisationId, valeterName, weekStarting, expenses } = params;
+
+  if (expenses.length === 0) return;
+
+  // Get org's default consumables nominal code
+  const nominalCode = await prisma.xeroExpenseNominalCode.findFirst({
+    where: { organisationId, isDefault: true },
+  });
+
+  const accountCode = nominalCode?.xeroAccountCode ?? "7400"; // Consumables fallback
+  const taxType = nominalCode?.taxType ?? "INPUT2";
+
+  // Build a supplier contact name for this org's expense claims
+  const contactId = await findOrCreateContact(
+    organisationId,
+    "iValeter Staff Expenses",
+  );
+
+  const weekStr = weekStarting.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  const lineItems = expenses.map((exp) => ({
+    Description: `${valeterName} — ${exp.description} (w/c ${weekStr})`,
+    Quantity: 1,
+    UnitAmount: exp.amountPence / 100,
+    AccountCode: accountCode,
+    TaxType: taxType,
+  }));
+
+  const result = (await xeroRequest(organisationId, "POST", "/Invoices", {
+    Invoices: [
+      {
+        Type: "ACCPAY",
+        Contact: { ContactID: contactId },
+        Date: new Date().toISOString().slice(0, 10),
+        DueDate: new Date().toISOString().slice(0, 10),
+        LineAmountTypes: "Exclusive",
+        Status: "DRAFT",
+        Reference: `Expenses ${valeterName} w/c ${weekStr}`,
+        LineItems: lineItems,
+      },
+    ],
+  })) as {
+    Invoices?: Array<{ InvoiceID: string; InvoiceNumber: string }>;
+  };
+
+  const xeroInvoice = result.Invoices?.[0];
+  if (!xeroInvoice) throw new Error("Xero did not return a purchase invoice.");
+
+  // Mark each expense record as pushed
+  await prisma.valeterExpense.updateMany({
+    where: { id: { in: expenses.map((e) => e.id) } },
+    data: {
+      xeroPushedAt: new Date(),
+      xeroInvoiceId: xeroInvoice.InvoiceID,
+      xeroNominalCodeId: nominalCode?.id ?? null,
+    },
+  });
+}

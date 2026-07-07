@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { AdminNavBadgeOverlay } from "@/components/admin/admin-nav-badge-overlay";
 import type { NavItem } from "@/components/dashboard/app-sidebar";
 
 const NAV: NavItem[] = [
@@ -34,6 +35,8 @@ export default function AdminLayout({
 }) {
   return (
     <DashboardShell allow={["super_admin"]} items={NAV}>
+      {/* Live badge overlay — injects counts into sidebar nav links */}
+      <AdminNavBadgeOverlay />
       {children}
     </DashboardShell>
   );

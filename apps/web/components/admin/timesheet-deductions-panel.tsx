@@ -3,15 +3,17 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
-import { MinusCircle, Plus, Trash2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { MinusCircle, Plus, Trash2, AlertCircle, ChevronDown, ChevronUp, Receipt } from "lucide-react";
 
-type DeductionType = "DAILY" | "ACCIDENT" | "UNIFORM" | "STANDING" | "OTHER";
+type DeductionType = "DAILY" | "ACCIDENT" | "UNIFORM" | "STANDING" | "EXPENSE" | "OTHER";
+type ManualDeductionType = "DAILY" | "ACCIDENT" | "UNIFORM" | "STANDING" | "OTHER";
 
 const TYPE_LABELS: Record<DeductionType, string> = {
   DAILY:    "Daily deduction",
   ACCIDENT: "Accident excess",
   UNIFORM:  "Uniform/equipment",
   STANDING: "Standing deduction",
+  EXPENSE:  "Expense reimbursement",
   OTHER:    "Other",
 };
 
@@ -20,6 +22,7 @@ const TYPE_COLOURS: Record<DeductionType, string> = {
   ACCIDENT: "bg-red-100 text-red-700",
   UNIFORM:  "bg-blue-100 text-blue-700",
   STANDING: "bg-purple-100 text-purple-700",
+  EXPENSE:  "bg-emerald-100 text-emerald-700",
   OTHER:    "bg-slate-100 text-slate-600",
 };
 
@@ -40,7 +43,7 @@ export function TimesheetDeductionsPanel({
   const [open, setOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
-    type: "DAILY" as DeductionType,
+    type: "DAILY" as ManualDeductionType,
     description: "",
     amountPounds: "",
   });
@@ -55,7 +58,7 @@ export function TimesheetDeductionsPanel({
   const add = trpc.timesheetDeductions.add.useMutation({
     onSuccess: () => {
       void utils.timesheetDeductions.listForTimesheet.invalidate({ timesheetId });
-      setForm({ type: "DAILY", description: "", amountPounds: "" });
+      setForm({ type: "DAILY" as ManualDeductionType, description: "", amountPounds: "" });
       setShowForm(false);
     },
   });
@@ -80,6 +83,7 @@ export function TimesheetDeductionsPanel({
   }
 
   const totalDeductionPence = data?.totalDeductionPence ?? 0;
+  const totalExpensePence = data?.totalExpenseReimbursementPence ?? 0;
   const hasDeductions = (data?.deductions.length ?? 0) > 0;
 
   return (
@@ -114,64 +118,95 @@ export function TimesheetDeductionsPanel({
 
           {/* Pay summary */}
           {data && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Days worked</p>
-                <p className="mt-1 text-lg font-bold text-slate-900">{data.daysWorked}</p>
-              </div>
-              <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Gross pay</p>
-                <p className="mt-1 text-lg font-bold text-slate-900">{pence(data.grossPence)}</p>
-              </div>
-              <div className={cn(
-                "rounded-lg px-3 py-2.5 text-center",
-                data.totalDeductionPence > 0 ? "bg-red-50" : "bg-emerald-50",
-              )}>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Final pay</p>
-                <p className={cn(
-                  "mt-1 text-lg font-bold",
-                  data.totalDeductionPence > 0 ? "text-red-700" : "text-emerald-700",
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Days worked</p>
+                  <p className="mt-1 text-lg font-bold text-slate-900">{data.daysWorked}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Gross pay</p>
+                  <p className="mt-1 text-lg font-bold text-slate-900">{pence(data.grossPence)}</p>
+                </div>
+                <div className={cn(
+                  "rounded-lg px-3 py-2.5 text-center",
+                  data.finalPayPence >= data.grossPence ? "bg-emerald-50" : "bg-amber-50",
                 )}>
-                  {pence(data.finalPayPence)}
-                </p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Final pay</p>
+                  <p className={cn(
+                    "mt-1 text-lg font-bold",
+                    data.finalPayPence >= data.grossPence ? "text-emerald-700" : "text-amber-700",
+                  )}>
+                    {pence(data.finalPayPence)}
+                  </p>
+                </div>
               </div>
+              {/* Expense reimbursement summary pill */}
+              {totalExpensePence > 0 && (
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2">
+                  <Receipt className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="text-xs text-emerald-700">
+                    Includes <span className="font-bold">{pence(totalExpensePence)}</span> expense reimbursement bundled into this week&apos;s pay
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
           {/* Deduction list */}
           {data && data.deductions.length > 0 && (
             <div className="divide-y divide-slate-50 overflow-hidden rounded-xl border border-slate-100">
-              {data.deductions.map((d) => (
-                <div key={d.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <span className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                    TYPE_COLOURS[d.type as DeductionType],
+              {data.deductions.map((d) => {
+                const isExpense = d.type === "EXPENSE";
+                return (
+                  <div key={d.id} className={cn(
+                    "flex items-center gap-3 px-3 py-2.5",
+                    isExpense && "bg-emerald-50/50",
                   )}>
-                    {TYPE_LABELS[d.type as DeductionType]}
-                  </span>
-                  <span className="flex-1 text-sm text-slate-700">{d.description}</span>
-                  <span className="shrink-0 font-bold text-red-600">-{pence(d.amountPence)}</span>
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      disabled={removing === d.id || remove.isPending}
-                      onClick={() => {
-                        setRemoving(d.id);
-                        remove.mutate({ id: d.id });
-                      }}
-                      className="shrink-0 rounded-lg p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 transition disabled:opacity-40"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                    <span className={cn(
+                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                      TYPE_COLOURS[d.type as DeductionType],
+                    )}>
+                      {TYPE_LABELS[d.type as DeductionType]}
+                    </span>
+                    <span className="flex-1 text-sm text-slate-700">{d.description}</span>
+                    <span className={cn(
+                      "shrink-0 font-bold",
+                      isExpense ? "text-emerald-600" : "text-red-600",
+                    )}>
+                      {isExpense ? "+" : "-"}{pence(d.amountPence)}
+                    </span>
+                    {!readOnly && !isExpense && (
+                      <button
+                        type="button"
+                        disabled={removing === d.id || remove.isPending}
+                        onClick={() => {
+                          setRemoving(d.id);
+                          remove.mutate({ id: d.id });
+                        }}
+                        className="shrink-0 rounded-lg p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 transition disabled:opacity-40"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {isExpense && <div className="w-5" />}
+                  </div>
+                );
+              })}
 
-              {/* Total deduction row */}
-              <div className="flex items-center justify-between bg-slate-50 px-3 py-2.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total deductions</span>
-                <span className="font-bold text-red-600">-{pence(totalDeductionPence)}</span>
-              </div>
+              {/* Summary rows */}
+              {totalDeductionPence > 0 && (
+                <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total deductions</span>
+                  <span className="font-bold text-red-600">-{pence(totalDeductionPence)}</span>
+                </div>
+              )}
+              {totalExpensePence > 0 && (
+                <div className="flex items-center justify-between bg-emerald-50 px-3 py-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Expense reimbursements</span>
+                  <span className="font-bold text-emerald-600">+{pence(totalExpensePence)}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -199,10 +234,10 @@ export function TimesheetDeductionsPanel({
                     <label className={LABEL}>Type</label>
                     <select
                       value={form.type}
-                      onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as DeductionType }))}
+                      onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as ManualDeductionType }))}
                       className={INPUT}
                     >
-                      {(Object.keys(TYPE_LABELS) as DeductionType[]).map((t) => (
+                      {(Object.keys(TYPE_LABELS) as DeductionType[]).filter((t) => t !== "EXPENSE").map((t) => (
                         <option key={t} value={t}>{TYPE_LABELS[t]}</option>
                       ))}
                     </select>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, Clock, Users, AlertTriangle, Download, ChevronDown, ChevronUp, Building2 } from "lucide-react";
+import { Check, X, Clock, Users, AlertTriangle, Download, Building2, Bell } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { StatCard } from "@/components/brand/stat-card";
 import { OvertimeRequestsPanel } from "@/components/org/overtime-requests-panel";
+import { TimesheetDetailDrawer } from "@/components/admin/timesheet-detail-drawer";
 
 type Status = "SUBMITTED" | "APPROVED" | "SA_APPROVED" | "DISPUTED" | "DRAFT" | "LOCKED";
 
@@ -51,7 +52,7 @@ export function AdminAttendanceClient() {
   const [filterStatus, setFilterStatus] = useState("SUBMITTED");
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [openTimesheetId, setOpenTimesheetId] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
 
@@ -59,6 +60,10 @@ export function AdminAttendanceClient() {
     weekStart: weekStart || undefined,
     status: filterStatus || undefined,
   });
+
+  // Pending overtime requests — used to block SA approve
+  const { data: pendingOT } = trpc.overtime.listPending.useQuery();
+  const pendingOTUserIds = new Set((pendingOT ?? []).map((r) => r.userId));
 
   // HO (org admin) first sign-off: SUBMITTED → APPROVED
   const hoApprove = trpc.timesheets.orgApprove.useMutation({
@@ -119,6 +124,27 @@ export function AdminAttendanceClient() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
+      {/* Timesheet detail drawer */}
+      {openTimesheetId && (
+        <TimesheetDetailDrawer
+          timesheetId={openTimesheetId}
+          onClose={() => {
+            setOpenTimesheetId(null);
+            void utils.timesheets.superAdminList.invalidate();
+          }}
+        />
+      )}
+
+      {/* New timesheet alert banner */}
+      {submitted > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3.5">
+          <Bell className="h-4 w-4 shrink-0 text-blue-500" />
+          <p className="text-sm font-semibold text-blue-800">
+            {submitted} new timesheet{submitted !== 1 ? "s" : ""} submitted — awaiting Head Office review.
+          </p>
+        </div>
+      )}
+
       {/* Overtime requests panel */}
       <OvertimeRequestsPanel />
 
@@ -174,7 +200,6 @@ export function AdminAttendanceClient() {
           <table className="w-full min-w-[900px]">
             <thead>
               <tr>
-                <th className={TH}></th>
                 <th className={TH}>Valeter</th>
                 <th className={TH}>Pay ID</th>
                 <th className={TH}>Site</th>
@@ -188,139 +213,115 @@ export function AdminAttendanceClient() {
             </thead>
             <tbody>
               {timesheets.isLoading ? (
-                <tr><td className={`${TD} text-slate-400`} colSpan={10}>Loading…</td></tr>
+                <tr><td className={`${TD} text-slate-400`} colSpan={9}>Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td className={`${TD} text-slate-400`} colSpan={10}>No timesheets match the current filters.</td></tr>
+                <tr><td className={`${TD} text-slate-400`} colSpan={9}>No timesheets match the current filters.</td></tr>
               ) : (
-                rows.map((r) => (
-                  <>
-                    <tr key={r.id} className="hover:bg-slate-50/50">
-                      {/* Expand toggle */}
-                      <td className={TD}>
-                        <button
-                          onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
-                          className="rounded p-1 text-slate-400 hover:bg-slate-100"
-                        >
-                          {expandedId === r.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </button>
-                      </td>
-                      <td className={`${TD} font-medium text-slate-900`}>{r.user.firstName} {r.user.lastName}</td>
-                      <td className={`${TD} font-mono text-xs text-slate-500`}>{r.user.payId ?? "—"}</td>
-                      <td className={TD}>{r.site?.name ?? "—"}</td>
-                      <td className={TD}>{(r.user as { organisation?: { name: string } }).organisation?.name ?? "—"}</td>
-                      <td className={TD}>{fmtDate(r.weekStarting)}</td>
-                      <td className={TD}>{(r.totalRegularHours ?? 0).toFixed(2)} h</td>
-                      <td className={TD}>{(r.totalOvertimeHours ?? 0).toFixed(2)} h</td>
-                      <td className={TD}><StatusBadge status={r.status} /></td>
-                      <td className={TD}>
-                        {/* Step 1: HO sign-off (SUBMITTED → APPROVED) */}
-                        {r.status === "SUBMITTED" && (
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={() => hoApprove.mutate({ id: r.id })}
-                              disabled={hoApprove.isPending}
-                              className="flex items-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
-                            >
-                              <Building2 className="h-3.5 w-3.5" /> HO Approve
-                            </button>
-                            <button
-                              onClick={() => { setRejectId(r.id); setRejectNote(""); }}
-                              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                            >
-                              <X className="h-3.5 w-3.5" /> Reject
-                            </button>
-                          </div>
-                        )}
-                        {/* Step 2: SA final sign-off (APPROVED → SA_APPROVED) */}
-                        {r.status === "APPROVED" && (
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={() => approve.mutate({ id: r.id })}
-                              disabled={approve.isPending}
-                              className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                            >
-                              <Check className="h-3.5 w-3.5" /> SA Approve
-                            </button>
-                            <button
-                              onClick={() => { setRejectId(r.id); setRejectNote(""); }}
-                              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                            >
-                              <X className="h-3.5 w-3.5" /> Reject
-                            </button>
+                rows.map((r) => {
+                  const hasPendingOT = pendingOTUserIds.has(r.userId);
+                  return (
+                    <>
+                      {/* Reject inline */}
+                      {rejectId === r.id && (
+                        <tr key={`${r.id}-reject`} className="bg-red-50">
+                          <td colSpan={9} className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <input
+                                className="h-9 flex-1 rounded-lg border border-red-200 bg-white px-3 text-sm outline-none focus:border-red-400"
+                                placeholder="Reason for rejection (optional)…"
+                                value={rejectNote}
+                                onChange={(e) => setRejectNote(e.target.value)}
+                              />
+                              <button
+                                onClick={() => {
+                                  if (r.status === "SUBMITTED") {
+                                    hoReject.mutate({ id: r.id, note: rejectNote || undefined });
+                                  } else {
+                                    reject.mutate({ id: r.id, note: rejectNote || undefined });
+                                  }
+                                }}
+                                disabled={reject.isPending || hoReject.isPending}
+                                className="h-9 rounded-lg bg-red-600 px-4 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                              >
+                                Confirm reject
+                              </button>
+                              <button onClick={() => setRejectId(null)} className="h-9 rounded-lg border border-slate-200 px-3 text-xs text-slate-500 hover:bg-white">
+                                Cancel
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
 
-                          </div>
-                        )}
-                        {r.status === "SA_APPROVED" && (
-                          <span className="text-xs text-slate-400">Approved {fmtDate(r.saApprovedAt ?? null)}</span>
-                        )}
-                      </td>
-                    </tr>
-                    {/* Reject note inline */}
-                    {rejectId === r.id && (
-                      <tr key={`${r.id}-reject`} className="bg-red-50">
-                        <td colSpan={10} className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <input
-                              className="h-9 flex-1 rounded-lg border border-red-200 bg-white px-3 text-sm outline-none focus:border-red-400"
-                              placeholder="Reason for rejection (optional)…"
-                              value={rejectNote}
-                              onChange={(e) => setRejectNote(e.target.value)}
-                            />
-                            <button
-                              onClick={() => reject.mutate({ id: r.id, note: rejectNote || undefined })}
-                              disabled={reject.isPending}
-                              className="h-9 rounded-lg bg-red-600 px-4 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-                            >
-                              {reject.isPending ? "…" : "Confirm reject"}
-                            </button>
-                            <button
-                              onClick={() => setRejectId(null)}
-                              className="h-9 rounded-lg border border-slate-200 px-3 text-xs text-slate-500 hover:bg-white"
-                            >
-                              Cancel
-                            </button>
-                          </div>
+                      <tr
+                        key={r.id}
+                        className="cursor-pointer hover:bg-slate-50/80 transition-colors"
+                        onClick={() => setOpenTimesheetId(r.id)}
+                      >
+                        <td className={`${TD} font-medium text-slate-900`}>{r.user.firstName} {r.user.lastName}</td>
+                        <td className={`${TD} font-mono text-xs text-slate-500`}>{r.user.payId ?? "—"}</td>
+                        <td className={TD}>{r.site?.name ?? "—"}</td>
+                        <td className={TD}>{(r.user as { organisation?: { name: string } }).organisation?.name ?? "—"}</td>
+                        <td className={TD}>{fmtDate(r.weekStarting)}</td>
+                        <td className={TD}>{(r.totalRegularHours ?? 0).toFixed(2)} h</td>
+                        <td className={TD}>{(r.totalOvertimeHours ?? 0).toFixed(2)} h</td>
+                        <td className={TD}><StatusBadge status={r.status} /></td>
+                        <td className={TD} onClick={(e) => e.stopPropagation()}>
+                          {/* Step 1: HO sign-off (SUBMITTED → APPROVED) */}
+                          {r.status === "SUBMITTED" && (
+                            <div className="flex gap-1.5">
+                              <button
+                                onClick={() => hoApprove.mutate({ id: r.id })}
+                                disabled={hoApprove.isPending}
+                                className="flex items-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+                              >
+                                <Building2 className="h-3.5 w-3.5" /> HO Approve
+                              </button>
+                              <button
+                                onClick={() => { setRejectId(r.id); setRejectNote(""); }}
+                                className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                              >
+                                <X className="h-3.5 w-3.5" /> Reject
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Step 2: SA final sign-off (APPROVED → SA_APPROVED) */}
+                          {r.status === "APPROVED" && (
+                            <div className="flex flex-col gap-1.5">
+                              {hasPendingOT && (
+                                <div className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1">
+                                  <AlertTriangle className="h-3 w-3 shrink-0 text-amber-500" />
+                                  <span className="text-[10px] font-semibold text-amber-700">Overtime pending</span>
+                                </div>
+                              )}
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => approve.mutate({ id: r.id })}
+                                  disabled={approve.isPending || hasPendingOT}
+                                  title={hasPendingOT ? "Resolve pending overtime request first" : undefined}
+                                  className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <Check className="h-3.5 w-3.5" /> SA Approve
+                                </button>
+                                <button
+                                  onClick={() => { setRejectId(r.id); setRejectNote(""); }}
+                                  className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                >
+                                  <X className="h-3.5 w-3.5" /> Reject
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {r.status === "SA_APPROVED" && (
+                            <span className="text-xs text-slate-400">Approved {fmtDate(r.saApprovedAt ?? null)}</span>
+                          )}
                         </td>
                       </tr>
-                    )}
-                    {/* Expanded lines */}
-                    {expandedId === r.id && r.lines.length > 0 && (
-                      <tr key={`${r.id}-lines`} className="bg-slate-50">
-                        <td colSpan={10} className="px-6 pb-4 pt-2">
-                          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Daily breakdown</p>
-                          <table className="w-full max-w-xl text-xs">
-                            <thead>
-                              <tr>
-                                <th className="pb-1 text-left font-semibold text-slate-500">Date</th>
-                                <th className="pb-1 text-left font-semibold text-slate-500">Clock In</th>
-                                <th className="pb-1 text-left font-semibold text-slate-500">Clock Out</th>
-                                <th className="pb-1 text-left font-semibold text-slate-500">Break</th>
-                                <th className="pb-1 text-left font-semibold text-slate-500">Regular</th>
-                                <th className="pb-1 text-left font-semibold text-slate-500">OT</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {r.lines.map((l) => {
-                                const fmt = (d: Date | string | null) =>
-                                  d ? new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "—";
-                                return (
-                                  <tr key={l.id}>
-                                    <td className="py-0.5 text-slate-700">{fmtDate(l.date)}</td>
-                                    <td className="py-0.5 text-slate-700">{fmt(l.clockInTime)}</td>
-                                    <td className="py-0.5 text-slate-700">{fmt(l.clockOutTime)}</td>
-                                    <td className="py-0.5 text-slate-500">{l.breakMins}m</td>
-                                    <td className="py-0.5 text-slate-700">{(l.regularHours ?? 0).toFixed(2)} h</td>
-                                    <td className="py-0.5 text-slate-700">{(l.overtimeHours ?? 0).toFixed(2)} h</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                ))
+                    </>
+                  );
+                })
               )}
             </tbody>
           </table>

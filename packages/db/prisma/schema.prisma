@@ -54,7 +54,8 @@ model Organisation {
   invoices         Invoice[]
   customerInvoices CustomerInvoice[]
   payRuns          PayRun[]
-  xeroConnection   XeroConnection?
+  xeroConnection          XeroConnection?
+  xeroExpenseNominalCodes XeroExpenseNominalCode[]
   supportServices         SupportService[]
   supportServiceBookings  SupportServiceBooking[]
   vehicleSizeConfigs      OrgVehicleSizeConfig[]
@@ -596,6 +597,7 @@ model Timesheet {
   lines      TimesheetLine[]
   extraLines TimesheetExtraLine[]
   deductions TimesheetDeduction[]
+  expenses   ValeterExpense[]
   payRunLine PayRunLine?
 
   @@unique([userId, weekStarting])
@@ -653,6 +655,7 @@ model TimesheetDeduction {
   // Optional link back to source records
   accidentId         String? // ValeterAccident.id if type == ACCIDENT
   valeterDeductionId String? // ValeterDeduction.id if type == STANDING
+  expenseId          String? // ValeterExpense.id if type == EXPENSE
 
   addedByUserId String
   addedBy       User   @relation("TimesheetDeductionAddedBy", fields: [addedByUserId], references: [id])
@@ -667,6 +670,7 @@ enum DeductionType {
   ACCIDENT   // accident excess recovery
   UNIFORM    // uniform/equipment cost recovery
   STANDING   // recurring weekly deduction (from ValeterDeduction)
+  EXPENSE    // approved valeter receipt reimbursement (adds to net pay)
   OTHER      // ad-hoc ops-entered deduction
 }
 
@@ -1550,6 +1554,18 @@ model ValeterExpense {
   reviewedAt  DateTime?
   reviewNote  String?       // Rejection reason if rejected
 
+  /// Set when this expense is bundled into a timesheet payroll lock
+  timesheetId          String?
+  timesheet            Timesheet? @relation(fields: [timesheetId], references: [id])
+
+  /// Xero nominal code used when pushing this expense to Xero (org-level setting)
+  xeroNominalCodeId    String?
+  xeroNominalCode      XeroExpenseNominalCode? @relation(fields: [xeroNominalCodeId], references: [id])
+
+  /// Set once pushed to Xero
+  xeroPushedAt         DateTime?
+  xeroInvoiceId        String?   // Xero Invoice GUID
+
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -1557,6 +1573,32 @@ model ValeterExpense {
   @@index([siteId])
   @@index([weekStarting])
   @@index([status])
+  @@index([timesheetId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// XERO EXPENSE NOMINAL CODES
+// Org-level mapping of expense categories to Xero account codes.
+// One "Consumables" code covers all valeter receipt reimbursements.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model XeroExpenseNominalCode {
+  id             String       @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  name           String       // e.g. "Consumables"
+  xeroAccountCode String      // e.g. "7400"
+  xeroAccountName String?     // e.g. "Consumables" (synced from Xero)
+  taxType        String       @default("INPUT2")  // INPUT2 = 20% VAT reclaimable
+  isDefault      Boolean      @default(false)    // one default per org
+
+  expenses       ValeterExpense[]
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organisationId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

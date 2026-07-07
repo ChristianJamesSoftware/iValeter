@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc/react";
-import { X, Clock, CheckCircle2, AlertTriangle, RefreshCw, Send, Lock, Loader2 } from "lucide-react";
+import { X, Clock, CheckCircle2, AlertTriangle, RefreshCw, Send, Lock, Loader2, Pencil, Save, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TimesheetDeductionsPanel } from "@/components/admin/timesheet-deductions-panel";
 
@@ -104,6 +104,114 @@ function DayCell({
 
 // ─── Main Drawer ──────────────────────────────────────────────────────────────
 
+// ─── Inline line editor ───────────────────────────────────────────────────────
+function LineEditor({
+  lineId,
+  timesheetId,
+  day,
+  onSaved,
+  onCancel,
+}: {
+  lineId: string;
+  timesheetId: string;
+  day: {
+    clockIn: string | null;
+    clockOut: string | null;
+    breakMins: number;
+    regularHours: number;
+    overtimeHours: number;
+    note: string | null;
+  };
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const toTimeInput = (iso: string | null) => {
+    if (!iso) return "";
+    return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  };
+
+  const [clockIn, setClockIn] = useState(toTimeInput(day.clockIn));
+  const [clockOut, setClockOut] = useState(toTimeInput(day.clockOut));
+  const [breakMins, setBreakMins] = useState(day.breakMins);
+  const [regularHours, setRegularHours] = useState(day.regularHours);
+  const [overtimeHours, setOvertimeHours] = useState(day.overtimeHours);
+  const [note, setNote] = useState(day.note ?? "");
+
+  const editLine = trpc.timesheets.editLine.useMutation({
+    onSuccess: onSaved,
+  });
+
+  // Build a full ISO string from a HH:MM input using the date from lineId context
+  // We use the clockIn date as reference — if blank, null
+  function buildIso(base: string | null, timeStr: string): string | null {
+    if (!timeStr) return null;
+    const refDate = base ? base.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    return `${refDate}T${timeStr}:00.000Z`;
+  }
+
+  const inp = "h-8 rounded border border-slate-200 bg-white px-2 text-xs text-slate-900 outline-none focus:border-orange-400";
+
+  return (
+    <tr className="bg-orange-50 border-t border-orange-100">
+      <td colSpan={6} className="px-4 py-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Clock In</p>
+            <input type="time" value={clockIn} onChange={(e) => setClockIn(e.target.value)} className={inp} />
+          </div>
+          <div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Clock Out</p>
+            <input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} className={inp} />
+          </div>
+          <div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Break (mins)</p>
+            <input type="number" min={0} max={480} step={5} value={breakMins} onChange={(e) => setBreakMins(Number(e.target.value))} className={`${inp} w-16`} />
+          </div>
+          <div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Regular hrs</p>
+            <input type="number" min={0} max={24} step={0.5} value={regularHours} onChange={(e) => setRegularHours(Number(e.target.value))} className={`${inp} w-16`} />
+          </div>
+          <div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">OT hrs</p>
+            <input type="number" min={0} max={12} step={0.5} value={overtimeHours} onChange={(e) => setOvertimeHours(Number(e.target.value))} className={`${inp} w-16`} />
+          </div>
+          <div className="flex-1 min-w-32">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Note</p>
+            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note…" className={`${inp} w-full`} />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => editLine.mutate({
+                lineId,
+                clockInTime: buildIso(day.clockIn, clockIn),
+                clockOutTime: buildIso(day.clockIn, clockOut),
+                breakMins,
+                regularHours,
+                overtimeHours,
+                note: note || undefined,
+              })}
+              disabled={editLine.isPending}
+              className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {editLine.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              Save
+            </button>
+            <button
+              onClick={onCancel}
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-white"
+            >
+              <XCircle className="h-3 w-3" /> Cancel
+            </button>
+          </div>
+        </div>
+        {editLine.error && (
+          <p className="mt-2 text-xs text-red-600">{editLine.error.message}</p>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 export function TimesheetDetailDrawer({
   timesheetId,
   onClose,
@@ -112,6 +220,7 @@ export function TimesheetDetailDrawer({
   onClose: () => void;
 }) {
   const utils = trpc.useUtils();
+  const [editingLineDate, setEditingLineDate] = useState<string | null>(null);
 
   const { data, isLoading, refetch } = trpc.valeterTimesheets.getDetail.useQuery(
     { timesheetId },
@@ -134,6 +243,8 @@ export function TimesheetDetailDrawer({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  const canEdit = data && !["LOCKED", "SA_APPROVED"].includes(data.status);
 
   const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -306,6 +417,7 @@ export function TimesheetDetailDrawer({
                         <th className="px-4 py-2.5 text-right">Clocked</th>
                         <th className="px-4 py-2.5 text-right">Booked work</th>
                         <th className="px-4 py-2.5 text-right">Variance</th>
+                        <th className="px-4 py-2.5" />
                       </tr>
                     </thead>
                     <tbody>
@@ -314,41 +426,81 @@ export function TimesheetDetailDrawer({
                         const variance = day.actualHours > 0 ? day.actualHours - day.allocatedHours : null;
                         const isWorking = data.valeter.workingDays.includes(day.dayName.toUpperCase());
                         const absent = isWorking && !day.clockIn;
+                        const isEditing = editingLineDate === day.date;
                         return (
-                          <tr key={day.date} className={cn(
-                            "border-t border-slate-50",
-                            absent && "bg-red-50",
-                          )}>
-                            <td className="px-4 py-2.5 font-medium text-slate-700">
-                              {day.dayName}
-                              <span className="ml-1.5 text-xs text-slate-400">
-                                {new Date(day.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                              </span>
-                              {absent && (
-                                <span className="ml-2 text-[10px] font-bold text-red-500">ABSENT</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">
-                              {isWorking ? `${day.allocatedHours}h` : "—"}
-                            </td>
-                            <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-900">
-                              {day.actualHours > 0 ? `${day.actualHours}h` : "—"}
-                            </td>
-                            <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">
-                              {bookedHrs > 0 ? `${bookedHrs}h` : "—"}
-                            </td>
-                            <td className={cn(
-                              "px-4 py-2.5 text-right tabular-nums font-semibold",
-                              variance == null        ? "text-slate-300"
-                              : variance > 0.25       ? "text-amber-600"
-                              : variance < -0.25      ? "text-red-500"
-                              : "text-emerald-600",
+                          <Fragment key={day.date}>
+                            <tr className={cn(
+                              "border-t border-slate-50",
+                              absent && "bg-red-50",
+                              isEditing && "bg-orange-50/40",
                             )}>
-                              {variance == null ? "—"
-                                : variance > 0 ? `+${variance.toFixed(1)}h`
-                                : `${variance.toFixed(1)}h`}
-                            </td>
-                          </tr>
+                              <td className="px-4 py-2.5 font-medium text-slate-700">
+                                {day.dayName}
+                                <span className="ml-1.5 text-xs text-slate-400">
+                                  {new Date(day.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                </span>
+                                {absent && (
+                                  <span className="ml-2 text-[10px] font-bold text-red-500">ABSENT</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">
+                                {isWorking ? `${day.allocatedHours}h` : "—"}
+                              </td>
+                              <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-900">
+                                {day.actualHours > 0 ? `${day.actualHours}h` : "—"}
+                              </td>
+                              <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">
+                                {bookedHrs > 0 ? `${bookedHrs}h` : "—"}
+                              </td>
+                              <td className={cn(
+                                "px-4 py-2.5 text-right tabular-nums font-semibold",
+                                variance == null        ? "text-slate-300"
+                                : variance > 0.25       ? "text-amber-600"
+                                : variance < -0.25      ? "text-red-500"
+                                : "text-emerald-600",
+                              )}>
+                                {variance == null ? "—"
+                                  : variance > 0 ? `+${variance.toFixed(1)}h`
+                                  : `${variance.toFixed(1)}h`}
+                              </td>
+                              <td className="px-3 py-2.5 text-right">
+                                {canEdit && day.lineId && (
+                                  <button
+                                    onClick={() => setEditingLineDate(isEditing ? null : day.date)}
+                                    title={isEditing ? "Cancel edit" : "Edit this day"}
+                                    className={cn(
+                                      "rounded p-1 transition-colors",
+                                      isEditing
+                                        ? "text-orange-500 hover:bg-orange-100"
+                                        : "text-slate-400 hover:bg-slate-100 hover:text-slate-700",
+                                    )}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                            {isEditing && day.lineId && (
+                              <LineEditor
+                                key={`editor-${day.date}`}
+                                lineId={day.lineId}
+                                timesheetId={timesheetId}
+                                day={{
+                                  clockIn: day.clockIn,
+                                  clockOut: day.clockOut,
+                                  breakMins: day.breakMins,
+                                  regularHours: day.regularHours,
+                                  overtimeHours: day.overtimeHours,
+                                  note: day.note,
+                                }}
+                                onSaved={() => {
+                                  setEditingLineDate(null);
+                                  void refetch();
+                                }}
+                                onCancel={() => setEditingLineDate(null)}
+                              />
+                            )}
+                          </Fragment>
                         );
                       })}
                     </tbody>
@@ -369,6 +521,7 @@ export function TimesheetDetailDrawer({
                             return total > 0 ? `${(total / 60).toFixed(1)}h` : "—";
                           })()}
                         </td>
+                        <td />
                         <td />
                       </tr>
                     </tfoot>

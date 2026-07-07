@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure, orgAdminProcedure } from "../trpc";
+import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 
 function currentWeekStart() {
@@ -160,5 +160,65 @@ export const expensesRouter = router({
           reviewNote: input.note,
         },
       });
+    }),
+
+  // ── Nominal Codes (SA only) ─────────────────────────────────────────────
+
+  /**
+   * SA: list expense nominal codes for the platform org.
+   */
+  listNominalCodes: superAdminProcedure
+    .input(z.object({ organisationId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.xeroExpenseNominalCode.findMany({
+        where: { organisationId: input.organisationId },
+        orderBy: { createdAt: "asc" },
+      });
+    }),
+
+  /**
+   * SA: upsert (create or update) an expense nominal code.
+   */
+  upsertNominalCode: superAdminProcedure
+    .input(
+      z.object({
+        id: z.string().optional(),
+        organisationId: z.string(),
+        name: z.string().min(2),
+        xeroAccountCode: z.string().min(1),
+        xeroAccountName: z.string().optional(),
+        taxType: z.string().default("INPUT2"),
+        isDefault: z.boolean().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, organisationId, isDefault, ...rest } = input;
+
+      // If setting this one as default, clear existing default first
+      if (isDefault) {
+        await ctx.prisma.xeroExpenseNominalCode.updateMany({
+          where: { organisationId, isDefault: true },
+          data: { isDefault: false },
+        });
+      }
+
+      if (id) {
+        return ctx.prisma.xeroExpenseNominalCode.update({
+          where: { id },
+          data: { ...rest, isDefault },
+        });
+      }
+      return ctx.prisma.xeroExpenseNominalCode.create({
+        data: { ...rest, organisationId, isDefault },
+      });
+    }),
+
+  /**
+   * SA: delete an expense nominal code.
+   */
+  deleteNominalCode: superAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.xeroExpenseNominalCode.delete({ where: { id: input.id } });
     }),
 });

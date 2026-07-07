@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, orgAdminProcedure, superAdminProcedure, protectedProcedure } from "../trpc";
 import type { Role } from "@ivaleter/db";
+import { pushExpensesToXero } from "../lib/xero";
 
 function startOfToday(): Date {
   const d = new Date();
@@ -520,6 +521,8 @@ export const hqRouter = router({
    *   - dailyDeductions × days worked  → DAILY
    *   - active ValeterDeductions (unsettled) → STANDING
    *   - outstanding accident weeklyDeductions → ACCIDENT
+   *   - approved expenses for the same week → EXPENSE (adds to net pay)
+   * Also pushes approved expenses to Xero as an ACCPAY invoice (consumables).
    */
   lockAndApplyDeductions: superAdminProcedure
     .input(z.object({ timesheetId: z.string() }))
@@ -531,6 +534,9 @@ export const hqRouter = router({
           user: {
             select: {
               id: true,
+              firstName: true,
+              lastName: true,
+              organisationId: true,
               dailyDeductions: true,
               deductions: {
                 where: { settled: false },
@@ -553,13 +559,24 @@ export const hqRouter = router({
         (l: { regularHours: number; overtimeHours: number }) => l.regularHours > 0 || l.overtimeHours > 0
       ).length;
 
+      // ── Fetch approved expenses for this valeter's week ─────────────────
+      const approvedExpenses = await ctx.prisma.valeterExpense.findMany({
+        where: {
+          userId: ts.user.id,
+          weekStarting: ts.weekStarting,
+          status: "APPROVED",
+          timesheetId: null, // not already bundled
+        },
+      });
+
       const deductionsToCreate: {
         timesheetId: string;
-        type: "DAILY" | "STANDING" | "ACCIDENT";
+        type: "DAILY" | "STANDING" | "ACCIDENT" | "EXPENSE";
         description: string;
         amountPence: number;
         valeterDeductionId?: string;
         accidentId?: string;
+        expenseId?: string;
         addedByUserId: string;
       }[] = [];
 
@@ -600,10 +617,29 @@ export const hqRouter = router({
         }
       }
 
-      // Apply in a transaction: create deductions + lock the timesheet
+      // 4. Approved expense reimbursements (positive — adds to net pay)
+      for (const exp of approvedExpenses) {
+        deductionsToCreate.push({
+          timesheetId: ts.id,
+          type: "EXPENSE",
+          description: `Receipt: ${exp.description}`,
+          amountPence: exp.amountPence,
+          expenseId: exp.id,
+          addedByUserId: ctx.session.userId,
+        });
+      }
+
+      // Apply in a transaction: create deductions + lock + link expenses to this timesheet
       await ctx.prisma.$transaction([
         ...deductionsToCreate.map((d) =>
           ctx.prisma.timesheetDeduction.create({ data: d })
+        ),
+        // Mark each expense as belonging to this timesheet
+        ...approvedExpenses.map((exp) =>
+          ctx.prisma.valeterExpense.update({
+            where: { id: exp.id },
+            data: { timesheetId: ts.id },
+          })
         ),
         ctx.prisma.timesheet.update({
           where: { id: ts.id },
@@ -611,7 +647,27 @@ export const hqRouter = router({
         }),
       ]);
 
-      return { locked: true, deductionsApplied: deductionsToCreate.length };
+      // Push approved expenses to Xero (fire-and-forget — don't fail the lock if Xero is down)
+      if (approvedExpenses.length > 0) {
+        void pushExpensesToXero({
+          organisationId: ts.user.organisationId,
+          valeterName: `${ts.user.firstName} ${ts.user.lastName}`,
+          weekStarting: ts.weekStarting,
+          expenses: approvedExpenses.map((e) => ({
+            id: e.id,
+            description: e.description,
+            amountPence: e.amountPence,
+          })),
+        }).catch((err: unknown) => {
+          console.error("[xero] expense push failed", err);
+        });
+      }
+
+      return {
+        locked: true,
+        deductionsApplied: deductionsToCreate.length,
+        expensesBundled: approvedExpenses.length,
+      };
     }),
 
   /** List feedback replies (SA only) */

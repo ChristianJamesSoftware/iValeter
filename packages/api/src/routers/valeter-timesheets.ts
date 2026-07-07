@@ -299,6 +299,7 @@ export const valeterTimesheetsRouter = router({
       const days: {
         date: string;         // ISO date YYYY-MM-DD
         dayName: string;      // Mon, Tue…
+        lineId: string | null;
         clockIn: string | null;
         clockOut: string | null;
         actualHours: number;  // from clock in/out
@@ -306,6 +307,8 @@ export const valeterTimesheetsRouter = router({
         bookedMins: number;   // from completed bookings
         regularHours: number; // from TimesheetLine
         overtimeHours: number;
+        breakMins: number;
+        note: string | null;
       }[] = [];
 
       const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -326,6 +329,7 @@ export const valeterTimesheetsRouter = router({
         days.push({
           date: key,
           dayName: DAY_NAMES[i] ?? "",
+          lineId: tsLine?.id ?? null,
           clockIn: clock.inTime,
           clockOut: clock.outTime,
           actualHours,
@@ -333,6 +337,8 @@ export const valeterTimesheetsRouter = router({
           bookedMins: bookedMinsByDay.get(key) ?? 0,
           regularHours: tsLine?.regularHours ?? 0,
           overtimeHours: tsLine?.overtimeHours ?? 0,
+          breakMins: tsLine?.breakMins ?? 60,
+          note: tsLine?.note ?? null,
         });
       }
 

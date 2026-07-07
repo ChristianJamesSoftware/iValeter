@@ -51,13 +51,22 @@ export const timesheetDeductionsRouter = router({
       ).length;
       const dailyRate = timesheet.user.dailyRate ?? 0;
       const grossPence = Math.round(daysWorked * dailyRate * 100);
-      const totalDeductionPence = deductions.reduce((sum, d) => sum + d.amountPence, 0);
-      const finalPayPence = Math.max(0, grossPence - totalDeductionPence);
+
+      // EXPENSE lines are reimbursements — they add to net pay rather than deduct
+      const expenseLines = deductions.filter((d) => d.type === "EXPENSE");
+      const deductionLines = deductions.filter((d) => d.type !== "EXPENSE");
+
+      const totalDeductionPence = deductionLines.reduce((sum, d) => sum + d.amountPence, 0);
+      const totalExpenseReimbursementPence = expenseLines.reduce((sum, d) => sum + d.amountPence, 0);
+      const finalPayPence = Math.max(0, grossPence - totalDeductionPence + totalExpenseReimbursementPence);
 
       return {
         deductions,
+        expenseLines,
+        deductionLines,
         grossPence,
         totalDeductionPence,
+        totalExpenseReimbursementPence,
         finalPayPence,
         daysWorked,
         dayRatePence: Math.round(dailyRate * 100),
