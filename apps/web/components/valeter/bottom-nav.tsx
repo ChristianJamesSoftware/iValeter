@@ -21,7 +21,7 @@ export function ValeterBottomNav() {
   });
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-md border-t border-line bg-navy">
+    <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-md border-t border-line bg-navy pb-[env(safe-area-inset-bottom)]">
       {ITEMS.map((item) => {
         const active = item.exact
           ? pathname === item.href || pathname.startsWith("/valeter/jobs")

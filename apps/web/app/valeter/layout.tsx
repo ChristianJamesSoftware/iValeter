@@ -15,7 +15,7 @@ export default async function ValeterLayout({
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-offwhite">
       <SwRegister />
-      <div className="flex-1 pb-20">{children}</div>
+      <div className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</div>
       <ValeterBottomNav />
     </div>
   );
