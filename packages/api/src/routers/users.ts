@@ -263,7 +263,30 @@ export const usersRouter = router({
       });
     }),
 
-  /** Valeter: clock in */
+  /** Valeter: get own clock-in status for today */
+  myClockStatus: protectedProcedure.query(async ({ ctx }) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const events = await ctx.prisma.clockEvent.findMany({
+      where: {
+        userId: ctx.session.userId,
+        timestamp: { gte: today, lt: tomorrow },
+      },
+      orderBy: { timestamp: "asc" },
+    });
+
+    if (events.length === 0) return { clockedIn: false, clockedInAt: null };
+
+    // Determine current state: last event type wins
+    const last = events[events.length - 1];
+    const clockedIn = last!.type === "CLOCK_IN";
+    const clockedInAt = events.find((e) => e.type === "CLOCK_IN")?.timestamp ?? null;
+    return { clockedIn, clockedInAt: clockedInAt?.toISOString() ?? null };
+  }),
+
   clockIn: protectedProcedure
     .input(
       z.object({

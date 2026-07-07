@@ -33,14 +33,27 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
   const [actionLoading, setActionLoading] = useState(false);
   // "queued" = action saved offline, waiting for sync
   const [queuedState, setQueuedState] = useState<"none" | "queued-in" | "queued-out">("none");
+  const [statusLoaded, setStatusLoaded] = useState(false);
 
   const utils = trpc.useUtils();
+
+  // Load today's clock status from DB on mount — persists across navigation
+  const { data: clockStatus } = trpc.users.myClockStatus.useQuery(undefined, {
+    refetchOnWindowFocus: true,
+  });
+  useEffect(() => {
+    if (clockStatus === undefined) return;
+    setClockedIn(clockStatus.clockedIn);
+    if (clockStatus.clockedInAt) setClockInTime(new Date(clockStatus.clockedInAt));
+    setStatusLoaded(true);
+  }, [clockStatus]);
 
   const clockInMut = trpc.users.clockIn.useMutation({
     onSuccess: () => {
       setClockedIn(true);
       setClockInTime(new Date());
       setQueuedState("none");
+      void utils.users.myClockStatus.invalidate();
       void utils.valeterTimesheets.myCurrentWeek.invalidate();
     },
   });
@@ -48,6 +61,7 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
     onSuccess: () => {
       setClockedIn(false);
       setQueuedState("none");
+      void utils.users.myClockStatus.invalidate();
       void utils.valeterTimesheets.myCurrentWeek.invalidate();
     },
   });
@@ -209,7 +223,7 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
       {/* Action button */}
       <button
         onClick={() => void handleAction()}
-        disabled={actionLoading}
+        disabled={actionLoading || !statusLoaded}
         className={`mt-4 h-14 w-full rounded-xl text-base font-black tracking-wide transition-colors disabled:opacity-60 ${
           clockedIn
             ? "bg-red-500 text-white hover:bg-red-600"

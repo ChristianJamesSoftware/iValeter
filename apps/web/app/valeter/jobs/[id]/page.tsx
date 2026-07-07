@@ -20,6 +20,7 @@ import { SLATimer } from "@/components/brand/sla-timer";
 import { JobStatusAction } from "@/components/valeter/job-status-action";
 import { JobPhotosClient } from "@/components/valeter/job-photos-client";
 import { ParkingPinClient } from "@/components/valeter/parking-pin-client";
+import { JobAutoAccept } from "@/components/valeter/job-auto-accept";
 
 export const dynamic = "force-dynamic";
 
@@ -158,6 +159,9 @@ export default async function ValeterJobDetail({
             </span>
           </div>
         </section>
+
+        {/* Auto-advance PENDING → ASSIGNED when valeter opens the job */}
+        <JobAutoAccept bookingId={booking.id} status={booking.status} />
 
         <JobStatusAction
           booking={{

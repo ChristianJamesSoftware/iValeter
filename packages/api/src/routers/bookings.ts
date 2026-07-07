@@ -220,12 +220,15 @@ export const bookingsRouter = router({
    */
   valeterListServiceTypes: valeterProcedure
     .query(async ({ ctx }) => {
-      // ServiceType is scoped through department -> site -> org
+      // Scoped to the valeter's assigned site only.
+      // Falls back to org-wide if no site is set (shouldn't happen in production).
+      const siteFilter = ctx.session.siteId
+        ? { id: ctx.session.siteId, organisationId: ctx.session.organisationId }
+        : { organisationId: ctx.session.organisationId };
+
       return ctx.prisma.serviceType.findMany({
         where: {
-          department: {
-            site: { organisationId: ctx.session.organisationId },
-          },
+          department: { site: siteFilter },
           isActive: true,
         },
         select: { id: true, name: true, durationMins: true },
@@ -336,6 +339,35 @@ export const bookingsRouter = router({
       });
 
       return booking;
+    }),
+
+  /**
+   * Valeter: accept a job — advances PENDING → ASSIGNED when the valeter opens it.
+   * Safe to call repeatedly (no-op if already ASSIGNED or beyond).
+   */
+  valeterAccept: valeterProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const booking = await ctx.prisma.booking.findFirst({
+        where: { id: input.id, assignedToId: ctx.session.userId },
+      });
+      if (!booking) throw new TRPCError({ code: "NOT_FOUND" });
+      if (booking.status !== BookingStatus.PENDING) return booking; // already past PENDING
+
+      const updated = await ctx.prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: BookingStatus.ASSIGNED },
+      });
+      await ctx.prisma.jobStatusHistory.create({
+        data: {
+          bookingId: booking.id,
+          fromStatus: BookingStatus.PENDING,
+          toStatus: BookingStatus.ASSIGNED,
+          userId: ctx.session.userId,
+          note: "Accepted by valeter",
+        },
+      });
+      return updated;
     }),
 
   /**
