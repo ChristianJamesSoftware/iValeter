@@ -468,16 +468,21 @@ model JobStatusHistory {
 }
 
 model JobPhoto {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   bookingId String
-  booking   Booking  @relation(fields: [bookingId], references: [id])
+  booking   Booking   @relation(fields: [bookingId], references: [id])
   url       String
-  type      String   // "exterior_front" | "exterior_front_driver_corner" | "exterior_driver" | "exterior_rear_driver_corner" | "exterior_rear" | "exterior_rear_passenger_corner" | "exterior_passenger" | "exterior_front_passenger_corner" | "interior_front" | "interior_rear" | "boot" | "wheel_fl" | "wheel_fr" | "wheel_rl" | "wheel_rr" | "other"
-  stage     String   @default("pre_valet") // "pre_valet" | "post_valet"
-  label     String?  // human readable e.g. "Front of vehicle"
-  createdAt DateTime @default(now())
+  type      PhotoType @default(AFTER) // BEFORE = pre-valet/damage, AFTER = post-valet/finished
+  stage     String    @default("pre_valet") // "pre_valet" | "post_valet" | "photography"
+  label     String?   // human readable e.g. "Front of vehicle"
+  createdAt DateTime  @default(now())
 
   @@index([bookingId])
+}
+
+enum PhotoType {
+  BEFORE
+  AFTER
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

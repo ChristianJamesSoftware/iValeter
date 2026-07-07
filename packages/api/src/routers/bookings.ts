@@ -731,11 +731,14 @@ export const bookingsRouter = router({
         ? input.photoData
         : `data:image/jpeg;base64,${input.photoData}`;
 
+      // Map stage → PhotoType enum (DB column is PhotoType, not free-form string)
+      const photoType = input.stage === "pre_valet" ? "BEFORE" : "AFTER";
+
       return ctx.prisma.jobPhoto.create({
         data: {
           bookingId: booking.id,
           url,
-          type: input.type,
+          type: photoType,
           stage: input.stage,
           label: input.label,
         },
