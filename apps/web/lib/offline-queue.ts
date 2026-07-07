@@ -128,31 +128,45 @@ async function incrementAttempts(id: string, action: QueuedAction): Promise<void
  * Fire each queued action against the tRPC HTTP endpoint directly
  * (avoids React hook dependency — safe to call from SW or event listeners).
  */
-export async function replayQueue(): Promise<{ replayed: number; failed: number }> {
-  if (!navigator.onLine) return { replayed: 0, failed: 0 };
+export async function replayQueue(): Promise<{ replayed: number; failed: number; droppedClockOuts: number }> {
+  if (!navigator.onLine) return { replayed: 0, failed: 0, droppedClockOuts: 0 };
 
   const actions = await getPendingActions();
-  if (actions.length === 0) return { replayed: 0, failed: 0 };
+  if (actions.length === 0) return { replayed: 0, failed: 0, droppedClockOuts: 0 };
 
   let replayed = 0;
   let failed   = 0;
+  let droppedClockOuts = 0;
 
   for (const action of actions) {
     try {
       await executeAction(action);
       await dequeue(action.id);
       replayed++;
+      // Notify service worker so UI can refresh
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: "QUEUE_REPLAYED" });
+      }
     } catch {
       await incrementAttempts(action.id, action);
       // Drop after 10 failed attempts to avoid indefinite retry
       if (action.attempts >= 9) {
         await dequeue(action.id);
+        // If this was a clock-out, flag it — payroll risk
+        if (action.type === "CLOCK_OUT") {
+          droppedClockOuts++;
+          // Store a flag in localStorage so the app can warn the valeter
+          localStorage.setItem(
+            "ivaleter:missed_clockout",
+            JSON.stringify({ at: action.queuedAt, attempts: action.attempts + 1 }),
+          );
+        }
       }
       failed++;
     }
   }
 
-  return { replayed, failed };
+  return { replayed, failed, droppedClockOuts };
 }
 
 // ── HTTP execution (no React) ─────────────────────────────────────────────────

@@ -5,7 +5,8 @@ import { formatDate, greeting } from "@/lib/utils";
 import { ValeterJobList } from "@/components/valeter/job-list";
 import { ClockWidget } from "@/components/valeter/clock-widget";
 import { AddJobSheet } from "@/components/valeter/add-job-sheet";
-import { logoutAction } from "@/app/(auth)/login/actions";
+import { LogoutButton } from "@/components/valeter/logout-button";
+import { OfflineQueueStatus } from "@/components/valeter/offline-queue-status";
 
 export const dynamic = "force-dynamic";
 
@@ -62,14 +63,7 @@ export default async function ValeterHomePage() {
               {jobs.filter((j) => j.status !== "COMPLETED").length !== 1 ? "s" : ""} today
             </p>
           </div>
-          <form action={logoutAction}>
-            <button
-              type="submit"
-              className="mt-1 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/60 transition hover:bg-white/20 hover:text-white"
-            >
-              Log out
-            </button>
-          </form>
+          <LogoutButton />
         </div>
 
         {/* Clock widget */}
@@ -84,6 +78,7 @@ export default async function ValeterHomePage() {
       </div>
 
       <div className="px-4 py-4">
+        <OfflineQueueStatus />
         <ValeterJobList initialJobs={jobs} />
       </div>
     </div>

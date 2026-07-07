@@ -34,6 +34,17 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
   // "queued" = action saved offline, waiting for sync
   const [queuedState, setQueuedState] = useState<"none" | "queued-in" | "queued-out">("none");
   const [statusLoaded, setStatusLoaded] = useState(false);
+  const [missedClockOut, setMissedClockOut] = useState<{ at: number } | null>(null);
+
+  // Check for a previously dropped clock-out (payroll risk warning)
+  useEffect(() => {
+    try {
+      const flag = localStorage.getItem("ivaleter:missed_clockout");
+      if (flag) {
+        setMissedClockOut(JSON.parse(flag) as { at: number });
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const utils = trpc.useUtils();
 
@@ -231,6 +242,22 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
           {isQueued && (
             <p className="mt-0.5 text-[10px] text-amber-300">⏳ pending sync</p>
           )}
+        </div>
+      )}
+
+      {/* Missed clock-out warning */}
+      {missedClockOut && (
+        <div className="mt-3 rounded-xl border border-red-300 bg-red-500/20 px-3 py-2.5 text-xs text-red-200">
+          <p className="font-bold">⚠ Clock-out not recorded</p>
+          <p className="mt-0.5 opacity-80">
+            A clock-out at {new Date(missedClockOut.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} could not be synced after multiple attempts. Please let your manager know so your timesheet can be corrected.
+          </p>
+          <button
+            onClick={() => { localStorage.removeItem("ivaleter:missed_clockout"); setMissedClockOut(null); }}
+            className="mt-1.5 text-red-300 underline"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
