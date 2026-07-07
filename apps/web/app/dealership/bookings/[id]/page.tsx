@@ -19,6 +19,7 @@ export default async function DealershipBookingDetail({
   const { id } = await params;
   const { from } = await searchParams;
   const fromCalendar = from === "calendar";
+  const fromDashboard = from === "dashboard";
   const api = await getServerApi();
 
   let booking;
@@ -34,10 +35,10 @@ export default async function DealershipBookingDetail({
   return (
     <div>
       <Link
-        href={fromCalendar ? "/dealership/calendar" : "/dealership/bookings"}
+        href={fromCalendar ? "/dealership/calendar" : fromDashboard ? "/dealership" : "/dealership/bookings"}
         className="mb-4 inline-flex items-center gap-1 text-sm text-slate hover:text-navy"
       >
-        <ChevronLeft className="h-4 w-4" /> {fromCalendar ? "Back to calendar" : "All bookings"}
+        <ChevronLeft className="h-4 w-4" /> {fromCalendar ? "Back to calendar" : fromDashboard ? "Back to dashboard" : "All bookings"}
       </Link>
 
       {/* DO NOT CLEAN alert */}

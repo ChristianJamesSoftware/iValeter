@@ -172,7 +172,7 @@ export function DealerDashboardClient({ initialJobs }: { initialJobs: Job[] }) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {jobs.map((job) => (
-            <BookingCard key={job.id} booking={job} href={`/dealership/bookings/${job.id}`} />
+            <BookingCard key={job.id} booking={job} href={`/dealership/bookings/${job.id}?from=dashboard`} />
           ))}
         </div>
       )}
