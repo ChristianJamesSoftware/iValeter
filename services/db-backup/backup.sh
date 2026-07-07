@@ -28,8 +28,7 @@ pg_dump "${DATABASE_URL}" \
   --no-owner \
   --no-acl \
   --format=plain \
-  --compress=9 \
-  | gzip > "${TMPFILE}"
+  | gzip -9 > "${TMPFILE}"
 
 FILESIZE=$(du -sh "${TMPFILE}" | cut -f1)
 echo "▶ Dump complete — ${FILESIZE} compressed"
@@ -53,8 +52,9 @@ rm -f "${TMPFILE}"
 # ── Delete backups older than 30 days from R2 ────────────────────────────────
 echo "▶ Pruning backups older than ${RETENTION_DAYS} days..."
 
-CUTOFF=$(date -u -d "${RETENTION_DAYS} days ago" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || \
-         date -u -v-${RETENTION_DAYS}d +"%Y-%m-%dT%H:%M:%SZ")  # macOS fallback
+# Pure arithmetic — works on BusyBox (Alpine) and GNU date equally
+CUTOFF_EPOCH=$(( $(date -u +%s) - RETENTION_DAYS * 86400 ))
+CUTOFF=$(date -u -d "@${CUTOFF_EPOCH}" +"%Y-%m-%dT%H:%M:%SZ")
 
 AWS_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID}" \
 AWS_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY}" \
