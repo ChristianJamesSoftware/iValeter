@@ -7,7 +7,7 @@ const TOKEN_URL = "https://identity.xero.com/connect/token";
 const CONNECTIONS_URL = "https://api.xero.com/connections";
 const API_BASE = "https://api.xero.com/api.xro/2.0";
 const SCOPE =
-  "accounting.transactions accounting.contacts accounting.settings offline_access";
+  "accounting.invoices accounting.contacts accounting.settings offline_access";
 
 export interface XeroAccount {
   accountId: string;
