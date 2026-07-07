@@ -201,7 +201,7 @@ export function CalendarTab({ siteId }: { siteId: string }) {
                     jobs.map((job) => (
                       <Link
                         key={job.id}
-                        href={`/admin/bookings/${job.id}`}
+                        href={`/org/bookings/${job.id}`}
                         className={cn(
                           "block rounded-lg border p-1.5 text-[10px] leading-tight transition hover:shadow-sm",
                           job.status === "COMPLETED"

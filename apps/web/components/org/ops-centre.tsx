@@ -146,7 +146,7 @@ function LiveBoard({
                 ) : items.map((b) => (
                   <a
                     key={b.id}
-                    href={`/admin/bookings/${b.id}`}
+                    href={`/org/bookings/${b.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(
