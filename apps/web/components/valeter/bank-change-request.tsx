@@ -26,7 +26,23 @@ export function BankChangeRequest() {
     newBankReference: "",
     evidenceUrl: "",
   });
+  // Track which fields have been touched so we only show errors after interaction
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [photoLabel, setPhotoLabel] = useState<string | null>(null);
+
+  const sc = form.newSortCode.replace(/\D/g, "");
+  const an = form.newAccountNumber.replace(/\D/g, "");
+  const errors = {
+    sortCode:      sc.length !== 6  ? `Sort code must be 6 digits (${sc.length}/6 entered)` : null,
+    accountNumber: an.length < 8    ? `Account number must be 8 digits (${an.length}/8 entered)` : null,
+    accountName:   !form.newAccountName.trim() ? "Account name is required" : null,
+  };
+  const isValid = !errors.sortCode && !errors.accountNumber && !errors.accountName;
+
+  function showError(field: string) {
+    return (touched[field] || submitAttempted) ? errors[field as keyof typeof errors] : null;
+  }
 
   const utils = trpc.useUtils();
   const { data: requests, isLoading } = trpc.bankChanges.myRequests.useQuery(undefined, {
@@ -48,12 +64,8 @@ export function BankChangeRequest() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const sc = form.newSortCode.replace(/\D/g, "");
-    const an = form.newAccountNumber.replace(/\D/g, "");
-    if (sc.length !== 6) return;
-    if (an.length < 8) return;
-    if (!form.newAccountName.trim()) return;
-
+    setSubmitAttempted(true);
+    if (!isValid) return; // errors are now visible — don't submit
     submit.mutate({
       newSortCode:      sc,
       newAccountNumber: an,
@@ -180,12 +192,20 @@ export function BankChangeRequest() {
                   type="text"
                   inputMode="numeric"
                   maxLength={8}
-                  className="h-10 w-full rounded-xl bg-white/10 px-3.5 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-500/50"
+                  className={cn(
+                    "h-10 w-full rounded-xl bg-white/10 px-3.5 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-500/50 transition",
+                    showError("sortCode") && "ring-2 ring-red-500/60 bg-red-500/10",
+                  )}
                   placeholder="12-34-56"
                   value={form.newSortCode}
                   onChange={(e) => setForm((f) => ({ ...f, newSortCode: e.target.value }))}
-                  required
+                  onBlur={() => setTouched((t) => ({ ...t, sortCode: true }))}
                 />
+                {showError("sortCode") && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-red-400">
+                    <AlertCircle className="h-3 w-3 shrink-0" />{showError("sortCode")}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -196,12 +216,20 @@ export function BankChangeRequest() {
                   type="text"
                   inputMode="numeric"
                   maxLength={10}
-                  className="h-10 w-full rounded-xl bg-white/10 px-3.5 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-500/50"
+                  className={cn(
+                    "h-10 w-full rounded-xl bg-white/10 px-3.5 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-500/50 transition",
+                    showError("accountNumber") && "ring-2 ring-red-500/60 bg-red-500/10",
+                  )}
                   placeholder="12345678"
                   value={form.newAccountNumber}
                   onChange={(e) => setForm((f) => ({ ...f, newAccountNumber: e.target.value }))}
-                  required
+                  onBlur={() => setTouched((t) => ({ ...t, accountNumber: true }))}
                 />
+                {showError("accountNumber") && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-red-400">
+                    <AlertCircle className="h-3 w-3 shrink-0" />{showError("accountNumber")}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -210,12 +238,20 @@ export function BankChangeRequest() {
                 </label>
                 <input
                   type="text"
-                  className="h-10 w-full rounded-xl bg-white/10 px-3.5 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-500/50"
+                  className={cn(
+                    "h-10 w-full rounded-xl bg-white/10 px-3.5 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-500/50 transition",
+                    showError("accountName") && "ring-2 ring-red-500/60 bg-red-500/10",
+                  )}
                   placeholder="Full name on the account"
                   value={form.newAccountName}
                   onChange={(e) => setForm((f) => ({ ...f, newAccountName: e.target.value }))}
-                  required
+                  onBlur={() => setTouched((t) => ({ ...t, accountName: true }))}
                 />
+                {showError("accountName") && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-red-400">
+                    <AlertCircle className="h-3 w-3 shrink-0" />{showError("accountName")}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -274,12 +310,7 @@ export function BankChangeRequest() {
               <div className="flex gap-2 pt-1">
                 <button
                   type="submit"
-                  disabled={
-                    submit.isPending ||
-                    form.newSortCode.replace(/\D/g, "").length !== 6 ||
-                    form.newAccountNumber.replace(/\D/g, "").length < 8 ||
-                    !form.newAccountName.trim()
-                  }
+                  disabled={submit.isPending}
                   className="flex-1 rounded-xl bg-orange-500 py-2.5 text-sm font-bold text-white transition hover:bg-orange-600 disabled:opacity-40"
                 >
                   {submit.isPending ? "Submitting…" : "Submit request"}

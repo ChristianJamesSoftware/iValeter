@@ -200,8 +200,8 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
               {distanceM !== null ? `${distanceM}m away` : "Off site"}
             </span>
           )}
-          {geoStatus === "unavailable" && <span>Location unavailable</span>}
-          {geoStatus === "checking" && <span>Checking location…</span>}
+          {geoStatus === "unavailable" && <span className="text-white/40">No location</span>}
+          {geoStatus === "checking" && <span className="text-white/40">Checking…</span>}
         </div>
       </div>
 
