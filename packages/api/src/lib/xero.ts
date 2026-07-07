@@ -29,10 +29,10 @@ function decodeState(state: string): { orgId: string } {
 /** Build the Xero consent URL to redirect the user to. */
 export async function buildXeroAuthUrl(orgId: string): Promise<string> {
   const clientId = await getPlatformConfig("XERO_CLIENT_ID");
-  const redirectUri = await getPlatformConfig("XERO_REDIRECT_URI");
-  if (!clientId || !redirectUri) {
+  const redirectUri = (await getPlatformConfig("XERO_REDIRECT_URI")) || "https://www.ivaleter.co.uk/api/xero/callback";
+  if (!clientId) {
     throw new Error(
-      "Xero is not configured. Set XERO_CLIENT_ID and XERO_REDIRECT_URI in platform settings.",
+      "Xero is not configured. Set XERO_CLIENT_ID and XERO_CLIENT_SECRET in platform settings.",
     );
   }
   const params = new URLSearchParams({
@@ -60,7 +60,7 @@ export async function handleXeroCallback(
   const { orgId } = decodeState(state);
   const clientId = await getPlatformConfig("XERO_CLIENT_ID");
   const clientSecret = await getPlatformConfig("XERO_CLIENT_SECRET");
-  const redirectUri = await getPlatformConfig("XERO_REDIRECT_URI");
+  const redirectUri = (await getPlatformConfig("XERO_REDIRECT_URI")) || "https://www.ivaleter.co.uk/api/xero/callback";
 
   const tokenRes = await fetch(TOKEN_URL, {
     method: "POST",

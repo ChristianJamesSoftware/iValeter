@@ -132,7 +132,7 @@ function PlatformTab({ get, save, pending }: { get: GetFn; save: SaveFn; pending
 }
 
 function IntegrationsTab({ get, save, pending }: { get: GetFn; save: SaveFn; pending: boolean }) {
-  const [redirect, setRedirect] = useState(get("XERO_REDIRECT_URI")?.value ?? "");
+  const [redirect, setRedirect] = useState(get("XERO_REDIRECT_URI")?.value || "https://www.ivaleter.co.uk/api/xero/callback");
   const [clientId, setClientId] = useState("");
   const [secret, setSecret] = useState("");
   const [saved, setSaved] = useState(false);
