@@ -638,6 +638,7 @@ export default function HomePage() {
               <a href="mailto:hello@ivaleter.co.uk">hello@ivaleter.co.uk</a>
               <a href="https://ivaleter.co.uk">ivaleter.co.uk</a>
               <span>© 2026 Total Valeting Ltd</span>
+              <span>ICO Reg: ZC191529</span>
             </div>
           </div>
         </footer>
