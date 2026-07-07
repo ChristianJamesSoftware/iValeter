@@ -1,15 +1,15 @@
 /**
  * Payroll router — NatWest Bankline ad-hoc bulk payment export
  *
- * File format (pipe-delimited .txt):
+ * File format (comma-delimited .txt):
  *   Row 08 — header: payment type, your reference, debit account, currency, amount, date, ...
- *   Row 09 — payee:  payment type, blank, blank, GBP, amount, blank, sort code, account, blank, payee name, blank x3, payee reference
+ *   Row 09 — payee:  payment type, blank, blank, GBP, amount (pence), blank, sort code, account, blank, payee name, blank x3, payee reference
  *
  * NatWest Bankline field rules:
  *   - Sort code:      6 digits, no dashes (e.g. 309609)
  *   - Account number: 8 digits
- *   - Payee name:     max 18 chars
- *   - Payee ref:      max 8 chars (the valeter's bankReference e.g. ABBIWD)
+ *   - Payee name:     max 18 chars, uppercase
+ *   - Payee ref:      max 8 chars (valeter's bankReference e.g. ABBIWD)
  *   - Your reference: max 18 chars (e.g. TVLTWAGESJUL26)
  *   - Payment date:   DDMMYYYY
  *   - Amount:         pence as integer string (e.g. 12800 for £128.00)
@@ -17,33 +17,29 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, superAdminProcedure, orgAdminProcedure } from "../trpc";
+import { router, superAdminProcedure } from "../trpc";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatSortCode(raw: string): string {
-  // Strip dashes and spaces, return 6 digits
   return raw.replace(/[^0-9]/g, "").substring(0, 6);
 }
 
 function formatDate(date: Date): string {
-  // DDMMYYYY
-  const d = date.getDate().toString().padStart(2, "0");
-  const m = (date.getMonth() + 1).toString().padStart(2, "0");
-  const y = date.getFullYear().toString();
+  const d = date.getUTCDate().toString().padStart(2, "0");
+  const m = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+  const y = date.getUTCFullYear().toString();
   return `${d}${m}${y}`;
 }
 
 function amountToPence(amount: number): string {
-  // NatWest expects pence as integer (no decimal point)
   return Math.round(amount * 100).toString();
 }
 
 function buildYourReference(weekEnding: Date): string {
-  // e.g. TVLTWAGESJUL26 — max 18 chars
   const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-  const mon = months[weekEnding.getMonth()];
-  const yr = weekEnding.getFullYear().toString().substring(2);
+  const mon = months[weekEnding.getUTCMonth()];
+  const yr = weekEnding.getUTCFullYear().toString().substring(2);
   return `TVLTWAGES${mon}${yr}`.substring(0, 18);
 }
 
@@ -52,90 +48,141 @@ function buildYourReference(weekEnding: Date): string {
 export const payrollRouter = router({
 
   /**
-   * List all pay runs for the org (most recent first).
+   * Preview the NatWest export for a payroll week.
+   * Returns a table of valeters with bank details, amounts, and any flags.
+   * Does NOT generate the file or mark anything as exported.
    */
-  listPayRuns: orgAdminProcedure
-    .input(z.object({ limit: z.number().default(20) }).optional())
+  previewNatWest: superAdminProcedure
+    .input(
+      z.object({
+        weekStart: z.string(),      // ISO date e.g. "2026-07-06"
+        paymentDate: z.string(),    // ISO date e.g. "2026-07-11"
+        debitAccount: z.string(),   // NatWest debit account e.g. "50000087654321"
+      }),
+    )
     .query(async ({ ctx, input }) => {
-      return ctx.prisma.payRun.findMany({
-        where: { organisationId: ctx.session.organisationId },
+      const weekStartDate = new Date(input.weekStart);
+      const weekEndDate = new Date(weekStartDate);
+      weekEndDate.setDate(weekEndDate.getDate() + 6);
+      weekEndDate.setHours(23, 59, 59, 999);
+
+      const timesheets = await ctx.prisma.timesheet.findMany({
+        where: {
+          user: { organisationId: ctx.session.organisationId },
+          weekStarting: weekStartDate,
+          status: { in: ["APPROVED", "LOCKED"] },
+        },
         include: {
-          lines: {
+          user: {
             select: {
-              id: true,
-              userId: true,
-              totalAmount: true,
+              firstName: true,
+              lastName: true,
+              dailyRate: true,
               bankSortCode: true,
               bankAccountNumber: true,
+              bankAccountName: true,
               bankReference: true,
-              user: { select: { firstName: true, lastName: true } },
             },
           },
         },
         orderBy: { weekStarting: "desc" },
-        take: input?.limit ?? 20,
       });
+
+      const paymentDate = new Date(input.paymentDate);
+      const yourRef = buildYourReference(weekEndDate);
+
+      const lines = timesheets.map((ts) => {
+        const dailyRate = ts.user.dailyRate ?? 0;
+        const hourlyRate = dailyRate > 0 ? dailyRate / 8 : 0;
+        const totalAmount =
+          ts.totalRegularHours * hourlyRate +
+          ts.totalOvertimeHours * hourlyRate * 1.5;
+
+        const sortCode = ts.user.bankSortCode ?? null;
+        const accountNumber = ts.user.bankAccountNumber ?? null;
+        const bankRef = ts.user.bankReference ?? null;
+        const payeeName = (
+          ts.user.bankAccountName ??
+          `${ts.user.firstName} ${ts.user.lastName}`
+        ).toUpperCase();
+
+        return {
+          name: `${ts.user.firstName} ${ts.user.lastName}`,
+          payeeName: payeeName.substring(0, 18),
+          sortCode: sortCode ? formatSortCode(sortCode) : null,
+          accountNumber,
+          bankReference: bankRef,
+          amount: totalAmount,
+          missingBankDetails: !sortCode || !accountNumber,
+          missingReference: !bankRef,
+        };
+      });
+
+      return {
+        yourReference: yourRef,
+        paymentDate: formatDate(paymentDate),
+        debitAccount: input.debitAccount,
+        weekStart: input.weekStart,
+        weekEnd: weekEndDate.toISOString().slice(0, 10),
+        totalAmount: lines.reduce((s, l) => s + l.amount, 0),
+        lineCount: lines.length,
+        lines,
+      };
     }),
 
   /**
-   * Generate a NatWest Bankline ad-hoc bulk payment .txt file for a pay run.
-   * Returns the file content as a string — the frontend can trigger a download.
-   *
-   * Required inputs:
-   *   - payRunId: the pay run to export
-   *   - debitAccount: your NatWest account number (sort code + account, e.g. "50000087654321")
-   *   - paymentDate: date payments should be made (ISO string, e.g. "2026-07-11")
+   * Generate and return the NatWest Bankline .txt file content.
+   * Only includes APPROVED or LOCKED timesheets.
+   * Returns fileContent as a string — frontend triggers the download.
    */
   exportNatWest: superAdminProcedure
     .input(
       z.object({
-        payRunId: z.string(),
+        weekStart: z.string(),
+        paymentDate: z.string(),
         debitAccount: z.string().min(1, "Debit account required"),
-        paymentDate: z.string().min(1, "Payment date required"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const payRun = await ctx.prisma.payRun.findUnique({
-        where: { id: input.payRunId },
+      const weekStartDate = new Date(input.weekStart);
+      const weekEndDate = new Date(weekStartDate);
+      weekEndDate.setDate(weekEndDate.getDate() + 6);
+      weekEndDate.setHours(23, 59, 59, 999);
+
+      const timesheets = await ctx.prisma.timesheet.findMany({
+        where: {
+          user: { organisationId: ctx.session.organisationId },
+          weekStarting: weekStartDate,
+          status: { in: ["APPROVED", "LOCKED"] },
+        },
         include: {
-          lines: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  bankSortCode: true,
-                  bankAccountNumber: true,
-                  bankAccountName: true,
-                  bankReference: true,
-                },
-              },
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              dailyRate: true,
+              bankSortCode: true,
+              bankAccountNumber: true,
+              bankAccountName: true,
+              bankReference: true,
             },
           },
         },
+        orderBy: { weekStarting: "desc" },
       });
 
-      if (!payRun) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Pay run not found" });
-      }
-      if (payRun.organisationId !== ctx.session.organisationId) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      if (payRun.lines.length === 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Pay run has no lines" });
+      if (timesheets.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No approved timesheets found for this week. Approve timesheets before exporting.",
+        });
       }
 
-      const paymentDate = new Date(input.paymentDate);
-      const yourRef = buildYourReference(payRun.weekEnding);
-      const totalAmount = payRun.lines.reduce((sum, l) => sum + l.totalAmount, 0);
-
-      // Validation — flag lines missing bank details
+      // Validate bank details
       const missing: string[] = [];
-      for (const line of payRun.lines) {
-        const sc = line.bankSortCode ?? line.user.bankSortCode;
-        const an = line.bankAccountNumber ?? line.user.bankAccountNumber;
-        if (!sc || !an) {
-          missing.push(`${line.user.firstName} ${line.user.lastName}`);
+      for (const ts of timesheets) {
+        if (!ts.user.bankSortCode || !ts.user.bankAccountNumber) {
+          missing.push(`${ts.user.firstName} ${ts.user.lastName}`);
         }
       }
       if (missing.length > 0) {
@@ -145,11 +192,18 @@ export const payrollRouter = router({
         });
       }
 
-      // ── Build file rows ──────────────────────────────────────────────────
+      const paymentDate = new Date(input.paymentDate);
+      const yourRef = buildYourReference(weekEndDate);
+      const totalAmount = timesheets.reduce((sum, ts) => {
+        const dailyRate = ts.user.dailyRate ?? 0;
+        const hourlyRate = dailyRate > 0 ? dailyRate / 8 : 0;
+        return sum + ts.totalRegularHours * hourlyRate + ts.totalOvertimeHours * hourlyRate * 1.5;
+      }, 0);
+
+      // ── Build file ───────────────────────────────────────────────────────
       const rows: string[] = [];
 
       // Row 08 — header
-      // Columns: payment type | your reference | debit account | currency | total amount | payment date | (10 blank cols)
       rows.push(
         [
           "08",
@@ -162,36 +216,29 @@ export const payrollRouter = router({
         ].join(","),
       );
 
-      // Row 09 — one per payee
-      for (const line of payRun.lines) {
-        const sortCode = formatSortCode(
-          (line.bankSortCode ?? line.user.bankSortCode) as string,
-        );
-        const accountNumber = (
-          line.bankAccountNumber ?? line.user.bankAccountNumber
-        ) as string;
-        const payeeName = (
-          line.bankAccountName ??
-          line.user.bankAccountName ??
-          `${line.user.firstName} ${line.user.lastName}`
-        )
-          .toUpperCase()
-          .substring(0, 18);
-        const payeeRef = (
-          line.bankReference ?? line.user.bankReference ?? ""
-        )
-          .toUpperCase()
-          .substring(0, 8);
-        const amount = amountToPence(line.totalAmount);
+      // Row 09 — one per valeter
+      for (const ts of timesheets) {
+        const dailyRate = ts.user.dailyRate ?? 0;
+        const hourlyRate = dailyRate > 0 ? dailyRate / 8 : 0;
+        const amount =
+          ts.totalRegularHours * hourlyRate +
+          ts.totalOvertimeHours * hourlyRate * 1.5;
 
-        // Columns: payment type | blank | blank | GBP | amount | blank | sort code | account | blank | payee name | blank x3 | payee ref
+        const sortCode = formatSortCode(ts.user.bankSortCode!);
+        const accountNumber = ts.user.bankAccountNumber!;
+        const payeeName = (
+          ts.user.bankAccountName ??
+          `${ts.user.firstName} ${ts.user.lastName}`
+        ).toUpperCase().substring(0, 18);
+        const payeeRef = (ts.user.bankReference ?? "").toUpperCase().substring(0, 8);
+
         rows.push(
           [
             "09",
             "",
             "",
             "GBP",
-            amount,
+            amountToPence(amount),
             "",
             sortCode,
             accountNumber,
@@ -205,92 +252,17 @@ export const payrollRouter = router({
         );
       }
 
-      const fileContent = rows.join("\n");
-
-      // Mark the pay run as exported
-      await ctx.prisma.payRun.update({
-        where: { id: input.payRunId },
-        data: { status: "EXPORTED", exportedAt: new Date() },
-      });
+      const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+      const mon = months[weekEndDate.getUTCMonth()] ?? "PAY";
+      const yr = weekEndDate.getUTCFullYear().toString().substring(2);
 
       return {
-        fileContent,
-        filename: `natwest-payroll-${yourRef.toLowerCase()}.txt`,
-        lineCount: payRun.lines.length,
+        fileContent: rows.join("\n"),
+        filename: `natwest-payroll-${mon.toLowerCase()}${yr}.txt`,
+        lineCount: timesheets.length,
         totalAmount,
         yourReference: yourRef,
         paymentDate: formatDate(paymentDate),
-      };
-    }),
-
-  /**
-   * Preview the NatWest export — same as exportNatWest but does NOT mark as exported.
-   * Use this to let admins review before committing.
-   */
-  previewNatWest: superAdminProcedure
-    .input(
-      z.object({
-        payRunId: z.string(),
-        debitAccount: z.string().min(1),
-        paymentDate: z.string().min(1),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      const payRun = await ctx.prisma.payRun.findUnique({
-        where: { id: input.payRunId },
-        include: {
-          lines: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  bankSortCode: true,
-                  bankAccountNumber: true,
-                  bankAccountName: true,
-                  bankReference: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (!payRun) throw new TRPCError({ code: "NOT_FOUND" });
-      if (payRun.organisationId !== ctx.session.organisationId) throw new TRPCError({ code: "FORBIDDEN" });
-
-      const paymentDate = new Date(input.paymentDate);
-      const yourRef = buildYourReference(payRun.weekEnding);
-
-      // Return a preview table — each line with name, sort code, account, amount, ref, and a flag if missing
-      return {
-        yourReference: yourRef,
-        paymentDate: formatDate(paymentDate),
-        debitAccount: input.debitAccount,
-        weekStarting: payRun.weekStarting,
-        weekEnding: payRun.weekEnding,
-        totalAmount: payRun.lines.reduce((s, l) => s + l.totalAmount, 0),
-        lines: payRun.lines.map((line) => {
-          const sortCode = line.bankSortCode ?? line.user.bankSortCode ?? null;
-          const accountNumber = line.bankAccountNumber ?? line.user.bankAccountNumber ?? null;
-          const payeeRef = line.bankReference ?? line.user.bankReference ?? null;
-          const payeeName = (
-            line.bankAccountName ??
-            line.user.bankAccountName ??
-            `${line.user.firstName} ${line.user.lastName}`
-          ).toUpperCase();
-
-          return {
-            name: `${line.user.firstName} ${line.user.lastName}`,
-            payeeName: payeeName.substring(0, 18),
-            sortCode: sortCode ? formatSortCode(sortCode) : null,
-            accountNumber,
-            bankReference: payeeRef,
-            amount: line.totalAmount,
-            missingBankDetails: !sortCode || !accountNumber,
-            missingReference: !payeeRef,
-          };
-        }),
       };
     }),
 });

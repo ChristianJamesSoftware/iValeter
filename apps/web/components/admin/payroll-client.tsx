@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, CheckCircle2, Loader2, Download, Landmark } from "lucide-react";
+import { NatWestExportModal } from "@/components/admin/natwest-export-modal";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 import { TimesheetDetailDrawer } from "@/components/admin/timesheet-detail-drawer";
@@ -66,6 +67,7 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
   const [selectedTimesheetId, setSelectedTimesheetId] = useState<string | null>(null);
   const [initialised, setInitialised] = useState(false);
   const [attendanceFilter, setAttendanceFilter] = useState<AttendanceFilter>("all");
+  const [showNatWestModal, setShowNatWestModal] = useState(false);
 
   // Load all weeks that have submissions — auto-select most recent
   const { data: availableWeeks } = trpc.hq.payrollWeeks.useQuery();
@@ -192,9 +194,10 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
           </button>
           <button
             type="button"
-            disabled
-            title="NatWest bank export — configure bank account in Admin Settings"
-            className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-[#01696F] px-4 py-2 text-sm font-semibold text-[#01696F] opacity-50"
+            disabled={!allApproved}
+            onClick={() => setShowNatWestModal(true)}
+            title={allApproved ? "Export to NatWest Bankline" : "Approve all timesheets first"}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#E8650A] px-4 py-2 text-sm font-semibold text-[#E8650A] transition-colors hover:bg-[#E8650A]/5 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Landmark className="h-4 w-4" />
             Export to Bank
@@ -322,6 +325,14 @@ export function PayrollClient({ initialWeekStart }: PayrollClientProps) {
       <TimesheetDetailDrawer
         timesheetId={selectedTimesheetId}
         onClose={() => setSelectedTimesheetId(null)}
+      />
+    )}
+
+    {/* NatWest Bankline export modal */}
+    {showNatWestModal && (
+      <NatWestExportModal
+        weekStart={weekStart}
+        onClose={() => setShowNatWestModal(false)}
       />
     )}
     </>

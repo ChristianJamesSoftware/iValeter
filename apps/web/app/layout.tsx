@@ -22,10 +22,19 @@ export const metadata: Metadata = {
   description:
     "Multi-tenant SaaS platform for dealership valet booking and job management.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a",
+  themeColor: "#1C1A16",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
