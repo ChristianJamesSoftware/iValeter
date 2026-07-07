@@ -35,7 +35,7 @@ const LBL =
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function AddJobSheet() {
+export function AddJobSheet({ fullWidth = false }: { fullWidth?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
@@ -94,11 +94,14 @@ export function AddJobSheet() {
 
   return (
     <>
-      {/* ── FAB trigger ───────────────────────────────────────────────────── */}
+      {/* ── Trigger button ─────────────────────────────────────────────── */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 transition hover:bg-orange-600 active:scale-95"
+        className={fullWidth
+          ? "flex w-full items-center justify-center gap-2.5 rounded-2xl bg-orange-500 py-3.5 text-sm font-bold text-white shadow-md shadow-orange-500/25 transition active:scale-[0.98] hover:bg-orange-600"
+          : "flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 transition hover:bg-orange-600 active:scale-95"
+        }
       >
         <Plus className="h-4 w-4" />
         Add Job

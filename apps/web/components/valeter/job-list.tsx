@@ -75,22 +75,24 @@ export function ValeterJobList({ initialJobs }: { initialJobs: Job[] }) {
 
   return (
     <div>
-      {/* Filter tabs */}
-      <div className="-mx-4 -mt-4 mb-4 flex gap-2 overflow-x-auto bg-slate-900 px-4 pb-3 pt-1">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={cn(
-              "whitespace-nowrap rounded-full px-4 py-2 text-sm transition",
-              filter === f.key
-                ? "bg-white font-bold text-slate-900 shadow-sm"
-                : "border border-white/20 bg-white/10 font-semibold text-white/70",
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
+      {/* Filter toggle — centred pill group */}
+      <div className="-mx-4 -mt-4 mb-4 bg-slate-900 px-4 pb-4 pt-2">
+        <div className="mx-auto flex max-w-sm items-center rounded-2xl bg-white/10 p-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                "flex-1 whitespace-nowrap rounded-xl py-2 text-xs font-semibold transition-all",
+                filter === f.key
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-white/60 hover:text-white/90",
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Reg search */}
