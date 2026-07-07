@@ -85,6 +85,9 @@ export const bookingsRouter = router({
           assignedTo: {
             select: { id: true, firstName: true, lastName: true },
           },
+          createdBy: {
+            select: { id: true, firstName: true, lastName: true },
+          },
         },
         orderBy: [{ isPriority: "desc" }, { readyByTime: "asc" }],
       });

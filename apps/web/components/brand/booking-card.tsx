@@ -21,6 +21,8 @@ export interface BookingCardData {
   paintProtectionTier?: string | null;
   assignedTo?: { firstName: string; lastName: string } | null;
   doNotClean?: boolean;
+  specialInstructions?: string | null;
+  createdBy?: { firstName: string; lastName: string } | null;
   qualityScore?: number | null;
   variant?: "dealer" | "valeter";
   rollCount?: number;
@@ -142,14 +144,13 @@ export function BookingCard({
 
         <div className="mt-3 flex items-center justify-between gap-2">
           <div className="min-w-0 text-sm text-slate-500">
-            <span className="font-medium text-slate-700">
-              {booking.serviceType.name}
-            </span>
-            {booking.department && (
-              <span className="ml-1 text-slate-500">
-                · {booking.department.name}
+            {booking.createdBy ? (
+              <span className="font-medium text-slate-600">
+                Booked by {booking.createdBy.firstName} {booking.createdBy.lastName}
               </span>
-            )}
+            ) : booking.department ? (
+              <span className="text-slate-500">{booking.department.name}</span>
+            ) : null}
           </div>
           <JobStatusBadge status={booking.status} />
         </div>

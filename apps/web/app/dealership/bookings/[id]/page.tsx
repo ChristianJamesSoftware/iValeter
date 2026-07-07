@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, MapPin } from "lucide-react";
+import { ChevronLeft, MapPin, Ban } from "lucide-react";
 import { TRPCError } from "@trpc/server";
 import { getServerApi } from "@/lib/trpc/server";
 import { formatTime } from "@/lib/utils";
@@ -40,6 +40,17 @@ export default async function DealershipBookingDetail({
         <ChevronLeft className="h-4 w-4" /> {fromCalendar ? "Back to calendar" : "All bookings"}
       </Link>
 
+      {/* DO NOT CLEAN alert */}
+      {booking.doNotClean && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl bg-red-600 px-5 py-4">
+          <Ban className="h-6 w-6 shrink-0 text-white" />
+          <p className="flex-1 font-heading text-sm font-bold uppercase tracking-widest text-white">
+            DO NOT CLEAN THIS VEHICLE
+          </p>
+          <Ban className="h-6 w-6 shrink-0 text-white" />
+        </div>
+      )}
+
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <h1 className="font-heading text-3xl font-bold text-navy">
           {booking.vehicleReg}
@@ -62,10 +73,15 @@ export default async function DealershipBookingDetail({
               .join(" ") || "—"
           }
         />
-        <Detail label="Service" value={booking.serviceType.name} />
         <Detail label="Ready by" value={formatTime(booking.readyByTime)} />
         <Detail label="Site" value={booking.site.name} />
         <Detail label="Department" value={booking.department.name} />
+        {booking.createdBy && (
+          <Detail
+            label="Booked by"
+            value={`${booking.createdBy.firstName} ${booking.createdBy.lastName}`}
+          />
+        )}
         {booking.parkingLat != null && booking.parkingLng != null && (
           <div className="sm:col-span-2">
             <p className="text-xs uppercase tracking-wide text-slate">Parking Location</p>
