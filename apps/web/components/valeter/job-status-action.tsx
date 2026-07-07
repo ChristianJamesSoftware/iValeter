@@ -72,6 +72,8 @@ export function JobStatusAction({ booking }: { booking: JobActionBooking }) {
 
   /** Attempt mutation; if offline, queue it and update optimistic state */
   async function tryUpdate(toStatus: BookingStatus, noteText?: string) {
+    // Optimistically advance status immediately so the button disappears
+    setOptimisticStatus(toStatus);
     try {
       await updateStatus.mutateAsync({
         bookingId: booking.id,
@@ -85,14 +87,17 @@ export function JobStatusAction({ booking }: { booking: JobActionBooking }) {
           toStatus,
           note: noteText?.trim() || undefined,
         });
-        setOptimisticStatus(toStatus);
         setQueued(true);
+      } else {
+        // Online but failed — roll back optimistic state
+        setOptimisticStatus(booking.status);
       }
-      // If online but errored, mutation error state handles it
     }
   }
 
   async function complete() {
+    // Optimistically advance to COMPLETED immediately
+    setOptimisticStatus("COMPLETED");
     if (booking.includeFreshScent || booking.paintProtectionTier) {
       try {
         await confirmAddOns.mutateAsync({
@@ -108,10 +113,11 @@ export function JobStatusAction({ booking }: { booking: JobActionBooking }) {
             toStatus:  "COMPLETED",
             note:      note.trim() || undefined,
           });
-          setOptimisticStatus("COMPLETED");
           setQueued(true);
           return;
         }
+        // Online but confirmAddOns failed — roll back
+        setOptimisticStatus("QC_CHECK");
         return;
       }
     }
