@@ -23,7 +23,6 @@ const NAV: NavItem[] = [
     icon: "reports",
     section: "Reporting",
   },
-  { href: "/org/billing", label: "Billing & Xero", icon: "billing", section: "Finance" },
   { href: "/org/quote-builder", label: "Quote Builder", icon: "quote", section: "Tools" },
 ];
 

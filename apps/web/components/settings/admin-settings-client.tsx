@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { Landmark, CheckCircle2, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { SettingsTabs } from "@/components/settings/tabs";
 import { TextField, SaveBar } from "@/components/settings/field";
@@ -136,36 +137,99 @@ function IntegrationsTab({ get, save, pending }: { get: GetFn; save: SaveFn; pen
   const [secret, setSecret] = useState("");
   const [saved, setSaved] = useState(false);
 
+  const xeroConn = trpc.xero.getConnection.useQuery();
+  const xeroAuthUrl = trpc.xero.getAuthUrl.useQuery();
+  const disconnect = trpc.xero.disconnect.useMutation({
+    onSuccess: () => void xeroConn.refetch(),
+  });
+  const isConnected = xeroConn.data?.isActive ?? false;
+  const credsSaved = get("XERO_CLIENT_ID")?.isSet && get("XERO_CLIENT_SECRET")?.isSet;
+
   return (
-    <div className="max-w-xl space-y-4 rounded-xl border border-line bg-white p-6">
-      <h2 className="font-heading text-lg font-bold text-navy">Xero credentials</h2>
-      <p className="text-sm text-slate">
-        Total Valeting registers one Xero app; every organisation connects through it via OAuth.
-      </p>
-      <SecretField label="Xero Client ID" isSet={get("XERO_CLIENT_ID")?.isSet ?? false} value={clientId} onChange={setClientId} />
-      <SecretField label="Xero Client Secret" isSet={get("XERO_CLIENT_SECRET")?.isSet ?? false} value={secret} onChange={setSecret} />
-      <TextField
-        label="Xero Redirect URI"
-        value={redirect}
-        onChange={setRedirect}
-        placeholder="https://app.example.com/api/xero/callback"
-        hint="Must match the redirect URI registered in your Xero app."
-      />
-      <SaveBar
-        saving={pending}
-        saved={saved}
-        onSave={async () => {
-          setSaved(false);
-          await save([
-            { key: "XERO_CLIENT_ID", value: clientId },
-            { key: "XERO_CLIENT_SECRET", value: secret },
-            { key: "XERO_REDIRECT_URI", value: redirect },
-          ]);
-          setClientId("");
-          setSecret("");
-          setSaved(true);
-        }}
-      />
+    <div className="max-w-xl space-y-6">
+      {/* Credentials card */}
+      <div className="rounded-xl border border-slate-100 bg-white p-6 space-y-4">
+        <h2 className="font-heading text-lg font-bold text-navy">Xero credentials</h2>
+        <p className="text-sm text-slate">
+          Total Valeting registers one Xero app; every organisation connects through it via OAuth.
+        </p>
+        <SecretField label="Xero Client ID" isSet={get("XERO_CLIENT_ID")?.isSet ?? false} value={clientId} onChange={setClientId} />
+        <SecretField label="Xero Client Secret" isSet={get("XERO_CLIENT_SECRET")?.isSet ?? false} value={secret} onChange={setSecret} />
+        <TextField
+          label="Xero Redirect URI"
+          value={redirect}
+          onChange={setRedirect}
+          placeholder="https://www.ivaleter.co.uk/api/xero/callback"
+          hint="Must match the redirect URI registered in your Xero app."
+        />
+        <SaveBar
+          saving={pending}
+          saved={saved}
+          onSave={async () => {
+            setSaved(false);
+            await save([
+              { key: "XERO_CLIENT_ID", value: clientId },
+              { key: "XERO_CLIENT_SECRET", value: secret },
+              { key: "XERO_REDIRECT_URI", value: redirect },
+            ]);
+            setClientId("");
+            setSecret("");
+            setSaved(true);
+          }}
+        />
+      </div>
+
+      {/* Connect card — only shown once credentials are saved */}
+      {credsSaved && (
+        <div className={`rounded-xl border p-5 flex items-center justify-between ${
+          isConnected ? "border-emerald-100 bg-emerald-50" : "border-amber-100 bg-amber-50"
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+              isConnected ? "bg-emerald-100" : "bg-amber-100"
+            }`}>
+              <Landmark className={`h-5 w-5 ${isConnected ? "text-emerald-600" : "text-amber-600"}`} />
+            </div>
+            <div>
+              <p className={`text-sm font-bold ${
+                isConnected ? "text-emerald-900" : "text-amber-900"
+              }`}>
+                {isConnected
+                  ? `Connected${xeroConn.data?.tenantName ? ` — ${xeroConn.data.tenantName}` : ""}`
+                  : "Not connected to Xero"}
+              </p>
+              <p className={`text-xs ${isConnected ? "text-emerald-700" : "text-amber-700"}`}>
+                {isConnected
+                  ? `Last synced: ${xeroConn.data?.lastSyncAt ? new Date(xeroConn.data.lastSyncAt).toLocaleDateString("en-GB") : "never"}`
+                  : "Authorise iValeter to push invoices to your Xero account"}
+              </p>
+            </div>
+          </div>
+          {isConnected ? (
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" /> Active
+              </span>
+              <button
+                type="button"
+                onClick={() => disconnect.mutate()}
+                disabled={disconnect.isPending}
+                className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+              >
+                {disconnect.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Disconnect"}
+              </button>
+            </div>
+          ) : (
+            <a
+              href={xeroAuthUrl.data?.url ?? "/api/xero/connect"}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#1AB4D7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#13a0c0] transition-colors"
+            >
+              <Landmark className="h-4 w-4" />
+              Connect Xero
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
