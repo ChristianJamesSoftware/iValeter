@@ -30,22 +30,35 @@ export function JobPhotosClient({ bookingId, status }: Props) {
   const showPre = status === "ASSIGNED" || status === "IN_PROGRESS";
   const showPost = status === "IN_PROGRESS" || status === "QC_CHECK" || status === "COMPLETED";
 
+  function compressImage(file: File, maxPx = 1280, quality = 0.82): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width  = Math.round(img.width  * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = url;
+    });
+  }
+
   function handleFileSelect(stage: "pre_valet" | "post_valet") {
     return async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        uploadMut.mutate({
-          bookingId,
-          photoData: dataUrl,
-          type: "other",
-          stage,
-          label: stage === "pre_valet" ? "Pre-Valet" : "Post-Valet",
-        });
-      };
-      reader.readAsDataURL(file);
+      const dataUrl = await compressImage(file);
+      uploadMut.mutate({
+        bookingId,
+        photoData: dataUrl,
+        type: "other",
+        stage,
+        label: stage === "pre_valet" ? "Pre-Valet" : "Post-Valet",
+      });
       // Reset input so same file can be selected again
       e.target.value = "";
     };
