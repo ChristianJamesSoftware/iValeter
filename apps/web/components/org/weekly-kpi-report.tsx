@@ -11,6 +11,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Download, Pencil, Check, X, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import * as XLSX from "xlsx";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -226,24 +227,115 @@ export function WeeklyKpiReport() {
     setTargets((prev) => ({ ...prev, [metricId]: { ...(prev[metricId] ?? {}), [wkIdx]: val } }));
   }
 
-  // ── CSV Export ──────────────────────────────────────────────────────────────
+  // ── TOS-format Excel Export ─────────────────────────────────────────────────
+  //
+  // TOS scorecard import expects:
+  //   Rows 1–5  — ignored (we use for metadata / context)
+  //   Row 6     — header row: col A = "Metric", col B = "Section",
+  //               col C onward = "Wk N" (ISO week number, e.g. "Wk 19")
+  //   Row 7+    — metric rows: col A = metric name (fuzzy-matched by TOS),
+  //               col B = section, col C+ = numeric actual values per week
+  //
+  // We produce TWO sheets:
+  //   1. "Actuals"  — for manual review / iValeter data
+  //   2. "Targets"  — ready to upload via POST /api/scorecard/targets/import
+  //
+  // Metric name mapping (TOS-side names inferred from the scorecard API structure
+  // and fuzzy-match keywords in TOS bundle):
+  //   totalSales      → "Total Sales Value"
+  //   costOfSales     → "Cost of Sales"
+  //   grossProfit     → "Gross Profit"
+  //   profitPct       → "Gross Profit %"
+  //   valetDays       → "Total Valet Days"
+  //   avgDaysPerValeter → "Avg Valet Days Per Valeter"
+  //   activeSites     → "Active Sites"
+  //   activeWorkforce → "Active Workforce"
+  //   prospectiveWorkforce → "Prospective Workforce"
+  //   staffingGaps    → "Staffing Gaps"
+  //   reworkRate      → "Rework Rate"
+  //   focDays         → "FOC Days"
+  //   complaints      → "Customer Complaints"
 
-  function exportCsv() {
-    const headers = ["Metric", "Section", "Unit", ...WEEKS.map((w) => `${w.label} ${w.date}`), ...WEEKS.map((w) => `${w.label} Target`)];
-    const rows = METRICS.map((m) => {
-      const actualVals = WEEKS.map((_, i) => actuals[m.id]?.[i] ?? "");
-      const targetVals = WEEKS.map((_, i) => targets[m.id]?.[i] ?? "");
-      return [m.label, m.section, m.unit, ...actualVals, ...targetVals];
+  const TOS_METRIC_NAMES: Record<string, string> = {
+    totalSales:           "Total Sales Value",
+    costOfSales:          "Cost of Sales",
+    grossProfit:          "Gross Profit",
+    profitPct:            "Gross Profit %",
+    valetDays:            "Total Valet Days",
+    avgDaysPerValeter:    "Avg Valet Days Per Valeter",
+    activeSites:          "Active Sites",
+    activeWorkforce:      "Active Workforce",
+    prospectiveWorkforce: "Prospective Workforce",
+    staffingGaps:         "Staffing Gaps",
+    reworkRate:           "Rework Rate",
+    focDays:              "FOC Days",
+    complaints:           "Customer Complaints",
+  };
+
+  function buildTosSheet(
+    dataMap: ActualMap | TargetMap,
+    sheetTitle: string,
+  ): XLSX.WorkSheet {
+    const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
+    // Rows 1–5: metadata (TOS ignores these)
+    const meta: (string | number)[][] = [
+      ["iValeter → TOS-Now Weekly Scorecard Export"],
+      [`Sheet: ${sheetTitle}`],
+      [`Exported: ${today}`],
+      [`Weeks: Wk${WEEKS[0]!.wk}–Wk${WEEKS[WEEKS.length - 1]!.wk} (${WEEKS[0]!.date} – ${WEEKS[WEEKS.length - 1]!.date} 2026)`],
+      ["Organisation: Total Valeting"],
+    ];
+
+    // Row 6: headers — col A = Metric, col B = Section, col C+ = Wk N
+    const headerRow: string[] = [
+      "Metric",
+      "Section",
+      ...WEEKS.map((w) => `Wk ${w.wk}`),
+    ];
+
+    // Rows 7+: one row per metric
+    const dataRows = METRICS.map((m) => {
+      const tosName = TOS_METRIC_NAMES[m.id] ?? m.label;
+      const values = WEEKS.map((_, i) => {
+        const v = dataMap[m.id]?.[i];
+        return v != null ? v : "";
+      });
+      return [tosName, m.section, ...values];
     });
 
-    const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `TOS-Weekly-KPI-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // Build the full 2D array
+    const aoa: (string | number)[][] = [
+      ...meta,
+      headerRow,
+      ...dataRows,
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Column widths
+    ws["!cols"] = [
+      { wch: 34 },  // Metric name
+      { wch: 16 },  // Section
+      ...WEEKS.map(() => ({ wch: 10 })),
+    ];
+
+    return ws;
+  }
+
+  function exportToExcel() {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Actuals (for review / iValeter data)
+    const actualsSheet = buildTosSheet(actuals, "Actuals");
+    XLSX.utils.book_append_sheet(wb, actualsSheet, "Actuals");
+
+    // Sheet 2: Targets (this is the sheet to upload to TOS /api/scorecard/targets/import)
+    const targetsSheet = buildTosSheet(targets, "Targets (upload to TOS)");
+    XLSX.utils.book_append_sheet(wb, targetsSheet, "Targets");
+
+    const filename = `TOS-Weekly-KPI-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, filename);
   }
 
   // ── Group metrics by section ────────────────────────────────────────────────
@@ -273,11 +365,11 @@ export function WeeklyKpiReport() {
           </p>
         </div>
         <button
-          onClick={exportCsv}
+          onClick={exportToExcel}
           className="flex items-center gap-2 rounded-xl border border-[#D4D1CA] bg-white px-4 py-2 text-sm font-semibold text-[#28251D] shadow-sm transition hover:bg-slate-50"
         >
           <Download className="h-4 w-4" />
-          Export CSV
+          Export for TOS
         </button>
       </div>
 
@@ -388,7 +480,7 @@ export function WeeklyKpiReport() {
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> At or above target</span>
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Within 5% of target</span>
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Below target (&gt;5%)</span>
-        <span className="ml-auto text-[10px] text-slate-300">Values auto-saved in browser · Export CSV for TOS-Now import</span>
+        <span className="ml-auto text-[10px] text-slate-300">Values auto-saved in browser · Export for TOS produces a .xlsx with Actuals + Targets sheets ready to upload to TOS scorecard import</span>
       </div>
     </div>
   );
