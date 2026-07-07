@@ -17,6 +17,7 @@ import { reportsRouter } from "./routers/reports";
 import { valeterTimesheetsRouter } from "./routers/valeter-timesheets";
 import { messagesRouter } from "./routers/messages";
 import { overtimeRouter } from "./routers/overtime";
+import { overtimeReasonsRouter } from "./routers/overtime-reasons";
 import { hqRouter } from "./routers/hq";
 import { vehicleSizeRatesRouter } from "./routers/vehicle-size-rates";
 import { inactiveUsersRouter } from "./routers/inactive-users";
@@ -54,6 +55,7 @@ export const appRouter = router({
   valeterTimesheets: valeterTimesheetsRouter,
   messages: messagesRouter,
   overtime: overtimeRouter,
+  overtimeReasons: overtimeReasonsRouter,
   hq: hqRouter,
   vehicleSizeRates: vehicleSizeRatesRouter,
   inactiveUsers: inactiveUsersRouter,

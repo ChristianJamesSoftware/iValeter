@@ -4,6 +4,8 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc/react";
 import { AlertTriangle, CheckCircle2, Clock, X } from "lucide-react";
 
+const OTHER_VALUE = "__other__";
+
 function fmtDate(d: Date | string) {
   return new Date(d).toLocaleDateString("en-GB", {
     weekday: "short",
@@ -24,11 +26,13 @@ export function OvertimeRequestClient() {
   const [showForm, setShowForm] = useState(false);
   const [date, setDate] = useState("");
   const [hours, setHours] = useState("1");
-  const [reason, setReason] = useState("");
+  const [reasonId, setReasonId] = useState(""); // selected managed reason id, or __other__
+  const [freeText, setFreeText] = useState("");
   const [done, setDone] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: requests } = trpc.overtime.myRequests.useQuery();
+  const { data: reasons } = trpc.overtimeReasons.list.useQuery();
   const submitMut = trpc.overtime.request.useMutation({
     onSuccess: () => {
       setDone(true);
@@ -36,6 +40,13 @@ export function OvertimeRequestClient() {
       void utils.overtime.myRequests.invalidate();
     },
   });
+
+  const hasReasons = (reasons?.length ?? 0) > 0;
+  const isOther = reasonId === OTHER_VALUE || !hasReasons;
+  const selectedReason = reasons?.find((r) => r.id === reasonId);
+  // The final reason text sent to the API
+  const resolvedReason = isOther ? freeText : (selectedReason?.label ?? "");
+  const canSubmit = date && resolvedReason.trim().length >= 1;
 
   const inputCls =
     "h-10 w-full rounded-xl bg-white/10 px-3 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-500/50";
@@ -45,7 +56,8 @@ export function OvertimeRequestClient() {
     await submitMut.mutateAsync({
       requestedDate: date,
       requestedHours: parseFloat(hours),
-      reason,
+      reason: resolvedReason,
+      reasonId: (!isOther && reasonId) ? reasonId : undefined,
     });
   }
 
@@ -133,20 +145,36 @@ export function OvertimeRequestClient() {
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-white/50">Reason</label>
-            <textarea
-              required
-              rows={3}
-              minLength={10}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Explain why overtime is needed…"
-              className="w-full resize-none rounded-xl bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-500/50"
-            />
+            {hasReasons && (
+              <select
+                value={reasonId}
+                onChange={(e) => setReasonId(e.target.value)}
+                required
+                className={inputCls + " mb-2"}
+              >
+                <option value="" disabled>Select a reason…</option>
+                {reasons!.map((r) => (
+                  <option key={r.id} value={r.id}>{r.label}</option>
+                ))}
+                <option value={OTHER_VALUE}>Other — type below</option>
+              </select>
+            )}
+            {/* Show free-text only when "Other" is selected or no managed reasons exist */}
+            {isOther && (
+              <textarea
+                required
+                rows={2}
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                placeholder="Describe the reason…"
+                className="w-full resize-none rounded-xl bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-500/50"
+              />
+            )}
           </div>
           <div className="flex gap-3">
             <button
               type="submit"
-              disabled={submitMut.isPending}
+              disabled={submitMut.isPending || !canSubmit}
               className="flex h-10 flex-1 items-center justify-center rounded-xl bg-orange-500 text-sm font-bold text-white hover:bg-orange-600 disabled:opacity-60"
             >
               {submitMut.isPending ? "Submitting…" : "Submit Request"}

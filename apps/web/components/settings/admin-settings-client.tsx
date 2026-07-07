@@ -11,6 +11,7 @@ import { ValetLibraryTab } from "@/components/settings/valet-library-tab";
 import { SupportServicesTab } from "@/components/settings/support-services-tab";
 import { VehicleSizesTab } from "@/components/settings/vehicle-sizes-tab";
 import { PaintProtectionTab } from "@/components/settings/paint-protection-tab";
+import { OvertimeReasonsTab } from "@/components/settings/overtime-reasons-tab";
 import { LogoUpload } from "@/components/ui/logo-upload";
 
 
@@ -24,6 +25,7 @@ const TABS = [
   { key: "support", label: "CSI Services" },
   { key: "vehicle-sizes", label: "Vehicle Sizes" },
   { key: "paint-protection", label: "Paint Protection" },
+  { key: "overtime-reasons", label: "Overtime Reasons" },
 ];
 
 const FLAG_KEYS: Array<{ key: string; label: string; description: string }> = [
@@ -75,6 +77,7 @@ export function AdminSettingsClient() {
       {tab === "support" && <SupportServicesTab />}
       {tab === "vehicle-sizes" && <VehicleSizesTab />}
       {tab === "paint-protection" && <PaintProtectionTab />}
+      {tab === "overtime-reasons" && <OvertimeReasonsTab />}
 
     </div>
   );

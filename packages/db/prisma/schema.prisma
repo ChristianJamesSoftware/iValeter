@@ -616,9 +616,10 @@ model TimesheetLine {
   clockOutTime DateTime?
   breakMins    Int       @default(60)
 
-  regularHours  Float @default(0)
-  overtimeHours Float @default(0)
-  note          String?
+  regularHours       Float  @default(0)
+  overtimeHours      Float  @default(0)
+  overtimeRequestId  String? // links back to the approved OvertimeRequest
+  note               String?
 
   @@index([timesheetId])
 }
@@ -1041,6 +1042,19 @@ enum OvertimeStatus {
   DECLINED
 }
 
+model OvertimeReason {
+  id             String   @id @default(cuid())
+  organisationId String
+  label          String
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  requests OvertimeRequest[]
+
+  @@index([organisationId])
+}
+
 model OvertimeRequest {
   id             String        @id @default(cuid())
   userId         String
@@ -1048,13 +1062,15 @@ model OvertimeRequest {
   siteId         String?
   requestedDate  DateTime
   requestedHours Float
-  reason         String
+  reason         String        // free-text (kept for backwards compat + fallback)
+  reasonId       String?       // optional link to a managed OvertimeReason
   status         OvertimeStatus @default(PENDING)
   reviewedByUserId String?
   reviewedAt     DateTime?
   createdAt      DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user         User             @relation(fields: [userId], references: [id])
+  overtimeReason OvertimeReason? @relation(fields: [reasonId], references: [id])
 
   @@index([userId])
   @@index([organisationId])
