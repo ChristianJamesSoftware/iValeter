@@ -60,6 +60,7 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
   const clockOutMut = trpc.users.clockOut.useMutation({
     onSuccess: () => {
       setClockedIn(false);
+      setClockInTime(null); // stop the elapsed timer
       setQueuedState("none");
       void utils.users.myClockStatus.invalidate();
       void utils.valeterTimesheets.myCurrentWeek.invalidate();
@@ -130,30 +131,43 @@ export function ClockWidget({ siteGeo }: { siteGeo: SiteGeo | null }) {
       ? { lat: geoCoords.lat, lng: geoCoords.lng }
       : {};
 
+    // Check offline BEFORE attempting — avoids waiting for a fetch timeout
+    if (!navigator.onLine) {
+      const type = clockedIn ? "CLOCK_OUT" : "CLOCK_IN";
+      await enqueue(type, payload);
+      if (clockedIn) {
+        setClockedIn(false);
+        setClockInTime(null);  // stop the timer immediately
+        setQueuedState("queued-out");
+      } else {
+        setClockedIn(true);
+        setClockInTime(new Date());
+        setQueuedState("queued-in");
+      }
+      setActionLoading(false);
+      return;
+    }
+
     try {
       if (clockedIn) {
         await clockOutMut.mutateAsync(payload);
+        setClockInTime(null); // stop the timer on successful clock-out
       } else {
         await clockInMut.mutateAsync(payload);
       }
     } catch {
-      // Online attempt failed — check if we're offline
-      if (!navigator.onLine) {
-        // Queue it and give optimistic feedback
-        const type = clockedIn ? "CLOCK_OUT" : "CLOCK_IN";
-        await enqueue(type, payload);
-        if (clockedIn) {
-          // Optimistically show clocked out
-          setClockedIn(false);
-          setQueuedState("queued-out");
-        } else {
-          // Optimistically show clocked in
-          setClockedIn(true);
-          setClockInTime(new Date());
-          setQueuedState("queued-in");
-        }
+      // Online but request failed — queue it as a fallback
+      const type = clockedIn ? "CLOCK_OUT" : "CLOCK_IN";
+      await enqueue(type, payload);
+      if (clockedIn) {
+        setClockedIn(false);
+        setClockInTime(null);  // stop the timer
+        setQueuedState("queued-out");
+      } else {
+        setClockedIn(true);
+        setClockInTime(new Date());
+        setQueuedState("queued-in");
       }
-      // If online but errored, the mutation's error state handles it
     } finally {
       setActionLoading(false);
     }
