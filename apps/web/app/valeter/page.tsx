@@ -78,11 +78,12 @@ export default async function ValeterHomePage() {
         </div>
       </header>
 
+      {/* Add Job — full-bleed strip, flush with header */}
+      <div className="bg-slate-900 px-4 pb-4">
+        <AddJobSheet fullWidth />
+      </div>
+
       <div className="px-4 py-4">
-        {/* Add Job — full-width centred button above filter bar */}
-        <div className="mb-4">
-          <AddJobSheet fullWidth />
-        </div>
         <ValeterJobList initialJobs={jobs} />
       </div>
     </div>
