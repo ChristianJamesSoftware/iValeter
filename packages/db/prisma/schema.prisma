@@ -1496,9 +1496,16 @@ model BankChangeRequest {
   feeDeducted        Boolean @default(false)  // flips to true once processed in payroll
   weekDeducted       String? // ISO week-start date the £25 was deducted (e.g. "2026-07-07")
 
+  // Verbal confirmation — account manager must call the valeter and tick this
+  // before the approve button unlocks
+  verballyConfirmedAt  DateTime?  // timestamp when manager ticked "I have called and confirmed"
+  verballyConfirmedBy  String?    // userId of the manager who confirmed
+
   // Status lifecycle: PENDING → APPROVED (bank details updated) or REJECTED
   status             BankChangeStatus @default(PENDING)
   notes              String?          // ops notes on approval/rejection
+  reviewedBy         String?          // userId of account manager who approved/rejected
+  reviewedAt         DateTime?        // when the approve/reject action was taken
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

@@ -1,6 +1,7 @@
 import { getServerApi } from "@/lib/trpc/server";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { TeamManager } from "@/components/org/team-manager";
+import { BankChangeReview } from "@/components/org/bank-change-review";
 
 export const dynamic = "force-dynamic";
 
@@ -12,12 +13,13 @@ export default async function OrgTeamPage() {
   ]);
 
   return (
-    <div>
-      <PageHeader
-        title="Valeting Team"
-        subtitle="Your valeters across all sites"
-      />
-      <TeamManager
+    <div className="space-y-8">
+      <div>
+        <PageHeader
+          title="Valeting Team"
+          subtitle="Your valeters across all sites"
+        />
+        <TeamManager
         initialValeters={valeters.map((v) => ({
           id: v.id,
           firstName: v.firstName,
@@ -34,6 +36,12 @@ export default async function OrgTeamPage() {
         }))}
         sites={sites.map((s) => ({ id: s.id, name: s.name }))}
       />
+      </div>
+
+      {/* Bank details change requests — manager must call valeter before approving */}
+      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6">
+        <BankChangeReview />
+      </div>
     </div>
   );
 }

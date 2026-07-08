@@ -108,7 +108,7 @@ export const bankChangesRouter = router({
       });
     }),
 
-  /** Reject: record rejection, bank details unchanged, fee still applies */
+  /** Reject: record rejection, bank details unchanged */
   reject: orgAdminProcedure
     .input(z.object({
       id:    z.string(),
@@ -122,7 +122,12 @@ export const bankChangesRouter = router({
 
       return ctx.prisma.bankChangeRequest.update({
         where: { id: input.id },
-        data: { status: "REJECTED", notes: input.notes ?? null },
+        data: {
+          status:     "REJECTED",
+          notes:      input.notes ?? null,
+          reviewedBy: ctx.session.userId,
+          reviewedAt: new Date(),
+        },
       });
     }),
 
@@ -190,16 +195,59 @@ export const bankChangesRouter = router({
         },
         include: {
           valeter: {
-            select: { id: true, firstName: true, lastName: true, payId: true, site: { select: { name: true } } },
+            select: {
+              id: true, firstName: true, lastName: true, payId: true,
+              bankSortCode: true, bankAccountNumber: true, bankAccountName: true,
+              site: { select: { name: true } },
+            },
           },
         },
         orderBy: { createdAt: "asc" },
       });
     }),
 
+  /** Account manager + ops: list ALL requests (any status) for the history view */
+  listAllForOrg: orgAdminProcedure
+    .query(async ({ ctx }) => {
+      return ctx.prisma.bankChangeRequest.findMany({
+        where: { valeter: { organisationId: ctx.session.organisationId } },
+        include: {
+          valeter: {
+            select: { id: true, firstName: true, lastName: true, payId: true, site: { select: { name: true } } },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      });
+    }),
+
+  /**
+   * Account manager: mark verbal confirmation ("I have called and confirmed").
+   * Must be done before approve is possible.
+   */
+  markVerbalConfirmation: orgAdminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const req = await ctx.prisma.bankChangeRequest.findFirst({
+        where: { id: input.id, valeter: { organisationId: ctx.session.organisationId } },
+        select: { id: true, status: true },
+      });
+      if (!req) throw new Error("Request not found");
+      if (req.status !== "VALETER_REQUESTED") throw new Error("Request is not awaiting manager review");
+
+      return ctx.prisma.bankChangeRequest.update({
+        where: { id: input.id },
+        data: {
+          verballyConfirmedAt: new Date(),
+          verballyConfirmedBy: ctx.session.userId,
+        },
+      });
+    }),
+
   /**
    * Account manager approves the valeter's request:
    * moves VALETER_REQUESTED → PENDING (now visible to ops for final application).
+   * REQUIRES verbal confirmation to have been recorded first.
    * This is when the £25 fee is formally triggered.
    */
   managerApprove: orgAdminProcedure
@@ -210,10 +258,17 @@ export const bankChangesRouter = router({
       });
       if (!req) throw new Error("Request not found");
       if (req.status !== "VALETER_REQUESTED") throw new Error("Request is not in VALETER_REQUESTED state");
+      if (!req.verballyConfirmedAt)
+        throw new Error("You must confirm you have called and verbally verified the bank details before approving.");
 
       return ctx.prisma.bankChangeRequest.update({
         where: { id: input.id },
-        data: { status: "PENDING", notes: input.notes ?? null },
+        data: {
+          status:     "PENDING",
+          notes:      input.notes ?? null,
+          reviewedBy: ctx.session.userId,
+          reviewedAt: new Date(),
+        },
       });
     }),
 
