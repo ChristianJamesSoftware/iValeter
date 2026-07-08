@@ -84,8 +84,8 @@ export default function HomePage() {
         .iv-nav-links a:hover { color: var(--ink); }
         .iv-nav-cta { background: var(--orange) !important; color: #fff !important; padding: 0.5rem 1.1rem; border-radius: var(--radius); font-weight: 600 !important; transition: background var(--transition) !important; }
         .iv-nav-cta:hover { background: var(--orange-hover) !important; }
-        .iv-nav-signin { background: transparent; color: var(--ink-mid) !important; border: 1.5px solid var(--border); padding: 0.5rem 1.1rem; border-radius: var(--radius); font-weight: 600 !important; font-size: var(--text-sm); transition: border-color var(--transition), color var(--transition) !important; }
-        .iv-nav-signin:hover { border-color: var(--ink-mid); color: var(--ink) !important; }
+        .iv-nav-signin { background: transparent; color: var(--ink-light) !important; border: none; padding: 0.4rem 0.6rem; border-radius: var(--radius); font-weight: 500 !important; font-size: var(--text-sm); transition: color var(--transition) !important; }
+        .iv-nav-signin:hover { color: var(--ink) !important; }
         .iv-nav-mobile-toggle { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: var(--space-2); margin-left: auto; }
         .iv-nav-mobile-toggle span { display: block; width: 22px; height: 2px; background: var(--ink); border-radius: 2px; transition: transform var(--transition), opacity var(--transition); }
         .iv-nav-mobile-menu { display: none; flex-direction: column; gap: 0; background: var(--cream); border-top: 1px solid var(--border); padding: var(--space-4) var(--space-6); }
@@ -285,8 +285,8 @@ export default function HomePage() {
               <a href="#iv-portals">How It Works</a>
               <a href="#iv-compare">Why iValeter</a>
               <Link href="/home/pricing">Pricing</Link>
-              <Link href="/login" className="iv-nav-signin">Sign In</Link>
               <a href="#iv-contact" className="iv-nav-cta">Request a Demo</a>
+              <Link href="/login" className="iv-nav-signin">Sign In</Link>
             </nav>
             <button className="iv-nav-mobile-toggle" id="iv-mobileToggle" aria-label="Open menu">
               <span></span><span></span><span></span>
@@ -297,8 +297,8 @@ export default function HomePage() {
             <a href="#iv-portals">How It Works</a>
             <a href="#iv-compare">Why iValeter</a>
             <Link href="/home/pricing">Pricing</Link>
-            <Link href="/login" className="iv-nav-signin" style={{borderBottom:"none",marginBottom:"0.5rem"}}>Sign In</Link>
             <a href="#iv-contact" className="iv-mobile-cta">Request a Demo</a>
+            <Link href="/login" className="iv-nav-signin" style={{borderBottom:"none",marginTop:"0.25rem",textAlign:"center",display:"block"}}>Sign In</Link>
           </div>
         </header>
 
