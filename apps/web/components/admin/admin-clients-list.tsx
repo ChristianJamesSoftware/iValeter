@@ -25,23 +25,24 @@ function AddDealershipUserModal({ onClose }: { onClose: () => void }) {
     password: "",
     jobTitle: "",
     mobile: "",
-    organisationId: "",
     siteId: "",
+    departmentId: "",
   });
 
-  const orgsQ = trpc.organisations.listAll.useQuery();
-  const sitesQ = trpc.sites.listByOrg.useQuery(
-    { organisationId: form.organisationId },
-    { enabled: !!form.organisationId },
-  );
-
-  const orgs = orgsQ.data ?? [];
+  // Flat list of all sites across all orgs — same approach as managers platform
+  const sitesQ = trpc.sites.listAllFlat.useQuery();
   const sites = sitesQ.data ?? [];
+
+  // Departments for the selected site
+  const departments = sites.find((s) => s.id === form.siteId)?.departments ?? [];
+
+  // Derive organisationId from selected site
+  const organisationId = sites.find((s) => s.id === form.siteId)?.organisationId ?? "";
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((f) => {
       const next = { ...f, [k]: e.target.value };
-      if (k === "organisationId") next.siteId = "";
+      if (k === "siteId") next.departmentId = "";
       return next;
     });
   };
@@ -59,7 +60,6 @@ function AddDealershipUserModal({ onClose }: { onClose: () => void }) {
     form.lastName.trim() &&
     form.email.trim() &&
     form.password.length >= 6 &&
-    form.organisationId &&
     form.siteId;
 
   return (
@@ -74,8 +74,7 @@ function AddDealershipUserModal({ onClose }: { onClose: () => void }) {
         {/* Header */}
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Add Dealership User</h2>
-            <p className="text-xs text-slate-400">Create a new customer portal login</p>
+            <h2 className="text-lg font-bold text-slate-900">New dealership user</h2>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100">
             <X className="h-5 w-5 text-slate-400" />
@@ -83,75 +82,63 @@ function AddDealershipUserModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {/* Organisation */}
+          {/* Name */}
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">First name</label>
+            <input className={inputCls} value={form.firstName} onChange={set("firstName")} placeholder="First name" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Last name</label>
+            <input className={inputCls} value={form.lastName} onChange={set("lastName")} placeholder="Last name" />
+          </div>
+
+          {/* Email */}
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Organisation
-            </label>
-            <select className={inputCls} value={form.organisationId} onChange={set("organisationId")}>
-              <option value="">Select organisation…</option>
-              {orgs.map((o) => (
-                <option key={o.id} value={o.id}>{o.name}</option>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Email</label>
+            <input className={inputCls} type="email" value={form.email} onChange={set("email")} placeholder="name@dealership.co.uk" />
+          </div>
+
+          {/* Password */}
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-medium text-slate-500">Password (login)</label>
+            <input className={inputCls} type="password" value={form.password} onChange={set("password")} placeholder="Min. 6 characters" />
+          </div>
+
+          {/* Job title */}
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-medium text-slate-500">Job title</label>
+            <input className={inputCls} value={form.jobTitle} onChange={set("jobTitle")} placeholder="e.g. Sales Manager" />
+          </div>
+
+          {/* Department */}
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-medium text-slate-500">Department</label>
+            <select
+              className={inputCls}
+              value={form.departmentId}
+              onChange={set("departmentId")}
+              disabled={!form.siteId || departments.length === 0}
+            >
+              <option value="">{!form.siteId ? "Select a site first…" : "Select department…"}</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
           </div>
 
           {/* Site */}
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Site
-            </label>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Site</label>
             <select
               className={inputCls}
               value={form.siteId}
               onChange={set("siteId")}
-              disabled={!form.organisationId || sitesQ.isLoading}
             >
-              <option value="">
-                {!form.organisationId ? "Select organisation first…" : sitesQ.isLoading ? "Loading…" : sites.length === 0 ? "No sites found" : "Select site…"}
-              </option>
+              <option value="">{sitesQ.isLoading ? "Loading…" : "Select site…"}</option>
               {sites.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
-          </div>
-
-          {/* Name */}
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">First name</label>
-            <input className={inputCls} value={form.firstName} onChange={set("firstName")} placeholder="First name" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Last name</label>
-            <input className={inputCls} value={form.lastName} onChange={set("lastName")} placeholder="Last name" />
-          </div>
-
-          {/* Email */}
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Email address</label>
-            <input className={inputCls} type="email" value={form.email} onChange={set("email")} placeholder="name@dealership.co.uk" />
-          </div>
-
-          {/* Password */}
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Password</label>
-            <input className={inputCls} type="password" value={form.password} onChange={set("password")} placeholder="Min. 6 characters" />
-          </div>
-
-          {/* Mobile */}
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Mobile <span className="font-normal normal-case text-slate-400">(optional)</span>
-            </label>
-            <input className={inputCls} type="tel" value={form.mobile} onChange={set("mobile")} placeholder="07700 000000" />
-          </div>
-
-          {/* Job title */}
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Job title <span className="font-normal normal-case text-slate-400">(optional)</span>
-            </label>
-            <input className={inputCls} value={form.jobTitle} onChange={set("jobTitle")} placeholder="e.g. Sales Manager" />
           </div>
         </div>
 
@@ -166,20 +153,20 @@ function AddDealershipUserModal({ onClose }: { onClose: () => void }) {
             disabled={!canSubmit}
             onClick={() =>
               create.mutate({
-                firstName: form.firstName.trim(),
-                lastName: form.lastName.trim(),
-                email: form.email.trim(),
-                password: form.password,
-                role: "dealership_user",
-                organisationId: form.organisationId,
-                siteId: form.siteId,
-                jobTitle: form.jobTitle.trim() || undefined,
-                mobile: form.mobile.trim() || undefined,
+                firstName:      form.firstName.trim(),
+                lastName:       form.lastName.trim(),
+                email:          form.email.trim(),
+                password:       form.password,
+                role:           "dealership_user",
+                organisationId: organisationId,
+                siteId:         form.siteId,
+                jobTitle:       form.jobTitle.trim() || undefined,
+                mobile:         form.mobile.trim() || undefined,
               })
             }
             className="h-10 flex-1 rounded-lg bg-slate-900 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50 sm:flex-none sm:px-6"
           >
-            {create.isPending ? "Creating…" : "Create user"}
+            {create.isPending ? "Creating…" : "Create dealership user"}
           </button>
           <button
             onClick={onClose}

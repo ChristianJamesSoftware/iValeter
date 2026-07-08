@@ -242,4 +242,18 @@ export const sitesRouter = router({
         orderBy: { name: "asc" },
       });
     }),
+
+  /** Super admin: flat list of ALL active sites across every org, with departments. */
+  listAllFlat: superAdminProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.site.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        organisationId: true,
+        departments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+      },
+      orderBy: { name: "asc" },
+    });
+  }),
 });
