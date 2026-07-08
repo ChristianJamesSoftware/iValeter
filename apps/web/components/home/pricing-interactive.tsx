@@ -37,8 +37,8 @@ const FEATURES = [
   { label: "Finance & Payroll", items: [
     "Weekly payroll run from approved timesheets",
     "NatWest Bankline bulk payment export",
-    "Xero accounting integration",
-    "Auto-push invoices on payroll approval",
+    "Accounts integration (Xero & others)",
+    "Auto-push invoices to your accounts software on payroll approval",
     "Spend Gatekeeper (per-job budget caps)",
     "Bank details change audit trail (verbal confirm)",
     "Receipt & expense submission",
@@ -62,9 +62,9 @@ const FAQS: [string, string][] = [
   ["What counts as a site?", "A site is one physical dealership location — one address, one bay operation. A dealer group with three showrooms has three sites. Each site gets full access to every feature."],
   ["Are there any per-user charges?", "No — never. Add as many valeters, managers, and dealership staff as you need on a single site subscription. We built per-site pricing specifically because valeting team sizes vary week to week."],
   ["What happens after the 90-day launch price?", "Your price moves to £149 + VAT/site/month. We'll give you 30 days' notice before the change and the option to lock in annual billing at £127/site/month before it kicks in."],
-  ["Is there a setup fee?", "No setup fee for single sites. For dealer groups (2+ sites) onboarding is quoted at £750–£2,500 depending on number of sites, data import complexity, Xero setup, team training and any custom reporting needed."],
-  ["What's included in the 30-day trial?", "The full platform — every feature listed, unlimited users, live Xero connection, SMS broadcast. No credit card required. We set up your site, import your team, and walk you through everything in a live call."],
-  ["How does Xero integration work?", "iValeter maps your valet nominal codes and pushes invoices automatically when payroll is approved. No manual exports, no double-entry. It works with any UK Xero account."],
+  ["Is there a setup fee?", "No setup fee for single sites. For dealer groups (2+ sites) onboarding is quoted at £750–£2,500 depending on number of sites, data import complexity, accounts integration setup, team training and any custom reporting needed."],
+  ["What's included in the 30-day trial?", "The full platform — every feature listed, unlimited users, live accounts integration, SMS broadcast. No credit card required. We set up your site, import your team, and walk you through everything in a live call."],
+  ["How does accounts integration work?", "iValeter connects to your accounting software and pushes invoices automatically when payroll is approved. No manual exports, no double-entry. Currently supports Xero, with more platforms coming."],
   ["How does SMS broadcast work?", "Your messages go out from the sender ID 'TotValeting'. The SMS Works (our provider) charges from 3.1p/SMS, billed separately to your iValeter subscription. No markup from us."],
   ["Can I cancel anytime?", "Yes. No lock-in, no cancellation fees, no notice period beyond the current billing month. We think the platform should earn your business every month."],
 ];
@@ -115,7 +115,7 @@ export function PricingInteractive() {
             </p>
             <p className="ivp-card-desc">
               Everything iValeter does — real-time job tracking, geofenced timesheets,
-              Xero integration, payroll export, SMS broadcast, CSI scoring, before &amp; after photos,
+              accounts integration, payroll export, SMS broadcast, CSI scoring, before &amp; after photos,
               delivery inspections, and full reporting. One site, one price, one platform.
             </p>
             <a href="/home#iv-contact" className="ivp-cta-btn">Start free 30-day trial →</a>
@@ -179,7 +179,7 @@ export function PricingInteractive() {
 
             <div className="ivp-group-onboarding">
               <strong>Onboarding for groups:</strong> £750–£2,500 + VAT depending on number of sites,
-              data import, Xero setup, team training and custom reporting. Quoted before you commit — no surprises.
+              data import, accounts integration setup, team training and custom reporting. Quoted before you commit — no surprises.
             </div>
 
             <a href="/home#iv-contact" className="ivp-cta-outline">Talk to us about your group →</a>

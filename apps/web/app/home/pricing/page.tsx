@@ -223,7 +223,7 @@ export default function PricingPage() {
                       ["Per-user charges", <span key="u" style={{color:"var(--sage)",fontWeight:700}}>Never</span>, "None", "None", "Yes — expensive fast"],
                       ["Built for dealership valet", "✓", "✓", "✓", "✗"],
                       ["Valeter mobile app", "✓", "✓", "✗", "✓"],
-                      ["Xero integration", "✓", "✗", "✗", "Add-on cost"],
+                      ["Accounts integration", "✓", "✗", "✗", "Add-on cost"],
                       ["Geofenced timesheets", "✓", "✓", "✗", "✓"],
                       ["Payroll export (UK bank)", "✓", "✗", "✗", "✗"],
                       ["SMS broadcast", "✓", "✗", "✗", "Add-on cost"],
