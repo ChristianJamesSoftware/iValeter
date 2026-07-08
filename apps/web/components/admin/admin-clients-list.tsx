@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Power, Search, Mail, Phone, Building2, MapPin, UserPlus, X } from "lucide-react";
+import { Power, Search, Mail, Phone, Building2, MapPin, UserPlus, X, Upload } from "lucide-react";
+import { ImportCustomerTeamModal } from "./import-customer-team-modal";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -196,6 +197,7 @@ export function AdminClientsList() {
   const [showInactive, setShowInactive] = useState(false);
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const utils = trpc.useUtils();
   const query = trpc.users.listAllDealershipUsers.useQuery({ showInactive });
@@ -238,7 +240,14 @@ export function AdminClientsList() {
 
   return (
     <div className="mt-4 space-y-4">
-      {showAdd && <AddDealershipUserModal onClose={() => setShowAdd(false)} />}
+      {showAdd && <AddDealershipUserModal onClose={() => setShowAdd(false)} />
+      }
+      {showImport && (
+        <ImportCustomerTeamModal
+          onClose={() => setShowImport(false)}
+          onDone={() => setShowImport(false)}
+        />
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
@@ -280,6 +289,14 @@ export function AdminClientsList() {
           {users.length} user{users.length !== 1 ? "s" : ""}
         </span>
 
+        {/* Import button */}
+        <button
+          onClick={() => setShowImport(true)}
+          className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          <Upload className="h-4 w-4" />
+          Import
+        </button>
         {/* Add button */}
         <button
           onClick={() => setShowAdd(true)}

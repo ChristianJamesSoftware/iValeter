@@ -835,5 +835,66 @@ export const usersRouter = router({
       });
     }),
 
+  /**
+   * Super admin: bulk-import customer team (dealership_user) records from CSV/Excel.
+   * Accepts an array of parsed row objects. Skips rows where email already exists.
+   * Returns counts of created / skipped / errored rows.
+   */
+  bulkImportDealershipUsers: superAdminProcedure
+    .input(
+      z.object({
+        rows: z.array(
+          z.object({
+            firstName:    z.string().min(1),
+            lastName:     z.string().min(1),
+            email:        z.string().email(),
+            password:     z.string().min(6),
+            mobile:       z.string().optional(),
+            jobTitle:     z.string().optional(),
+            organisationId: z.string(),
+            siteId:       z.string().optional(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      let created = 0;
+      let skipped = 0;
+      const errors: { email: string; reason: string }[] = [];
+
+      for (const row of input.rows) {
+        try {
+          const existing = await ctx.prisma.user.findUnique({
+            where: { email: row.email.toLowerCase().trim() },
+          });
+          if (existing) { skipped++; continue; }
+
+          await ctx.prisma.user.create({
+            data: {
+              organisationId: row.organisationId,
+              email:          row.email.toLowerCase().trim(),
+              firstName:      row.firstName.trim(),
+              lastName:       row.lastName.trim(),
+              passwordHash:   hashPassword(row.password),
+              role:           "dealership_user",
+              siteId:         row.siteId ?? null,
+              mobile:         row.mobile ?? null,
+              jobTitle:       row.jobTitle ?? null,
+              payId:          generatePayId(row.firstName, row.lastName),
+            },
+          });
+          created++;
+        } catch (e) {
+          errors.push({ email: row.email, reason: e instanceof Error ? e.message : "Unknown error" });
+        }
+      }
+
+      return { created, skipped, errors };
+    }),
+
+
 });
 // Note: router registration via root.ts
+
+// ─── Bulk import (super admin) ────────────────────────────────────────────────
+// Appended mutation — registered above via the router object closure.
