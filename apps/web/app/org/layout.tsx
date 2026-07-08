@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
     section: "Reporting",
   },
   { href: "/org/quote-builder", label: "Quote Builder", icon: "quote", section: "Tools" },
+  { href: "/org/broadcast", label: "SMS Broadcast", icon: "broadcast", section: "Comms" },
 ];
 
 export default function OrgLayout({

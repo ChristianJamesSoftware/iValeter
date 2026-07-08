@@ -23,6 +23,7 @@ import {
   Handshake,
   Network,
   UserPlus,
+  Radio,
   type LucideIcon,
 } from "lucide-react";
 
@@ -51,7 +52,8 @@ export type NavIconName =
   | "messaging"
   | "clients"
   | "network"
-  | "prospects";
+  | "prospects"
+  | "broadcast";
 
 export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -79,4 +81,5 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   clients: Handshake,
   network: Network,
   prospects: UserPlus,
+  broadcast: Radio,
 };

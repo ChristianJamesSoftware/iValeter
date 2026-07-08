@@ -39,6 +39,7 @@ import { inspectionTemplatesRouter } from "./routers/inspection-templates";
 import { payrollRouter } from "./routers/payroll";
 import { serviceChargesRouter } from "./routers/service-charges";
 import { recurringJobsRouter } from "./routers/recurring-jobs";
+import { smsRouter } from "./routers/sms";
 
 export const appRouter = router({
   auth: authRouter,
@@ -81,6 +82,7 @@ export const appRouter = router({
   payroll: payrollRouter,
   serviceCharges: serviceChargesRouter,
   recurringJobs: recurringJobsRouter,
+  sms: smsRouter,
 });
 
 export type AppRouter = typeof appRouter;
