@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Power, Search, Mail, Phone, Building2, MapPin } from "lucide-react";
+import { Power, Search, Mail, Phone, Building2, MapPin, UserPlus, X } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -12,9 +12,190 @@ function fmtDate(d: string | Date | null | undefined): string {
   return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+const inputCls =
+  "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200";
+
+function AddDealershipUserModal({ onClose }: { onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    jobTitle: "",
+    mobile: "",
+    organisationId: "",
+    siteId: "",
+  });
+
+  const orgsQ = trpc.organisations.listAll.useQuery();
+  const sitesQ = trpc.sites.listByOrg.useQuery(
+    { organisationId: form.organisationId },
+    { enabled: !!form.organisationId },
+  );
+
+  const orgs = orgsQ.data ?? [];
+  const sites = sitesQ.data ?? [];
+
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm((f) => {
+      const next = { ...f, [k]: e.target.value };
+      if (k === "organisationId") next.siteId = "";
+      return next;
+    });
+  };
+
+  const create = trpc.users.superAdminCreate.useMutation({
+    onSuccess: async () => {
+      await utils.users.listAllDealershipUsers.invalidate();
+      onClose();
+    },
+  });
+
+  const canSubmit =
+    !create.isPending &&
+    form.firstName.trim() &&
+    form.lastName.trim() &&
+    form.email.trim() &&
+    form.password.length >= 6 &&
+    form.organisationId &&
+    form.siteId;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Add Dealership User</h2>
+            <p className="text-xs text-slate-400">Create a new customer portal login</p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100">
+            <X className="h-5 w-5 text-slate-400" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* Organisation */}
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Organisation
+            </label>
+            <select className={inputCls} value={form.organisationId} onChange={set("organisationId")}>
+              <option value="">Select organisation…</option>
+              {orgs.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Site */}
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Site
+            </label>
+            <select
+              className={inputCls}
+              value={form.siteId}
+              onChange={set("siteId")}
+              disabled={!form.organisationId || sitesQ.isLoading}
+            >
+              <option value="">
+                {!form.organisationId ? "Select organisation first…" : sitesQ.isLoading ? "Loading…" : sites.length === 0 ? "No sites found" : "Select site…"}
+              </option>
+              {sites.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Name */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">First name</label>
+            <input className={inputCls} value={form.firstName} onChange={set("firstName")} placeholder="First name" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Last name</label>
+            <input className={inputCls} value={form.lastName} onChange={set("lastName")} placeholder="Last name" />
+          </div>
+
+          {/* Email */}
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Email address</label>
+            <input className={inputCls} type="email" value={form.email} onChange={set("email")} placeholder="name@dealership.co.uk" />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Password</label>
+            <input className={inputCls} type="password" value={form.password} onChange={set("password")} placeholder="Min. 6 characters" />
+          </div>
+
+          {/* Mobile */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Mobile <span className="font-normal normal-case text-slate-400">(optional)</span>
+            </label>
+            <input className={inputCls} type="tel" value={form.mobile} onChange={set("mobile")} placeholder="07700 000000" />
+          </div>
+
+          {/* Job title */}
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Job title <span className="font-normal normal-case text-slate-400">(optional)</span>
+            </label>
+            <input className={inputCls} value={form.jobTitle} onChange={set("jobTitle")} placeholder="e.g. Sales Manager" />
+          </div>
+        </div>
+
+        {create.error && (
+          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+            {create.error.message}
+          </p>
+        )}
+
+        <div className="mt-5 flex gap-3">
+          <button
+            disabled={!canSubmit}
+            onClick={() =>
+              create.mutate({
+                firstName: form.firstName.trim(),
+                lastName: form.lastName.trim(),
+                email: form.email.trim(),
+                password: form.password,
+                role: "dealership_user",
+                organisationId: form.organisationId,
+                siteId: form.siteId,
+                jobTitle: form.jobTitle.trim() || undefined,
+                mobile: form.mobile.trim() || undefined,
+              })
+            }
+            className="h-10 flex-1 rounded-lg bg-slate-900 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50 sm:flex-none sm:px-6"
+          >
+            {create.isPending ? "Creating…" : "Create user"}
+          </button>
+          <button
+            onClick={onClose}
+            className="h-10 rounded-lg border border-slate-200 px-4 text-sm text-slate-600 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminClientsList() {
   const [showInactive, setShowInactive] = useState(false);
   const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
 
   const utils = trpc.useUtils();
   const query = trpc.users.listAllDealershipUsers.useQuery({ showInactive });
@@ -57,6 +238,8 @@ export function AdminClientsList() {
 
   return (
     <div className="mt-4 space-y-4">
+      {showAdd && <AddDealershipUserModal onClose={() => setShowAdd(false)} />}
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Search */}
@@ -93,9 +276,18 @@ export function AdminClientsList() {
           </button>
         </div>
 
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-slate-400 flex-1">
           {users.length} user{users.length !== 1 ? "s" : ""}
         </span>
+
+        {/* Add button */}
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+        >
+          <UserPlus className="h-4 w-4" />
+          Add Dealership User
+        </button>
       </div>
 
       {users.length === 0 && (

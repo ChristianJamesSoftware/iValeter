@@ -211,6 +211,7 @@ model User {
   lastName       String
   role           Role
   staffType      StaffType    @default(SITE)
+  isTeamLeader   Boolean      @default(false)
   skills         String[]
   avatarUrl      String?
   phone          String?
