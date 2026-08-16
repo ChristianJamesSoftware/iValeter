@@ -500,12 +500,15 @@ export const reportsRouter = router({
         orderBy: { completedAt: "desc" },
       });
 
-      const withDays = bookings.map((b) => ({
-        ...b,
-        daysInPrep: b.completedAt
-          ? Math.ceil((b.completedAt.getTime() - b.createdAt.getTime()) / (1000 * 60 * 60 * 24))
-          : null,
-      }));
+      const withDays = bookings
+        .map((b) => ({
+          ...b,
+          daysInPrep: b.completedAt
+            ? Math.ceil((b.completedAt.getTime() - b.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+            : null,
+        }))
+        // Exclude data-integrity anomalies where completedAt < createdAt
+        .filter((b) => b.daysInPrep === null || b.daysInPrep >= 0);
 
       const avgDays = withDays.length > 0
         ? withDays.reduce((sum, b) => sum + (b.daysInPrep ?? 0), 0) / withDays.length

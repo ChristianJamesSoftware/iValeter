@@ -84,7 +84,7 @@ function fmtHours(mins: number) {
 const DAILY_CAP_MINS = 480; // 8 hours
 
 function ReportsSummaryClient() {
-  const [period, setPeriod] = useState<Period>("week");
+  const [period, setPeriod] = useState<Period>("month");
   const [siteFilter, setSiteFilter] = useState<string>("all");
 
   const { from, to } = useMemo(() => dateRangeForPeriod(period), [period]);
@@ -185,7 +185,21 @@ function ReportsSummaryClient() {
         </div>
       )}
 
-      {data && (
+      {reportQuery.isError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-8 text-center">
+          <p className="font-semibold text-red-700">Failed to load report data</p>
+          <p className="mt-1 text-sm text-red-500">{reportQuery.error?.message ?? "Please try refreshing the page."}</p>
+        </div>
+      )}
+
+      {!reportQuery.isLoading && !reportQuery.isError && data && data.total === 0 && (
+        <div className="rounded-xl border border-line bg-white py-16 text-center">
+          <p className="text-slate">No bookings found for the selected period.</p>
+          <p className="mt-1 text-sm text-slate">Try selecting a wider date range.</p>
+        </div>
+      )}
+
+      {data && data.total > 0 && (
         <div className="space-y-6">
           {/* KPI strip */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
