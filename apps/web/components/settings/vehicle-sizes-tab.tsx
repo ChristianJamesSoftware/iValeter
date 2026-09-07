@@ -20,8 +20,6 @@ const SIZE_ORDER = ["SMALL", "MEDIUM", "LARGE", "XL", "VAN"] as const;
 interface RowState {
   size: string;
   label: string;
-  basePricePence: number | null;
-  baseAllocMins: number | null;
   deltaPricePence: number;
   deltaMins: number;
 }
@@ -32,8 +30,6 @@ function buildInitialRows(configs: SizeConfig[]): RowState[] {
     return {
       size,
       label: c?.label ?? size,
-      basePricePence: c?.basePricePence ?? null,
-      baseAllocMins: c?.baseAllocMins ?? null,
       deltaPricePence: c?.deltaPricePence ?? 0,
       deltaMins: c?.deltaMins ?? 0,
     };
@@ -69,8 +65,6 @@ export function VehicleSizesTab() {
     saveAll.mutate(
       rows.map((r) => ({
         size: r.size as "SMALL" | "MEDIUM" | "LARGE" | "XL" | "VAN",
-        basePricePence: r.size === "LARGE" ? r.basePricePence : undefined,
-        baseAllocMins: r.size === "LARGE" ? r.baseAllocMins : undefined,
         deltaPricePence: r.deltaPricePence,
         deltaMins: r.deltaMins,
         label: r.label,
@@ -88,9 +82,6 @@ export function VehicleSizesTab() {
     );
   }
 
-  const largeRow = rows.find((r) => r.size === "LARGE");
-  const hasBase = largeRow?.basePricePence != null && largeRow?.baseAllocMins != null;
-
   return (
     <div className="space-y-6">
 
@@ -98,7 +89,7 @@ export function VehicleSizesTab() {
       <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
         <p className="text-sm text-[#28251D]">
-          <span className="font-semibold">Large is the baseline.</span> Set its price and time, then use the delta columns to add or subtract for each other size. Negative values reduce price or time.
+          <span className="font-semibold">Large is the baseline — 0 adjustment.</span> Base prices and times are set per service type in the Valet Library. Use the deltas here to add or subtract for each size. Use negative values to reduce price or time.
         </p>
       </div>
 
@@ -107,43 +98,30 @@ export function VehicleSizesTab() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#D4D1CA] bg-[#F7F6F2]">
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Size</th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Size</th>
               <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Example vehicles</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-36">Display name</th>
-              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500 w-36">Price (£)</th>
-              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500 w-36">Time (mins)</th>
-              {hasBase && (
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Effective</th>
-              )}
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-40">Display name</th>
+              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500 w-40">Price adjustment (£)</th>
+              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500 w-40">Time adjustment (mins)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#F0EFE9]">
             {rows.map((row) => {
               const isLarge = row.size === "LARGE";
               const meta = SIZE_META[row.size] ?? { example: "" };
-              const effectivePrice = hasBase
-                ? (largeRow!.basePricePence! + row.deltaPricePence) / 100
-                : null;
-              const effectiveMins = hasBase
-                ? largeRow!.baseAllocMins! + row.deltaMins
-                : null;
 
               return (
                 <tr
                   key={row.size}
                   className={isLarge ? "bg-[#E8650A]/5" : "bg-white hover:bg-[#F7F6F2]/60"}
                 >
-                  {/* Size badge */}
+                  {/* Size */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
+                      <span className="font-semibold text-[#28251D]">{row.label || row.size}</span>
                       {isLarge && (
                         <span className="inline-flex rounded-full bg-[#E8650A] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                          Base
-                        </span>
-                      )}
-                      {!isLarge && (
-                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                          {row.size}
+                          Baseline
                         </span>
                       )}
                     </div>
@@ -162,84 +140,43 @@ export function VehicleSizesTab() {
                     />
                   </td>
 
-                  {/* Price */}
+                  {/* Price delta */}
                   <td className="px-4 py-3">
                     {isLarge ? (
-                      <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">£</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={row.basePricePence != null ? (row.basePricePence / 100).toFixed(2) : ""}
-                          onChange={(e) => {
-                            const v = parseFloat(e.target.value);
-                            updateRow("LARGE", { basePricePence: isNaN(v) ? null : Math.round(v * 100) });
-                          }}
-                          placeholder="e.g. 20.00"
-                          className={`${cellInput} pl-7 text-right`}
-                        />
-                      </div>
+                      <p className="text-right text-sm text-slate-400">— baseline —</p>
                     ) : (
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={row.deltaPricePence !== 0 ? (row.deltaPricePence / 100).toFixed(2) : ""}
-                          onChange={(e) => {
-                            const v = parseFloat(e.target.value);
-                            updateRow(row.size, { deltaPricePence: isNaN(v) ? 0 : Math.round(v * 100) });
-                          }}
-                          placeholder="e.g. -5.00"
-                          className={`${cellInput} text-right`}
-                        />
-                        <p className="mt-0.5 text-[10px] text-slate-400 text-right">delta from Large</p>
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Time */}
-                  <td className="px-4 py-3">
-                    {isLarge ? (
                       <input
                         type="number"
-                        min="1"
-                        step="1"
-                        value={row.baseAllocMins ?? ""}
+                        step="0.01"
+                        value={row.deltaPricePence !== 0 ? (row.deltaPricePence / 100).toFixed(2) : ""}
                         onChange={(e) => {
-                          const v = parseInt(e.target.value, 10);
-                          updateRow("LARGE", { baseAllocMins: isNaN(v) ? null : v });
+                          const v = parseFloat(e.target.value);
+                          updateRow(row.size, { deltaPricePence: isNaN(v) ? 0 : Math.round(v * 100) });
                         }}
-                        placeholder="e.g. 60"
+                        placeholder="e.g. -5.00"
                         className={`${cellInput} text-right`}
                       />
-                    ) : (
-                      <div>
-                        <input
-                          type="number"
-                          step="1"
-                          value={row.deltaMins !== 0 ? row.deltaMins : ""}
-                          onChange={(e) => {
-                            const v = parseInt(e.target.value, 10);
-                            updateRow(row.size, { deltaMins: isNaN(v) ? 0 : v });
-                          }}
-                          placeholder="e.g. -10"
-                          className={`${cellInput} text-right`}
-                        />
-                        <p className="mt-0.5 text-[10px] text-slate-400 text-right">delta from Large</p>
-                      </div>
                     )}
                   </td>
 
-                  {/* Effective (only shown when base is set) */}
-                  {hasBase && (
-                    <td className="px-4 py-3 text-right">
-                      <p className="font-semibold text-[#28251D]">
-                        £{effectivePrice!.toFixed(2)}
-                      </p>
-                      <p className="text-xs text-slate-400">{effectiveMins} mins</p>
-                    </td>
-                  )}
+                  {/* Time delta */}
+                  <td className="px-4 py-3">
+                    {isLarge ? (
+                      <p className="text-right text-sm text-slate-400">— baseline —</p>
+                    ) : (
+                      <input
+                        type="number"
+                        step="1"
+                        value={row.deltaMins !== 0 ? row.deltaMins : ""}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          updateRow(row.size, { deltaMins: isNaN(v) ? 0 : v });
+                        }}
+                        placeholder="e.g. -10"
+                        className={`${cellInput} text-right`}
+                      />
+                    )}
+                  </td>
                 </tr>
               );
             })}

@@ -85,8 +85,8 @@ export const vehicleSizeConfigRouter = router({
     .input(
       z.object({
         size: z.enum(["SMALL", "MEDIUM", "LARGE", "XL", "VAN"]),
-        basePricePence:  z.number().int().min(0).nullable().optional(), // LARGE only
-        baseAllocMins:   z.number().int().min(1).nullable().optional(), // LARGE only
+        basePricePence:  z.number().int().min(0).nullable().optional(),
+        baseAllocMins:   z.number().int().min(0).nullable().optional(),
         deltaPricePence: z.number().int().min(-99999).max(99999),
         deltaMins:       z.number().int().min(-999).max(999),
         label:           z.string().min(1).max(50).optional(),
@@ -120,7 +120,7 @@ export const vehicleSizeConfigRouter = router({
         z.object({
           size: z.enum(["SMALL", "MEDIUM", "LARGE", "XL", "VAN"]),
           basePricePence:  z.number().int().min(0).nullable().optional(),
-          baseAllocMins:   z.number().int().min(1).nullable().optional(),
+          baseAllocMins:   z.number().int().min(0).nullable().optional(),
           deltaPricePence: z.number().int().min(-99999).max(99999),
           deltaMins:       z.number().int().min(-999).max(999),
           label:           z.string().min(1).max(50).optional(),
