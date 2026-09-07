@@ -634,18 +634,45 @@ export default function HomePage() {
             }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
             document.querySelectorAll('.iv-reveal').forEach(function(el) { io.observe(el); });
           }
-          // Demo form
+          // Demo form — submits to /api/contact server-side (recipient hidden)
           var form = document.getElementById('iv-demoForm');
           if (form) {
             form.addEventListener('submit', function(e) {
               e.preventDefault();
               var btn = form.querySelector('button[type="submit"]');
-              var name = form.querySelector('input[type="text"]').value.trim();
-              if (!name) { form.querySelector('input[type="text"]').focus(); return; }
-              btn.textContent = "Request received — we'll be in touch";
+              var inputs = form.querySelectorAll('input');
+              var nameVal    = inputs[0] ? inputs[0].value.trim() : '';
+              var companyVal = inputs[1] ? inputs[1].value.trim() : '';
+              var emailVal   = inputs[2] ? inputs[2].value.trim() : '';
+              var phoneVal   = inputs[3] ? inputs[3].value.trim() : '';
+              if (!nameVal)  { inputs[0].focus(); return; }
+              if (!emailVal) { inputs[2].focus(); return; }
+              btn.textContent = 'Sending…';
               btn.disabled = true;
-              btn.style.background = '#4A6B50';
-              form.querySelectorAll('input').forEach(function(i) { i.disabled = true; });
+              inputs.forEach(function(i) { i.disabled = true; });
+              fetch('/api/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: nameVal, company: companyVal, email: emailVal, phone: phoneVal })
+              })
+              .then(function(res) { return res.json(); })
+              .then(function(data) {
+                if (data.success) {
+                  btn.textContent = "Request received — we'll be in touch soon";
+                  btn.style.background = '#6B8F71';
+                } else {
+                  btn.textContent = data.error || 'Something went wrong — please try again';
+                  btn.style.background = '#A12C7B';
+                  btn.disabled = false;
+                  inputs.forEach(function(i) { i.disabled = false; });
+                }
+              })
+              .catch(function() {
+                btn.textContent = 'Network error — please try again';
+                btn.style.background = '#A12C7B';
+                btn.disabled = false;
+                inputs.forEach(function(i) { i.disabled = false; });
+              });
             });
           }
         })();
