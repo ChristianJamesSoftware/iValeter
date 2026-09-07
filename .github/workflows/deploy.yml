@@ -1,0 +1,35 @@
+name: Deploy iValeter
+
+on:
+  push:
+    branches:
+      - main      # → Production
+      - staging   # → Staging
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.ref_name == 'main' && 'Production' || 'Staging' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Railway deployment
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "Deploying to PRODUCTION"
+            curl -s -X POST \
+              -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "query": "mutation { deploymentCreate(input: { serviceId: \"7ea2f8f4-8664-41d3-99e8-bca1306be6d0\", environmentId: \"a4312754-8c15-4b81-a87c-01fc3d0e3f44\" }) { id } }"
+              }' \
+              https://backboard.railway.com/graphql/v2
+          else
+            echo "Deploying to STAGING"
+            curl -s -X POST \
+              -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "query": "mutation { deploymentCreate(input: { serviceId: \"7ea2f8f4-8664-41d3-99e8-bca1306be6d0\", environmentId: \"da917d3e-c72a-4c93-8169-75eb6aa4cf75\" }) { id } }"
+              }' \
+              https://backboard.railway.com/graphql/v2
+          fi
