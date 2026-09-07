@@ -67,11 +67,11 @@ export async function POST(req: NextRequest) {
       port: smtpPort,
       secure: false, // STARTTLS on port 587
       auth: {
+        type: "login",
         user: smtpUser,
         pass: smtpPass,
       },
       tls: {
-        ciphers: "SSLv3",
         rejectUnauthorized: false,
       },
     });

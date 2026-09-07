@@ -7,57 +7,41 @@ import type { RouterOutputs } from "@/lib/trpc/react";
 
 type SizeConfig = RouterOutputs["vehicleSizeConfig"]["getAll"][number];
 
-const SIZE_LABELS: Record<string, { name: string; example: string }> = {
-  SMALL:  { name: "Small",  example: "Hatchback, City Car" },
-  MEDIUM: { name: "Medium", example: "Saloon, Small SUV" },
-  LARGE:  { name: "Large",  example: "Estate, Large SUV — baseline" },
-  XL:     { name: "XL",     example: "Large 4×4, Pickup" },
-  VAN:    { name: "Van",    example: "Transit, Sprinter" },
+const SIZE_META: Record<string, { example: string }> = {
+  SMALL:  { example: "Hatchback, City Car" },
+  MEDIUM: { example: "Saloon, Small SUV" },
+  LARGE:  { example: "Estate, Large SUV" },
+  XL:     { example: "Large 4×4, Pickup" },
+  VAN:    { example: "Transit, Sprinter" },
 };
 
 const SIZE_ORDER = ["SMALL", "MEDIUM", "LARGE", "XL", "VAN"] as const;
 
-const inputCls =
-  "h-9 w-full rounded-lg border border-[#D4D1CA] bg-white px-3 text-sm text-[#28251D] outline-none transition focus:border-[#01696F] focus:ring-2 focus:ring-[#01696F]/20 text-right";
-
-function poundsToString(pence: number | null | undefined): string {
-  if (pence == null) return "";
-  const p = Math.abs(pence);
-  const sign = pence < 0 ? "-" : pence > 0 ? "+" : "";
-  return `${sign}${(p / 100).toFixed(2)}`;
-}
-function poundsToPence(val: string): number {
-  // Strip £ sign, parse, convert to pence
-  const clean = val.replace(/[£+\s]/g, "").trim();
-  const parsed = parseFloat(clean);
-  return isNaN(parsed) ? 0 : Math.round(parsed * 100);
-}
-function basePoundsToPence(val: string): number | null {
-  const clean = val.replace(/[£\s]/g, "").trim();
-  if (clean === "" || clean === "-") return null;
-  const parsed = parseFloat(clean);
-  return isNaN(parsed) ? null : Math.round(parsed * 100);
-}
-
 interface RowState {
   size: string;
-  basePricePence: number | null; // LARGE only
-  baseAllocMins: number | null;  // LARGE only
+  label: string;
+  basePricePence: number | null;
+  baseAllocMins: number | null;
   deltaPricePence: number;
   deltaMins: number;
-  label: string;
 }
 
 function buildInitialRows(configs: SizeConfig[]): RowState[] {
-  return configs.map((c) => ({
-    size: c.size,
-    basePricePence: c.basePricePence,
-    baseAllocMins: c.baseAllocMins,
-    deltaPricePence: c.deltaPricePence,
-    deltaMins: c.deltaMins,
-    label: c.label ?? SIZE_LABELS[c.size]?.name ?? c.size,
-  }));
+  return SIZE_ORDER.map((size) => {
+    const c = configs.find((x) => x.size === size);
+    return {
+      size,
+      label: c?.label ?? size,
+      basePricePence: c?.basePricePence ?? null,
+      baseAllocMins: c?.baseAllocMins ?? null,
+      deltaPricePence: c?.deltaPricePence ?? 0,
+      deltaMins: c?.deltaMins ?? 0,
+    };
+  });
 }
+
+const cellInput =
+  "h-9 w-full rounded-lg border border-[#D4D1CA] bg-white px-3 text-sm text-[#28251D] outline-none transition focus:border-[#E8650A] focus:ring-2 focus:ring-[#E8650A]/20";
 
 export function VehicleSizesTab() {
   const utils = trpc.useUtils();
@@ -86,7 +70,7 @@ export function VehicleSizesTab() {
       rows.map((r) => ({
         size: r.size as "SMALL" | "MEDIUM" | "LARGE" | "XL" | "VAN",
         basePricePence: r.size === "LARGE" ? r.basePricePence : undefined,
-        baseAllocMins:  r.size === "LARGE" ? r.baseAllocMins  : undefined,
+        baseAllocMins: r.size === "LARGE" ? r.baseAllocMins : undefined,
         deltaPricePence: r.deltaPricePence,
         deltaMins: r.deltaMins,
         label: r.label,
@@ -105,136 +89,132 @@ export function VehicleSizesTab() {
   }
 
   const largeRow = rows.find((r) => r.size === "LARGE");
+  const hasBase = largeRow?.basePricePence != null && largeRow?.baseAllocMins != null;
 
   return (
     <div className="space-y-6">
+
       {/* Info banner */}
-      <div className="flex items-start gap-3 rounded-xl border border-[#01696F]/20 bg-[#01696F]/5 px-4 py-3">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#01696F]" />
+      <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
         <p className="text-sm text-[#28251D]">
-          <span className="font-semibold">Large is the baseline.</span> Set the base price
-          and time for a Large vehicle — all other sizes adjust relative to it.
-          Price and time are used for piece-work invoicing and calendar allocation only.
-          If no size is selected on a booking, Large defaults are used.
+          <span className="font-semibold">Large is the baseline.</span> Set its price and time, then use the delta columns to add or subtract for each other size. Negative values reduce price or time.
         </p>
       </div>
 
-      {/* LARGE — baseline config */}
-      <div className="rounded-xl border-2 border-[#01696F]/40 bg-white p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <span className="inline-flex rounded-full bg-[#01696F] px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-white">
-            Baseline
-          </span>
-          <h3 className="font-heading font-bold text-[#28251D]">Large Vehicle</h3>
-          <span className="text-sm text-slate-400">— Estate, Large SUV</span>
-        </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Base Price (£)
-            </label>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">£</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={largeRow?.basePricePence != null ? (largeRow.basePricePence / 100).toFixed(2) : ""}
-                onChange={(e) => {
-                  const pence = basePoundsToPence(e.target.value);
-                  updateRow("LARGE", { basePricePence: pence });
-                }}
-                placeholder="e.g. 20.00"
-                className="h-9 w-full rounded-lg border border-[#D4D1CA] bg-white pl-7 pr-3 text-sm text-[#28251D] outline-none transition focus:border-[#01696F] focus:ring-2 focus:ring-[#01696F]/20"
-              />
-            </div>
-            <p className="mt-1 text-xs text-slate-400">For piece-work invoicing</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Base Time (mins)
-            </label>
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value={largeRow?.baseAllocMins ?? ""}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                updateRow("LARGE", { baseAllocMins: isNaN(v) ? null : v });
-              }}
-              placeholder="e.g. 60"
-              className={inputCls}
-            />
-            <p className="mt-1 text-xs text-slate-400">Calendar allocation time</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Display Label
-            </label>
-            <input
-              type="text"
-              value={largeRow?.label ?? "Large"}
-              onChange={(e) => updateRow("LARGE", { label: e.target.value })}
-              className={inputCls}
-            />
-          </div>
-        </div>
-      </div>
+      {/* Unified table */}
+      <div className="rounded-xl border border-[#D4D1CA] bg-white overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#D4D1CA] bg-[#F7F6F2]">
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Size</th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Example vehicles</th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-36">Display name</th>
+              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500 w-36">Price (£)</th>
+              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500 w-36">Time (mins)</th>
+              {hasBase && (
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Effective</th>
+              )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#F0EFE9]">
+            {rows.map((row) => {
+              const isLarge = row.size === "LARGE";
+              const meta = SIZE_META[row.size] ?? { example: "" };
+              const effectivePrice = hasBase
+                ? (largeRow!.basePricePence! + row.deltaPricePence) / 100
+                : null;
+              const effectiveMins = hasBase
+                ? largeRow!.baseAllocMins! + row.deltaMins
+                : null;
 
-      {/* Other sizes — delta rows */}
-      <div className="rounded-xl border border-[#D4D1CA] bg-white p-5">
-        <h3 className="mb-1 font-heading text-sm font-black uppercase tracking-wider text-slate-500">
-          Size Adjustments
-        </h3>
-        <p className="mb-4 text-xs text-slate-400">
-          Set how much to add or subtract from the Large baseline for each size.
-          Use negative values to reduce time or price.
-        </p>
+              return (
+                <tr
+                  key={row.size}
+                  className={isLarge ? "bg-[#E8650A]/5" : "bg-white hover:bg-[#F7F6F2]/60"}
+                >
+                  {/* Size badge */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {isLarge && (
+                        <span className="inline-flex rounded-full bg-[#E8650A] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                          Base
+                        </span>
+                      )}
+                      {!isLarge && (
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                          {row.size}
+                        </span>
+                      )}
+                    </div>
+                  </td>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                <th className="pb-2 pr-4 text-left">Size</th>
-                <th className="pb-2 pr-4 text-left">Example vehicles</th>
-                <th className="pb-2 pr-4 text-right w-32">Price delta (£)</th>
-                <th className="pb-2 pr-4 text-right w-32">Time delta (mins)</th>
-                <th className="pb-2 text-right w-32">Label</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {rows
-                .filter((r) => r.size !== "LARGE")
-                .map((row) => {
-                  const meta = SIZE_LABELS[row.size] ?? { name: row.size, example: "" };
-                  return (
-                    <tr key={row.size} className="group">
-                      <td className="py-3 pr-4">
-                        <span className="font-semibold text-[#28251D]">{meta.name}</span>
-                      </td>
-                      <td className="py-3 pr-4 text-slate-500">{meta.example}</td>
-                      <td className="py-3 pr-4">
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={row.deltaPricePence !== 0 ? (row.deltaPricePence / 100).toFixed(2) : ""}
-                            onChange={(e) => {
-                              const pence = poundsToPence(e.target.value);
-                              updateRow(row.size, { deltaPricePence: pence });
-                            }}
-                            placeholder="e.g. -5.00"
-                            className={inputCls}
-                          />
-                        </div>
-                        {largeRow?.basePricePence != null && (
-                          <p className="mt-0.5 text-xs text-slate-400 text-right">
-                            = £{((largeRow.basePricePence + row.deltaPricePence) / 100).toFixed(2)}
-                          </p>
-                        )}
-                      </td>
-                      <td className="py-3 pr-4">
+                  {/* Example */}
+                  <td className="px-4 py-3 text-slate-500">{meta.example}</td>
+
+                  {/* Label */}
+                  <td className="px-4 py-3">
+                    <input
+                      type="text"
+                      value={row.label}
+                      onChange={(e) => updateRow(row.size, { label: e.target.value })}
+                      className={cellInput}
+                    />
+                  </td>
+
+                  {/* Price */}
+                  <td className="px-4 py-3">
+                    {isLarge ? (
+                      <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">£</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.basePricePence != null ? (row.basePricePence / 100).toFixed(2) : ""}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            updateRow("LARGE", { basePricePence: isNaN(v) ? null : Math.round(v * 100) });
+                          }}
+                          placeholder="e.g. 20.00"
+                          className={`${cellInput} pl-7 text-right`}
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={row.deltaPricePence !== 0 ? (row.deltaPricePence / 100).toFixed(2) : ""}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            updateRow(row.size, { deltaPricePence: isNaN(v) ? 0 : Math.round(v * 100) });
+                          }}
+                          placeholder="e.g. -5.00"
+                          className={`${cellInput} text-right`}
+                        />
+                        <p className="mt-0.5 text-[10px] text-slate-400 text-right">delta from Large</p>
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Time */}
+                  <td className="px-4 py-3">
+                    {isLarge ? (
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={row.baseAllocMins ?? ""}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          updateRow("LARGE", { baseAllocMins: isNaN(v) ? null : v });
+                        }}
+                        placeholder="e.g. 60"
+                        className={`${cellInput} text-right`}
+                      />
+                    ) : (
+                      <div>
                         <input
                           type="number"
                           step="1"
@@ -243,65 +223,29 @@ export function VehicleSizesTab() {
                             const v = parseInt(e.target.value, 10);
                             updateRow(row.size, { deltaMins: isNaN(v) ? 0 : v });
                           }}
-                          placeholder="e.g. -5"
-                          className={inputCls}
+                          placeholder="e.g. -10"
+                          className={`${cellInput} text-right`}
                         />
-                        {largeRow?.baseAllocMins != null && (
-                          <p className="mt-0.5 text-xs text-slate-400 text-right">
-                            = {largeRow.baseAllocMins + row.deltaMins} mins
-                          </p>
-                        )}
-                      </td>
-                      <td className="py-3">
-                        <input
-                          type="text"
-                          value={row.label}
-                          onChange={(e) => updateRow(row.size, { label: e.target.value })}
-                          className={inputCls}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                        <p className="mt-0.5 text-[10px] text-slate-400 text-right">delta from Large</p>
+                      </div>
+                    )}
+                  </td>
 
-      {/* Summary preview */}
-      {largeRow?.basePricePence != null && largeRow?.baseAllocMins != null && (
-        <div className="rounded-xl border border-[#D4D1CA] bg-[#F7F6F2] p-5">
-          <h3 className="mb-3 font-heading text-sm font-black uppercase tracking-wider text-slate-500">
-            Preview — effective values
-          </h3>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {rows.map((r) => {
-              const effectivePrice = largeRow.basePricePence! + r.deltaPricePence;
-              const effectiveMins  = largeRow.baseAllocMins!  + r.deltaMins;
-              const isBase = r.size === "LARGE";
-              return (
-                <div
-                  key={r.size}
-                  className={`rounded-lg border p-3 text-center ${
-                    isBase ? "border-[#01696F]/30 bg-[#01696F]/5" : "border-[#D4D1CA] bg-white"
-                  }`}
-                >
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{r.label || r.size}</p>
-                  <p className="mt-1 text-lg font-bold text-[#28251D]">
-                    £{(effectivePrice / 100).toFixed(2)}
-                  </p>
-                  <p className="text-sm text-slate-500">{effectiveMins} mins</p>
-                  {isBase && (
-                    <span className="mt-1 inline-block text-[10px] font-bold uppercase tracking-wider text-[#01696F]">
-                      Baseline
-                    </span>
+                  {/* Effective (only shown when base is set) */}
+                  {hasBase && (
+                    <td className="px-4 py-3 text-right">
+                      <p className="font-semibold text-[#28251D]">
+                        £{effectivePrice!.toFixed(2)}
+                      </p>
+                      <p className="text-xs text-slate-400">{effectiveMins} mins</p>
+                    </td>
                   )}
-                </div>
+                </tr>
               );
             })}
-          </div>
-        </div>
-      )}
+          </tbody>
+        </table>
+      </div>
 
       {/* Save */}
       <div className="flex items-center gap-3">
@@ -309,7 +253,7 @@ export function VehicleSizesTab() {
           type="button"
           onClick={handleSave}
           disabled={saveAll.isPending}
-          className="flex h-9 items-center gap-2 rounded-lg bg-[#01696F] px-5 text-sm font-semibold text-white transition hover:bg-[#015a5f] disabled:opacity-60"
+          className="flex h-9 items-center gap-2 rounded-lg bg-[#E8650A] px-5 text-sm font-semibold text-white transition hover:bg-[#d05a08] disabled:opacity-60"
         >
           {saveAll.isPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -319,9 +263,7 @@ export function VehicleSizesTab() {
           Save Vehicle Sizes
         </button>
         {saved && (
-          <span className="text-sm font-semibold text-emerald-600">
-            ✓ Saved successfully
-          </span>
+          <span className="text-sm font-semibold text-emerald-600">✓ Saved</span>
         )}
         {saveAll.error && (
           <span className="text-sm text-red-600">{saveAll.error.message}</span>
