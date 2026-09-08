@@ -892,6 +892,85 @@ export const usersRouter = router({
       return { created, skipped, errors };
     }),
 
+  /**
+   * Send an invite email to a management team member.
+   * Generates a password reset token and emails a set-password link.
+   */
+  sendInvite: superAdminProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { randomBytes } = await import("crypto");
+      const nodemailer = await import("nodemailer");
+
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { id: true, email: true, firstName: true, lastName: true, role: true, managementRole: true },
+      });
+
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+
+      // Generate token valid for 72 hours
+      const token = randomBytes(32).toString("hex");
+      const expiry = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
+      await ctx.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordResetToken: token, passwordResetExpiresAt: expiry },
+      });
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.ivaleter.co.uk";
+      const inviteLink = `${appUrl}/reset-password?token=${token}`;
+
+      const smtpUser = process.env.SMTP_USER ?? "";
+      const smtpPass = process.env.SMTP_PASS ?? "";
+
+      if (!smtpUser || !smtpPass) {
+        // SMTP not configured — return link so admin can share manually
+        return { ok: true, inviteLink, emailed: false };
+      }
+
+      const transporter = nodemailer.default.createTransport({
+        host: process.env.SMTP_HOST ?? "smtp.office365.com",
+        port: parseInt(process.env.SMTP_PORT ?? "587", 10),
+        secure: false,
+        auth: { type: "login", user: smtpUser, pass: smtpPass },
+        tls: { rejectUnauthorized: false },
+      });
+
+      await transporter.sendMail({
+        from: `"iValeter" <${smtpUser}>`,
+        to: user.email,
+        subject: "You've been invited to iValeter",
+        text: [
+          `Hi ${user.firstName},`,
+          "",
+          "You've been added to iValeter — the platform we use to manage valeting operations.",
+          "",
+          "Click the link below to set your password and log in:",
+          inviteLink,
+          "",
+          "This link expires in 72 hours.",
+          "",
+          "iValeter Team",
+        ].join("\n"),
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 560px; color: #1C1A16;">
+            <div style="background: #E8650A; padding: 20px 24px; border-radius: 8px 8px 0 0;">
+              <h2 style="margin: 0; color: white; font-size: 20px;">Welcome to iValeter</h2>
+            </div>
+            <div style="background: #F5F0E8; padding: 28px 24px; border-radius: 0 0 8px 8px; border: 1px solid #D4D1CA; border-top: none;">
+              <p style="margin: 0 0 16px; font-size: 15px;">Hi ${user.firstName},</p>
+              <p style="margin: 0 0 16px; font-size: 15px;">You've been added to <strong>iValeter</strong> — the platform we use to manage valeting operations.</p>
+              <p style="margin: 0 0 24px; font-size: 15px;">Click the button below to set your password and log in:</p>
+              <a href="${inviteLink}" style="display: inline-block; background: #E8650A; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">Set my password →</a>
+              <p style="margin: 24px 0 0; font-size: 12px; color: #7A7974;">This link expires in 72 hours. If you didn't expect this email, you can ignore it.</p>
+            </div>
+          </div>
+        `,
+      });
+
+      return { ok: true, inviteLink, emailed: true };
+    }),
 
 });
 // Note: router registration via root.ts

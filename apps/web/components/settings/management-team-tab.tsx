@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, Power, Pencil, X, Check, ShieldCheck } from "lucide-react";
+import { UserPlus, Power, Pencil, X, Check, ShieldCheck, Mail } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 
 type MgmtRole = "ADMINISTRATION" | "ACCOUNTANT" | "ACCOUNT_MANAGER" | "COO" | "CEO";
@@ -72,6 +72,8 @@ export function ManagementTeamTab() {
   const update = trpc.users.updateManagementUser.useMutation({
     onSuccess: () => utils.users.listManagementTeam.invalidate(),
   });
+  const sendInvite = trpc.users.sendInvite.useMutation();
+  const [inviteStatus, setInviteStatus] = useState<Record<string, "sending" | "sent" | "error">>({}); 
 
   const members = list.data ?? [];
 
@@ -188,6 +190,17 @@ export function ManagementTeamTab() {
                     member={m}
                     onDeactivate={() => deactivate.mutate({ id: m.id })}
                     onUpdate={(data) => update.mutate({ id: m.id, ...data, managementRole: data.managementRole ?? undefined })}
+                    inviteStatus={inviteStatus[m.id]}
+                    onSendInvite={() => {
+                      setInviteStatus((s) => ({ ...s, [m.id]: "sending" }));
+                      sendInvite.mutate(
+                        { userId: m.id },
+                        {
+                          onSuccess: () => setInviteStatus((s) => ({ ...s, [m.id]: "sent" })),
+                          onError: () => setInviteStatus((s) => ({ ...s, [m.id]: "error" })),
+                        },
+                      );
+                    }}
                   />
                 ))}
               </tbody>
@@ -319,10 +332,14 @@ function MemberRow({
   member,
   onDeactivate,
   onUpdate,
+  onSendInvite,
+  inviteStatus,
 }: {
   member: MemberData;
   onDeactivate: () => void;
   onUpdate: (data: Partial<MemberData>) => void;
+  onSendInvite: () => void;
+  inviteStatus?: "sending" | "sent" | "error";
 }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -433,6 +450,24 @@ function MemberRow({
       <td className={`${TD} text-slate-500`}>{fmtDate(member.lastLoginAt)}</td>
       <td className={TD}>
         <div className="flex items-center gap-1.5">
+          <button
+            onClick={onSendInvite}
+            disabled={inviteStatus === "sending" || inviteStatus === "sent"}
+            title={inviteStatus === "sent" ? "Invite sent" : "Send invite email"}
+            className={`rounded-lg p-1.5 transition ${
+              inviteStatus === "sent"
+                ? "text-emerald-500"
+                : inviteStatus === "error"
+                ? "text-red-400 hover:bg-red-50"
+                : "text-slate-400 hover:bg-blue-50 hover:text-blue-500"
+            }`}
+          >
+            {inviteStatus === "sent" ? (
+              <Check className="h-3.5 w-3.5" />
+            ) : (
+              <Mail className="h-3.5 w-3.5" />
+            )}
+          </button>
           <button
             onClick={() => setEditing(true)}
             title="Edit"
