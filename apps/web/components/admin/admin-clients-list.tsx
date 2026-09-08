@@ -5,6 +5,7 @@ import { Power, Search, Mail, Phone, Building2, MapPin, UserPlus, X, Upload } fr
 import { ImportCustomerTeamModal } from "./import-customer-team-modal";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog, type ConfirmState } from "@/components/ui/confirm-dialog";
 
 function fmtDate(d: string | Date | null | undefined): string {
   if (!d) return "—";
@@ -185,6 +186,7 @@ export function AdminClientsList() {
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
   const utils = trpc.useUtils();
   const query = trpc.users.listAllDealershipUsers.useQuery({ showInactive });
@@ -409,10 +411,20 @@ export function AdminClientsList() {
                   <td className="px-5 py-3 text-center">
                     <button
                       onClick={() =>
-                        toggleActive.mutate({ id: u.id, isActive: !u.isActive })
+                        setConfirmState({
+                          title: u.isActive
+                            ? `Archive ${u.firstName} ${u.lastName}?`
+                            : `Reactivate ${u.firstName} ${u.lastName}?`,
+                          description: u.isActive
+                            ? `This will archive ${u.firstName}'s account and immediately remove their platform access. You can reactivate them at any time.`
+                            : `This will restore ${u.firstName}'s access to the platform.`,
+                          confirmLabel: u.isActive ? "Archive" : "Reactivate",
+                          danger: u.isActive,
+                          onConfirm: () => toggleActive.mutate({ id: u.id, isActive: !u.isActive }),
+                        })
                       }
                       disabled={toggleActive.isPending}
-                      title={u.isActive ? "Suspend access" : "Re-enable access"}
+                      title={u.isActive ? "Archive" : "Reactivate"}
                       className={cn(
                         "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition",
                         u.isActive
@@ -421,7 +433,7 @@ export function AdminClientsList() {
                       )}
                     >
                       <Power className="h-3 w-3" />
-                      {u.isActive ? "Active" : "Suspended"}
+                      {u.isActive ? "Active" : "Archived"}
                     </button>
                   </td>
                 </tr>
@@ -430,6 +442,12 @@ export function AdminClientsList() {
           </table>
         </div>
       ))}
+
+      <ConfirmDialog
+        state={confirmState}
+        onClose={() => setConfirmState(null)}
+        isPending={toggleActive.isPending}
+      />
     </div>
   );
 }

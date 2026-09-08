@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { UserPlus, X, Pencil, Power, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog, type ConfirmState } from "@/components/ui/confirm-dialog";
 
 interface Valeter {
   id: string;
@@ -50,6 +51,7 @@ export function TeamManager({
   const [activeSiteId, setActiveSiteId] = useState<string>("__all__");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
   const list = trpc.users.listValeters.useQuery(undefined, {
     initialData: initialValeters as never,
@@ -82,6 +84,7 @@ export function TeamManager({
   }, [valeters, activeSiteId, sites, searchQuery]);
 
   return (
+    <>
     <div>
       {showForm && <AddValeterForm sites={sites} onDone={() => setShowForm(false)} />}
       {editingId && (
@@ -213,9 +216,21 @@ export function TeamManager({
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => deactivate.mutate({ id: v.id, isActive: !v.isActive })}
-                          aria-label={v.isActive ? "Deactivate valeter" : "Reactivate valeter"}
-                          title={v.isActive ? "Deactivate" : "Reactivate"}
+                          onClick={() =>
+                            setConfirmState({
+                              title: v.isActive
+                                ? `Archive ${v.firstName} ${v.lastName}?`
+                                : `Reactivate ${v.firstName} ${v.lastName}?`,
+                              description: v.isActive
+                                ? `This will archive ${v.firstName}'s account. They will lose access immediately. You can reactivate them at any time.`
+                                : `This will restore ${v.firstName}'s access to the platform.`,
+                              confirmLabel: v.isActive ? "Archive" : "Reactivate",
+                              danger: v.isActive,
+                              onConfirm: () => deactivate.mutate({ id: v.id, isActive: !v.isActive }),
+                            })
+                          }
+                          aria-label={v.isActive ? "Archive valeter" : "Reactivate valeter"}
+                          title={v.isActive ? "Archive" : "Reactivate"}
                           className={cn(
                             "rounded-lg p-1.5 transition hover:bg-slate-100",
                             v.isActive ? "text-red-400 hover:text-red-600" : "text-emerald-500 hover:text-emerald-700",
@@ -233,6 +248,13 @@ export function TeamManager({
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      state={confirmState}
+      onClose={() => setConfirmState(null)}
+      isPending={deactivate.isPending}
+    />
+    </>
   );
 }
 

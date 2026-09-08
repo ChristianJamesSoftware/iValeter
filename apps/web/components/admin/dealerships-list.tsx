@@ -3,12 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PlusCircle, X } from "lucide-react";
+import { PlusCircle, X, Power } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
+import { ConfirmDialog, type ConfirmState } from "@/components/ui/confirm-dialog";
 
 export function DealershipsList() {
   const [showForm, setShowForm] = useState(false);
-  const query = trpc.dealerships.list.useQuery();
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const utils = trpc.useUtils();
+  const query = trpc.dealerships.listAll.useQuery({ showInactive: true });
+  const setActive = trpc.dealerships.setActive.useMutation({
+    onSuccess: () => utils.dealerships.listAll.invalidate(),
+  });
 
   if (query.isLoading) {
     return <p className="text-slate-400">Loading…</p>;
@@ -16,6 +22,7 @@ export function DealershipsList() {
   const dealerships = query.data ?? [];
 
   return (
+    <>
     <div>
       {showForm && (
         <div className="mb-4">
@@ -84,15 +91,30 @@ export function DealershipsList() {
                       {d._count.sites}
                     </td>
                     <td className="px-5 py-4">
-                      <span
+                      <button
+                        onClick={() =>
+                          setConfirmState({
+                            title: d.isActive
+                              ? `Archive ${d.name}?`
+                              : `Reactivate ${d.name}?`,
+                            description: d.isActive
+                              ? `This will archive ${d.name} and disable all their platform access. You can reactivate at any time.`
+                              : `This will restore ${d.name}'s access to the platform.`,
+                            confirmLabel: d.isActive ? "Archive" : "Reactivate",
+                            danger: d.isActive,
+                            onConfirm: () => setActive.mutate({ id: d.id, isActive: !d.isActive }),
+                          })
+                        }
+                        title={d.isActive ? "Archive dealership" : "Reactivate dealership"}
                         className={
                           d.isActive
-                            ? "rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700"
-                            : "rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500"
+                            ? "inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                            : "inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                         }
                       >
-                        {d.isActive ? "Active" : "Inactive"}
-                      </span>
+                        <Power className="h-3 w-3" />
+                        {d.isActive ? "Active" : "Archived"}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -102,6 +124,13 @@ export function DealershipsList() {
         )}
       </div>
     </div>
+
+      <ConfirmDialog
+        state={confirmState}
+        onClose={() => setConfirmState(null)}
+        isPending={setActive.isPending}
+      />
+    </>
   );
 }
 
