@@ -52,6 +52,9 @@ export function roleProcedure(...roles: Role[]) {
 
 export const superAdminProcedure = roleProcedure("super_admin");
 export const orgAdminProcedure = roleProcedure("super_admin", "org_admin");
+/** Management team users share /admin with super_admin */
+export const managementProcedure = roleProcedure("super_admin", "management");
+export const adminAccessProcedure = roleProcedure("super_admin", "management");
 export const dealershipProcedure = roleProcedure(
   "super_admin",
   "org_admin",

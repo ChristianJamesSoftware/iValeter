@@ -29,10 +29,10 @@ export async function resetPasswordAction(
   try {
     const api = await getServerApi();
     await api.auth.resetPassword({ token, newPassword });
-    redirect("/login?reset=1");
   } catch (err: unknown) {
     const msg =
       err instanceof Error ? err.message : "Something went wrong. Please try again.";
     return { error: msg, success: false };
   }
+  redirect("/login?reset=1");
 }

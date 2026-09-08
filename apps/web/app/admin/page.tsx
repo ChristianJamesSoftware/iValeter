@@ -13,7 +13,7 @@ export default async function AdminDashboard() {
       api.sites.list(),
       api.users.listValeters(),
       api.analytics.statCards(),
-      api.xero.getConnection(),
+      api.xero.getConnection().catch(() => null),
     ]);
 
   const totalBookings = sites.reduce((acc, s) => acc + s._count.bookings, 0);
