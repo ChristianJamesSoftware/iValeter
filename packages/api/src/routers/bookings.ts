@@ -10,6 +10,7 @@ import {
 } from "../trpc";
 import { resolveVehicleSizeValues, DEFAULT_SIZE_CONFIGS } from "./vehicle-size-config";
 import { autoCreateServiceCharges } from "./service-charges";
+import { isR2Configured, uploadBase64ToR2 } from "../lib/r2";
 
 const statusEnum = z.nativeEnum(BookingStatus);
 
@@ -747,13 +748,26 @@ export const bookingsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
       }
 
-      // MVP storage: keep the base64 payload inline as a data URL.
-      const url = input.photoData.startsWith("data:")
-        ? input.photoData
-        : `data:image/jpeg;base64,${input.photoData}`;
-
-      // Map stage → PhotoType enum (DB column is PhotoType, not free-form string)
+      // Map stage → PhotoType enum
       const photoType = input.stage === "pre_valet" ? "BEFORE" : "AFTER";
+
+      let url: string;
+
+      if (isR2Configured()) {
+        // Upload to Cloudflare R2 — returns a permanent public CDN URL
+        const ext = "jpg";
+        const key = `bookings/${booking.id}/${input.stage}/${Date.now()}.${ext}`;
+        url = await uploadBase64ToR2({
+          base64: input.photoData,
+          key,
+          contentType: "image/jpeg",
+        });
+      } else {
+        // Fallback: store base64 inline (dev/staging only)
+        url = input.photoData.startsWith("data:")
+          ? input.photoData
+          : `data:image/jpeg;base64,${input.photoData}`;
+      }
 
       return ctx.prisma.jobPhoto.create({
         data: {
