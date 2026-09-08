@@ -933,7 +933,7 @@ export const usersRouter = router({
         host: process.env.SMTP_HOST ?? "smtp.office365.com",
         port: parseInt(process.env.SMTP_PORT ?? "587", 10),
         secure: false,
-        auth: { type: "login", user: smtpUser, pass: smtpPass },
+        auth: { user: smtpUser, pass: smtpPass },
         tls: { rejectUnauthorized: false },
       });
 
