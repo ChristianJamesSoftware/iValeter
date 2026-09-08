@@ -937,6 +937,7 @@ export const usersRouter = router({
         tls: { rejectUnauthorized: false },
       });
 
+      try {
       await transporter.sendMail({
         from: `"iValeter" <${smtpUser}>`,
         to: user.email,
@@ -970,6 +971,11 @@ export const usersRouter = router({
       });
 
       return { ok: true, inviteLink, emailed: true };
+      } catch (smtpErr) {
+        console.error("[sendInvite] SMTP error:", smtpErr);
+        // Token was saved — return link so admin can share manually
+        return { ok: true, inviteLink, emailed: false };
+      }
     }),
 
 });
