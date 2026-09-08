@@ -22,10 +22,10 @@ export async function forgotPasswordAction(
     const api = await getServerApi();
     const result = await api.auth.forgotPassword({ email });
 
-    // Dev/staging: if a token is returned, redirect straight to the reset page
-    // Production: this would send an email instead and just show the success message
-    if (result.resetToken) {
-      redirect(`/reset-password?token=${result.resetToken}`);
+    // Dev: if a token is returned (legacy), redirect straight to the reset page
+    const r = result as unknown as { resetToken?: string };
+    if (r.resetToken) {
+      redirect(`/reset-password?token=${r.resetToken}`);
     }
 
     return { error: null, success: true };
