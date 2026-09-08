@@ -73,12 +73,45 @@ export function ManagementTeamTab() {
     onSuccess: () => utils.users.listManagementTeam.invalidate(),
   });
   const sendInvite = trpc.users.sendInvite.useMutation();
-  const [inviteStatus, setInviteStatus] = useState<Record<string, "sending" | "sent" | "error">>({}); 
+  const [inviteStatus, setInviteStatus] = useState<Record<string, "sending" | "sent" | "error">>({});
+  const [inviteToast, setInviteToast] = useState<{ name: string; email: string; emailed: boolean; link?: string } | null>(null);
 
   const members = list.data ?? [];
 
   return (
     <div className="space-y-6">
+      {/* Invite sent toast */}
+      {inviteToast && (
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+          <div>
+            <p className="font-semibold text-emerald-800">
+              {inviteToast.emailed
+                ? `Invite sent to ${inviteToast.name}`
+                : `Invite link generated for ${inviteToast.name}`}
+            </p>
+            <p className="mt-0.5 text-sm text-emerald-700">
+              {inviteToast.emailed
+                ? `Email sent to ${inviteToast.email} — link valid for 72 hours.`
+                : "SMTP not configured — share this link manually:"}
+            </p>
+            {!inviteToast.emailed && inviteToast.link && (
+              <a
+                href={inviteToast.link}
+                className="mt-1 block break-all text-xs text-emerald-700 underline"
+              >
+                {inviteToast.link}
+              </a>
+            )}
+          </div>
+          <button
+            onClick={() => setInviteToast(null)}
+            className="shrink-0 text-emerald-500 hover:text-emerald-700 text-lg leading-none"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
       {/* Header row */}
       <div className="flex items-center justify-between">
         <div>
@@ -196,7 +229,15 @@ export function ManagementTeamTab() {
                       sendInvite.mutate(
                         { userId: m.id },
                         {
-                          onSuccess: () => setInviteStatus((s) => ({ ...s, [m.id]: "sent" })),
+                          onSuccess: (res) => {
+                            setInviteStatus((s) => ({ ...s, [m.id]: "sent" }));
+                            setInviteToast({
+                              name: `${m.firstName} ${m.lastName}`,
+                              email: m.email,
+                              emailed: (res as unknown as { emailed?: boolean }).emailed ?? false,
+                              link: (res as unknown as { inviteLink?: string }).inviteLink,
+                            });
+                          },
                           onError: () => setInviteStatus((s) => ({ ...s, [m.id]: "error" })),
                         },
                       );
