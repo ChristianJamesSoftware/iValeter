@@ -195,6 +195,11 @@ function ProspectForm({
             className="h-10 rounded-xl border border-slate-200 px-3 text-sm text-slate-700 outline-none focus:border-slate-400">
             {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>)}
           </select>
+          <select value={form.siteId} onChange={f("siteId")}
+            className="h-10 rounded-xl border border-slate-200 px-3 text-sm text-slate-700 outline-none focus:border-slate-400">
+            <option value="">Site / location (optional)</option>
+            {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
 
           <input value={form.source} onChange={f("source")} placeholder="Source (e.g. Referral, Walk-in)"
             className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-slate-400 col-span-2" />

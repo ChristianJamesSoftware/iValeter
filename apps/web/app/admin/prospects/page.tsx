@@ -11,7 +11,7 @@ export default async function AdminProspectsPage() {
   if (!session) redirect("/login");
 
   const api = await getServerApi();
-  const sites = await api.sites.list();
+  const sites = await api.sites.listAllAdmin({ showInactive: true });
 
   return (
     <div>
