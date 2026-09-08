@@ -195,11 +195,7 @@ function ProspectForm({
             className="h-10 rounded-xl border border-slate-200 px-3 text-sm text-slate-700 outline-none focus:border-slate-400">
             {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>)}
           </select>
-          <select value={form.siteId} onChange={f("siteId")}
-            className="h-10 rounded-xl border border-slate-200 px-3 text-sm text-slate-700 outline-none focus:border-slate-400">
-            <option value="">Site (optional)</option>
-            {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+
           <input value={form.source} onChange={f("source")} placeholder="Source (e.g. Referral, Walk-in)"
             className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-slate-400 col-span-2" />
         </div>
@@ -565,6 +561,7 @@ export function ProspectsClient({ sites }: ProspectsClientProps) {
       setForm(EMPTY_FORM);
     },
   });
+  const createError = create.error?.message ?? null;
 
   const update = trpc.prospects.update.useMutation({
     onSuccess: () => {
@@ -734,6 +731,9 @@ export function ProspectsClient({ sites }: ProspectsClientProps) {
                 {editProspect ? "Save Changes" : "Add Opportunity"}
               </button>
             </div>
+            {createError && (
+              <p className="mt-2 rounded-lg bg-red-50 px-4 py-2 text-xs text-red-600">{createError}</p>
+            )}
           </div>
         </div>
       )}

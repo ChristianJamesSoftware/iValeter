@@ -5,7 +5,7 @@
  */
 
 import { z } from "zod";
-import { router, orgAdminProcedure } from "../trpc";
+import { router, orgAdminProcedure, managementProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 
 const ProspectStatusEnum = z.enum([
@@ -38,7 +38,7 @@ const prospectFields = {
 
 export const prospectsRouter = router({
   /** List all prospects for the org */
-  list: orgAdminProcedure
+  list: managementProcedure
     .input(
       z.object({
         status: ProspectStatusEnum.optional(),
@@ -77,7 +77,7 @@ export const prospectsRouter = router({
     }),
 
   /** Add a new prospect */
-  create: orgAdminProcedure
+  create: managementProcedure
     .input(z.object(prospectFields))
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.prospectValeter.create({
@@ -105,7 +105,7 @@ export const prospectsRouter = router({
     }),
 
   /** Update status, notes, or any field */
-  update: orgAdminProcedure
+  update: managementProcedure
     .input(
       z.object({
         id:     z.string(),
@@ -149,7 +149,7 @@ export const prospectsRouter = router({
     }),
 
   /** Archive (delete) a prospect */
-  remove: orgAdminProcedure
+  remove: managementProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const prospect = await ctx.prisma.prospectValeter.findFirst({
@@ -161,7 +161,7 @@ export const prospectsRouter = router({
     }),
 
   /** Count by status — for the stat cards */
-  statusCounts: orgAdminProcedure.query(async ({ ctx }) => {
+  statusCounts: managementProcedure.query(async ({ ctx }) => {
     const counts = await ctx.prisma.prospectValeter.groupBy({
       by: ["status"],
       where: { organisationId: ctx.session.organisationId },
@@ -185,7 +185,7 @@ export const prospectsRouter = router({
    * Skips any valeter already present (matched by convertedToUserId).
    * Returns count of new records created.
    */
-  importExistingValeters: orgAdminProcedure.mutation(async ({ ctx }) => {
+  importExistingValeters: managementProcedure.mutation(async ({ ctx }) => {
     // Fetch all active valeters in the org
     const valeters = await ctx.prisma.user.findMany({
       where: { organisationId: ctx.session.organisationId, role: "valeter", isActive: true },
@@ -225,7 +225,7 @@ export const prospectsRouter = router({
   }),
 
   /** List distinct towns for the filter dropdown */
-  listTowns: orgAdminProcedure.query(async ({ ctx }) => {
+  listTowns: managementProcedure.query(async ({ ctx }) => {
     const rows = await ctx.prisma.prospectValeter.findMany({
       where: { organisationId: ctx.session.organisationId, town: { not: null } },
       select: { town: true },
@@ -236,7 +236,7 @@ export const prospectsRouter = router({
   }),
 
   /** Send a broadcast message to filtered prospects */
-  broadcast: orgAdminProcedure
+  broadcast: managementProcedure
     .input(
       z.object({
         subject:      z.string().min(1),
