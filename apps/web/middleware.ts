@@ -4,6 +4,7 @@ import { AUTH_COOKIE_NAME } from "@ivaleter/config";
 
 const ROLE_PREFIX: Record<string, string> = {
   super_admin: "/admin",
+  management: "/admin",
   org_admin: "/org",
   dealership_user: "/dealership",
   valeter: "/valeter",
@@ -47,8 +48,8 @@ export async function middleware(req: NextRequest) {
   }
 
   // Enforce role boundaries: a valeter cannot view /org, etc.
-  // super_admin may traverse everything.
-  if (isProtected && role && role !== "super_admin") {
+  // super_admin and management may traverse /admin.
+  if (isProtected && role && role !== "super_admin" && role !== "management") {
     const allowed = ROLE_PREFIX[role];
     if (allowed && !pathname.startsWith(allowed)) {
       const url = req.nextUrl.clone();

@@ -34,7 +34,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <DashboardShell allow={["super_admin"]} items={NAV}>
+    <DashboardShell allow={["super_admin", "management"]} items={NAV}>
       {/* Live badge overlay — injects counts into sidebar nav links */}
       <AdminNavBadgeOverlay />
       {children}
