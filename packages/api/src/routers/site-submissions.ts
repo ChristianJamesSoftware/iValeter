@@ -13,6 +13,11 @@
 
 import { z } from "zod";
 import { router, orgAdminProcedure, protectedProcedure } from "../trpc";
+import {
+  emailTimesheetSentToClient,
+  emailTimesheetApproved,
+  emailTimesheetDisputed,
+} from "../lib/email";
 import { TRPCError } from "@trpc/server";
 
 export const siteSubmissionsRouter = router({
@@ -264,6 +269,37 @@ export const siteSubmissionsRouter = router({
         },
       });
 
+      // Email dealer contact to notify timesheet is ready for approval
+      void (async () => {
+        try {
+          const site = await ctx.prisma.site.findUnique({
+            where: { id: input.siteId },
+            select: {
+              name: true,
+              dealership: { select: { contactEmail: true, contactName: true } },
+            },
+          });
+          const contactEmail = site?.dealership?.contactEmail;
+          if (contactEmail) {
+            const totalHours = timesheets.reduce((sum, t) => {
+              const ts = t as unknown as { totalRegularHours?: number; totalOvertimeHours?: number };
+              return sum + (ts.totalRegularHours ?? 0) + (ts.totalOvertimeHours ?? 0);
+            }, 0);
+            const appUrl = process.env.NEXTAUTH_URL ?? "https://www.ivaleter.co.uk";
+            await emailTimesheetSentToClient({
+              to: contactEmail,
+              clientName: site?.dealership?.contactName ?? "Team",
+              siteName: site?.name ?? input.siteId,
+              weekStarting: weekStartDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+              totalHours: `${totalHours.toFixed(1)} hrs`,
+              approvalUrl: `${appUrl}/dealer/timesheets`,
+            });
+          }
+        } catch (err) {
+          console.error("[email] sendToDealer notification failed:", err);
+        }
+      })();
+
       return submission;
     }),
 
@@ -285,13 +321,30 @@ export const siteSubmissionsRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Already accepted." });
       }
 
-      return ctx.prisma.siteWeekSubmission.update({
+      const accepted = await ctx.prisma.siteWeekSubmission.update({
         where: { id: input.submissionId },
-        data: {
-          status: "DEALER_ACCEPTED",
-          dealerRespondedAt: new Date(),
-        },
+        data: { status: "DEALER_ACCEPTED", dealerRespondedAt: new Date() },
+        include: { site: { select: { name: true, dealership: { select: { contactName: true } } } } },
       });
+
+      // Notify ops that submission was accepted
+      void (async () => {
+        try {
+          const opsEmails = (process.env.OPS_NOTIFY_EMAIL ?? process.env.SMTP_USER ?? "").split(",").filter(Boolean);
+          if (opsEmails.length) {
+            await emailTimesheetApproved({
+              to: opsEmails,
+              siteName: accepted.site?.name ?? "Unknown site",
+              weekStarting: accepted.weekStarting.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+              approvedBy: accepted.site?.dealership?.contactName ?? "Dealer",
+            });
+          }
+        } catch (err) {
+          console.error("[email] dealerAccept notification failed:", err);
+        }
+      })();
+
+      return accepted;
     }),
 
   /**
@@ -308,14 +361,35 @@ export const siteSubmissionsRouter = router({
       });
       if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return ctx.prisma.siteWeekSubmission.update({
+      const disputed = await ctx.prisma.siteWeekSubmission.update({
         where: { id: input.submissionId },
         data: {
           status: "DEALER_DISPUTED",
           dealerDisputeNote: input.note,
           dealerRespondedAt: new Date(),
         },
+        include: { site: { select: { name: true, dealership: { select: { contactName: true } } } } },
       });
+
+      // Notify ops of the dispute
+      void (async () => {
+        try {
+          const opsEmails = (process.env.OPS_NOTIFY_EMAIL ?? process.env.SMTP_USER ?? "").split(",").filter(Boolean);
+          if (opsEmails.length) {
+            await emailTimesheetDisputed({
+              to: opsEmails,
+              siteName: disputed.site?.name ?? "Unknown site",
+              weekStarting: disputed.weekStarting.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+              disputedBy: disputed.site?.dealership?.contactName ?? "Dealer",
+              note: input.note,
+            });
+          }
+        } catch (err) {
+          console.error("[email] dealerDispute notification failed:", err);
+        }
+      })();
+
+      return disputed;
     }),
 
   /**

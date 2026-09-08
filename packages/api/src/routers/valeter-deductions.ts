@@ -10,6 +10,28 @@ import { router, superAdminProcedure, orgAdminProcedure } from "../trpc";
  */
 export const valeterDeductionsRouter = router({
 
+  /** List all deductions across the entire org (used by payroll deductions page) */
+  listAll: orgAdminProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.valeterDeduction.findMany({
+      where: { valeter: { organisationId: ctx.session.organisationId } },
+      include: {
+        valeter: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }),
+
+  /** List all accident deductions across the entire org */
+  listAllAccidents: orgAdminProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.valeterAccident.findMany({
+      where: { valeter: { organisationId: ctx.session.organisationId } },
+      include: {
+        valeter: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { incidentDate: "desc" },
+    });
+  }),
+
   /** List all deductions for a valeter */
   listForValeter: superAdminProcedure
     .input(z.object({ valeterId: z.string() }))

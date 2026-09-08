@@ -256,6 +256,62 @@ export const payrollRouter = router({
       const mon = months[weekEndDate.getUTCMonth()] ?? "PAY";
       const yr = weekEndDate.getUTCFullYear().toString().substring(2);
 
+      // ── Create / update PayRun record ─────────────────────────────────────
+      const payRun = await ctx.prisma.payRun.upsert({
+        where: {
+          organisationId_weekStarting: {
+            organisationId: ctx.session.organisationId,
+            weekStarting: weekStartDate,
+          },
+        },
+        create: {
+          organisationId: ctx.session.organisationId,
+          weekStarting: weekStartDate,
+          weekEnding: weekEndDate,
+          status: "EXPORTED",
+          exportedAt: new Date(),
+        },
+        update: {
+          status: "EXPORTED",
+          exportedAt: new Date(),
+        },
+      });
+
+      // Upsert a PayRunLine per timesheet
+      for (const ts of timesheets) {
+        const dailyRate = ts.user.dailyRate ?? 0;
+        const hourlyRate = dailyRate > 0 ? dailyRate / 8 : 0;
+        const overtimeRate = hourlyRate * 1.5;
+        const totalAmt =
+          ts.totalRegularHours * hourlyRate +
+          ts.totalOvertimeHours * overtimeRate;
+
+        await ctx.prisma.payRunLine.upsert({
+          where: { timesheetId: ts.id },
+          create: {
+            payRunId: payRun.id,
+            userId: ts.userId,
+            timesheetId: ts.id,
+            regularHours: ts.totalRegularHours,
+            overtimeHours: ts.totalOvertimeHours,
+            hourlyRate,
+            overtimeRate,
+            totalAmount: totalAmt,
+            bankSortCode: ts.user.bankSortCode ?? null,
+            bankAccountNumber: ts.user.bankAccountNumber ?? null,
+            bankAccountName: ts.user.bankAccountName ?? null,
+            bankReference: ts.user.bankReference ?? null,
+          },
+          update: {
+            regularHours: ts.totalRegularHours,
+            overtimeHours: ts.totalOvertimeHours,
+            hourlyRate,
+            overtimeRate,
+            totalAmount: totalAmt,
+          },
+        });
+      }
+
       return {
         fileContent: rows.join("\n"),
         filename: `natwest-payroll-${mon.toLowerCase()}${yr}.txt`,
@@ -263,6 +319,30 @@ export const payrollRouter = router({
         totalAmount,
         yourReference: yourRef,
         paymentDate: formatDate(paymentDate),
+        payRunId: payRun.id,
       };
+    }),
+
+  /** List all PayRuns for the org — used by payroll history view. */
+  listPayRuns: superAdminProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.payRun.findMany({
+      where: { organisationId: ctx.session.organisationId },
+      include: {
+        lines: {
+          select: { id: true, totalAmount: true },
+        },
+      },
+      orderBy: { weekStarting: "desc" },
+    });
+  }),
+
+  /** Mark a PayRun as PAID. */
+  markPayRunPaid: superAdminProcedure
+    .input(z.object({ payRunId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.payRun.update({
+        where: { id: input.payRunId, organisationId: ctx.session.organisationId },
+        data: { status: "PAID", paidAt: new Date() },
+      });
     }),
 });

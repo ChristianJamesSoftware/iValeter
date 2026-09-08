@@ -40,6 +40,9 @@ import { payrollRouter } from "./routers/payroll";
 import { serviceChargesRouter } from "./routers/service-charges";
 import { recurringJobsRouter } from "./routers/recurring-jobs";
 import { smsRouter } from "./routers/sms";
+import { complianceRouter } from "./routers/compliance";
+import { trainingRouter } from "./routers/training";
+import { customerInvoicesRouter } from "./routers/customer-invoices";
 
 export const appRouter = router({
   auth: authRouter,
@@ -83,6 +86,9 @@ export const appRouter = router({
   serviceCharges: serviceChargesRouter,
   recurringJobs: recurringJobsRouter,
   sms: smsRouter,
+  compliance: complianceRouter,
+  training: trainingRouter,
+  customerInvoices: customerInvoicesRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { HolidayStatus } from "@ivaleter/db";
 import { router, protectedProcedure, orgAdminProcedure } from "../trpc";
+import { emailHolidayApproved, emailHolidayRejected } from "../lib/email";
 
 export const holidayRouter = router({
   /** A valeter submits a time-off request for themselves. */
@@ -69,20 +70,46 @@ export const holidayRouter = router({
     .input(z.object({ id: z.string(), adminNote: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertInOrg(ctx, input.id);
-      return ctx.prisma.holidayRequest.update({
+      const req = await ctx.prisma.holidayRequest.findUniqueOrThrow({
+        where: { id: input.id },
+        include: { user: { select: { firstName: true, lastName: true, email: true } } },
+      });
+      const updated = await ctx.prisma.holidayRequest.update({
         where: { id: input.id },
         data: { status: HolidayStatus.APPROVED, adminNote: input.adminNote },
       });
+      // Fire approval email (non-blocking)
+      void emailHolidayApproved({
+        to: req.user.email,
+        valeterName: req.user.firstName,
+        startDate: req.startDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        endDate: req.endDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        days: Math.round((req.endDate.getTime() - req.startDate.getTime()) / 86400000) + 1,
+      }).catch(console.error);
+      return updated;
     }),
 
   reject: orgAdminProcedure
     .input(z.object({ id: z.string(), adminNote: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertInOrg(ctx, input.id);
-      return ctx.prisma.holidayRequest.update({
+      const req = await ctx.prisma.holidayRequest.findUniqueOrThrow({
+        where: { id: input.id },
+        include: { user: { select: { firstName: true, lastName: true, email: true } } },
+      });
+      const updated = await ctx.prisma.holidayRequest.update({
         where: { id: input.id },
         data: { status: HolidayStatus.REJECTED, adminNote: input.adminNote },
       });
+      // Fire rejection email (non-blocking)
+      void emailHolidayRejected({
+        to: req.user.email,
+        valeterName: req.user.firstName,
+        startDate: req.startDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        endDate: req.endDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        reason: input.adminNote,
+      }).catch(console.error);
+      return updated;
     }),
 
   /** Manager saves cover person name to DB. */

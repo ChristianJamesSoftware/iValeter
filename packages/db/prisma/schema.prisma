@@ -291,6 +291,8 @@ model User {
   recurringJobsClaimed     RecurringJobOccurrence[] @relation("RecurringJobClaimer")
   timesheetDeductionsAdded TimesheetDeduction[]   @relation("TimesheetDeductionAddedBy")
   prospectBroadcastsSent   ProspectBroadcast[]    @relation("ProspectBroadcastSentBy")
+  complianceDocuments      ComplianceDocument[]
+  trainingRecords          TrainingRecord[]
 
   @@index([organisationId])
   @@index([siteId])
@@ -2199,4 +2201,47 @@ model RecurringJobAuditAnswer {
   createdAt    DateTime @default(now())
 
   @@index([occurrenceId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLIANCE DOCUMENTS
+// Tracks DBS, RTW, Driving Licence, Contract etc. per valeter.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ComplianceDocument {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             String    // DBS | RTW | DRIVING_LICENCE | CONTRACT
+  status           String    @default("PENDING") // PENDING | VALID | EXPIRED | FLAGGED
+  reference        String?
+  issuedAt         DateTime?
+  expiresAt        DateTime?
+  verifiedAt       DateTime?
+  verifiedByUserId String?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TRAINING RECORDS
+// Certifications and course completions per valeter.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TrainingRecord {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course         String
+  provider       String?
+  completedAt    DateTime?
+  expiresAt      DateTime?
+  certificateUrl String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+
+  @@index([userId])
 }

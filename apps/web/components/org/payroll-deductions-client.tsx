@@ -1,129 +1,416 @@
 "use client";
 
-// TODO Phase 4: replace with tRPC query backed by PayRunLine deductions
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, CheckCircle2, AlertTriangle } from "lucide-react";
+import { trpc, RouterOutputs } from "@/lib/trpc/react";
 import { PageHeader } from "@/components/dashboard/page-header";
 
-interface Deduction {
-  id: string;
-  valeter: string;
-  type: string;
-  amount: number;
-  date: string;
-  status: "Pending" | "Applied";
-  notes: string;
+type Tab = "standing" | "accidents";
+
+type StandingDed = RouterOutputs["valeterDeductions"]["listAll"][number];
+type AccidentDed = RouterOutputs["valeterDeductions"]["listAllAccidents"][number];
+
+const inputCls =
+  "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#E8650A] focus:ring-2 focus:ring-orange-100";
+const labelCls = "block text-xs font-semibold text-slate-500 mb-1";
+const th =
+  "bg-[#F5F0E8] text-[11px] font-bold uppercase tracking-wider text-[#1C1A16]/50 px-5 py-3 text-left";
+const td = "border-b border-slate-100 text-sm text-slate-700 px-5 py-4";
+
+function fmtGBP(n: number): string {
+  return `£${n.toFixed(2)}`;
 }
 
-const INITIAL: Deduction[] = [
-  { id: "1", valeter: "James Mitchell", type: "Equipment", amount: 45, date: "2026-05-01", status: "Applied", notes: "Replacement polisher pad kit" },
-  { id: "2", valeter: "Sarah Connor", type: "Uniform", amount: 25, date: "2026-06-01", status: "Pending", notes: "2x branded polo shirts" },
-  { id: "3", valeter: "David Okafor", type: "Advance", amount: 150, date: "2026-06-10", status: "Pending", notes: "Salary advance" },
-];
+function fmtDate(d: Date | string | null | undefined): string {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
 
-const TYPES = ["Equipment", "Uniform", "Advance", "Other"];
+// ─── Standing Deductions Tab ─────────────────────────────────────────────────
 
-const th =
-  "bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-400 px-5 py-3 text-left";
-const td = "border-b border-slate-50 text-sm text-slate-700 px-5 py-4";
-const inputCls =
-  "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
+function StandingDeductionsTab() {
+  const utils = trpc.useUtils();
+
+  const { data: deductions = [], isLoading } = trpc.valeterDeductions.listAll.useQuery();
+  const { data: valeters = [] } = trpc.users.listValeters.useQuery();
+
+  const settle = trpc.valeterDeductions.settle.useMutation({
+    onSuccess: () => void utils.valeterDeductions.listAll.invalidate(),
+  });
+  const create = trpc.valeterDeductions.create.useMutation({
+    onSuccess: () => {
+      void utils.valeterDeductions.listAll.invalidate();
+      setAddOpen(false);
+      setForm({ valeterId: "", description: "", totalAmount: "", weeklyAmount: "" });
+    },
+  });
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [form, setForm] = useState({
+    valeterId: "",
+    description: "",
+    totalAmount: "",
+    weeklyAmount: "",
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    create.mutate({
+      valeterId: form.valeterId,
+      description: form.description,
+      totalAmount: Number(form.totalAmount),
+      weeklyAmount: Number(form.weeklyAmount),
+    });
+  }
+
+  const active = deductions.filter((d) => !d.settled);
+  const settled = deductions.filter((d) => d.settled);
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-slate-500">
+          {active.length} active deduction{active.length !== 1 ? "s" : ""}
+        </p>
+        <button
+          onClick={() => setAddOpen((v) => !v)}
+          className="flex h-9 items-center gap-2 rounded-lg bg-[#E8650A] px-4 text-sm font-medium text-white transition hover:bg-orange-600"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add Deduction
+        </button>
+      </div>
+
+      {addOpen && (
+        <form
+          onSubmit={handleSubmit}
+          className="mb-5 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4"
+        >
+          <div className="sm:col-span-2 lg:col-span-1">
+            <label className={labelCls}>Valeter</label>
+            <select
+              required
+              value={form.valeterId}
+              onChange={(e) => setForm({ ...form, valeterId: e.target.value })}
+              className={inputCls}
+            >
+              <option value="">Select…</option>
+              {valeters.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.firstName} {v.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="sm:col-span-2 lg:col-span-1">
+            <label className={labelCls}>Description</label>
+            <input
+              required
+              placeholder="e.g. Summer uniform (2 sets)"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Total Cost (£)</label>
+            <input
+              required
+              type="number"
+              step="0.01"
+              min="0.01"
+              placeholder="0.00"
+              value={form.totalAmount}
+              onChange={(e) => setForm({ ...form, totalAmount: e.target.value })}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Weekly Amount (£)</label>
+            <input
+              required
+              type="number"
+              step="0.01"
+              min="0.01"
+              placeholder="0.00"
+              value={form.weeklyAmount}
+              onChange={(e) => setForm({ ...form, weeklyAmount: e.target.value })}
+              className={inputCls}
+            />
+          </div>
+          <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
+            <button
+              type="submit"
+              disabled={create.isPending}
+              className="h-10 rounded-lg bg-[#1C1A16] px-5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-60"
+            >
+              {create.isPending ? "Saving…" : "Create Deduction"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAddOpen(false)}
+              className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {isLoading ? (
+        <div className="flex h-24 items-center justify-center text-sm text-slate-400">Loading…</div>
+      ) : (
+        <div className="space-y-6">
+          {/* Active */}
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+            <div className="bg-[#F5F0E8] px-5 py-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#1C1A16]/60">
+                Active Deductions
+              </span>
+            </div>
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className={th}>Valeter</th>
+                  <th className={th}>Description</th>
+                  <th className={th}>Total</th>
+                  <th className={th}>Weekly</th>
+                  <th className={th}>Deducted</th>
+                  <th className={th}>Remaining</th>
+                  <th className={th}>Progress</th>
+                  <th className={th}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {active.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-sm text-slate-400">
+                      No active deductions.
+                    </td>
+                  </tr>
+                )}
+                {active.map((ded) => {
+                  const remaining = Math.max(0, ded.totalAmount - ded.totalDeducted);
+                  const pct = Math.min(100, (ded.totalDeducted / ded.totalAmount) * 100);
+                  return (
+                    <tr key={ded.id} className="hover:bg-[#F5F0E8]/30 transition-colors">
+                      <td className={`${td} font-medium text-[#1C1A16]`}>
+                        {ded.valeter.firstName} {ded.valeter.lastName}
+                      </td>
+                      <td className={td}>{ded.description}</td>
+                      <td className={td}>{fmtGBP(ded.totalAmount)}</td>
+                      <td className={td}>{fmtGBP(ded.weeklyAmount)}</td>
+                      <td className={td}>{fmtGBP(ded.totalDeducted)}</td>
+                      <td className={`${td} font-medium text-amber-700`}>{fmtGBP(remaining)}</td>
+                      <td className={td}>
+                        <div className="w-24">
+                          <div className="h-1.5 w-full rounded-full bg-slate-100">
+                            <div
+                              className="h-1.5 rounded-full bg-[#E8650A] transition-all"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] text-slate-400">{pct.toFixed(0)}%</span>
+                        </div>
+                      </td>
+                      <td className={td}>
+                        <button
+                          onClick={() => settle.mutate({ id: ded.id })}
+                          disabled={settle.isPending}
+                          className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Settle
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Settled */}
+          {settled.length > 0 && (
+            <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+              <div className="bg-slate-50 px-5 py-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Settled Deductions
+                </span>
+              </div>
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <th className={th}>Valeter</th>
+                    <th className={th}>Description</th>
+                    <th className={th}>Total Recovered</th>
+                    <th className={th}>Weekly Was</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {settled.map((ded) => (
+                    <tr key={ded.id} className="opacity-60">
+                      <td className={`${td} font-medium text-[#1C1A16]`}>
+                        {ded.valeter.firstName} {ded.valeter.lastName}
+                      </td>
+                      <td className={td}>{ded.description}</td>
+                      <td className={td}>{fmtGBP(ded.totalAmount)}</td>
+                      <td className={td}>{fmtGBP(ded.weeklyAmount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Accident Deductions Tab ─────────────────────────────────────────────────
+
+function AccidentDeductionsTab() {
+  const { data: accidents = [], isLoading } = trpc.valeterDeductions.listAllAccidents.useQuery();
+
+  const active = accidents.filter((a) => !a.settled);
+  const settled = accidents.filter((a) => a.settled);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-24 items-center justify-center text-sm text-slate-400">Loading…</div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="bg-[#F5F0E8] px-5 py-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#1C1A16]/60">
+            Active Accident Deductions
+          </span>
+        </div>
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className={th}>Valeter</th>
+              <th className={th}>Incident Date</th>
+              <th className={th}>Vehicle Reg</th>
+              <th className={th}>Excess</th>
+              <th className={th}>Weekly Deduction</th>
+              <th className={th}>Deducted</th>
+              <th className={th}>Remaining</th>
+            </tr>
+          </thead>
+          <tbody>
+            {active.length === 0 && (
+              <tr>
+                <td colSpan={7} className="py-8 text-center text-sm text-slate-400">
+                  No outstanding accident deductions.
+                </td>
+              </tr>
+            )}
+            {active.map((acc) => {
+              const remaining = Math.max(0, acc.excessAmount - acc.totalDeducted);
+              return (
+                <tr key={acc.id} className="hover:bg-[#F5F0E8]/30 transition-colors">
+                  <td className={`${td} font-medium text-[#1C1A16]`}>
+                    {acc.valeter.firstName} {acc.valeter.lastName}
+                  </td>
+                  <td className={td}>{fmtDate(acc.incidentDate)}</td>
+                  <td className={`${td} font-mono text-xs uppercase`}>{acc.vehicleReg}</td>
+                  <td className={td}>{fmtGBP(acc.excessAmount)}</td>
+                  <td className={td}>
+                    {acc.weeklyDeduction != null ? (
+                      fmtGBP(acc.weeklyDeduction)
+                    ) : (
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Not set
+                      </span>
+                    )}
+                  </td>
+                  <td className={td}>{fmtGBP(acc.totalDeducted)}</td>
+                  <td className={`${td} font-medium text-amber-700`}>{fmtGBP(remaining)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {settled.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+          <div className="bg-slate-50 px-5 py-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Settled Accidents
+            </span>
+          </div>
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className={th}>Valeter</th>
+                <th className={th}>Incident Date</th>
+                <th className={th}>Vehicle Reg</th>
+                <th className={th}>Total Recovered</th>
+              </tr>
+            </thead>
+            <tbody>
+              {settled.map((acc) => (
+                <tr key={acc.id} className="opacity-60">
+                  <td className={`${td} font-medium text-[#1C1A16]`}>
+                    {acc.valeter.firstName} {acc.valeter.lastName}
+                  </td>
+                  <td className={td}>{fmtDate(acc.incidentDate)}</td>
+                  <td className={`${td} font-mono text-xs uppercase`}>{acc.vehicleReg}</td>
+                  <td className={td}>{fmtGBP(acc.excessAmount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Export ─────────────────────────────────────────────────────────────
 
 export function PayrollDeductionsClient() {
-  const [rows, setRows] = useState<Deduction[]>(INITIAL);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ valeter: "", type: "Equipment", amount: "", date: "", notes: "" });
-
-  function add(e: React.FormEvent) {
-    e.preventDefault();
-    setRows((r) => [
-      {
-        id: crypto.randomUUID(),
-        valeter: form.valeter,
-        type: form.type,
-        amount: Number(form.amount) || 0,
-        date: form.date,
-        status: "Pending",
-        notes: form.notes,
-      },
-      ...r,
-    ]);
-    setForm({ valeter: "", type: "Equipment", amount: "", date: "", notes: "" });
-    setOpen(false);
-  }
+  const [tab, setTab] = useState<Tab>("standing");
 
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title="Pay Deductions"
-        subtitle="Manage equipment, uniform and advance deductions."
-        action={
-          <button
-            onClick={() => setOpen((v) => !v)}
-            className="flex h-10 items-center gap-2 rounded-lg bg-orange-500 px-4 text-sm font-medium text-white transition-colors hover:bg-orange-600"
-          >
-            <Plus className="h-4 w-4" />
-            Add Deduction
-          </button>
-        }
+        subtitle="Standing deductions and accident excess recovery across all valeters."
       />
 
-      {open && (
-        <form
-          onSubmit={add}
-          className="mb-6 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-3"
-        >
-          <input required placeholder="Valeter" value={form.valeter} onChange={(e) => setForm({ ...form, valeter: e.target.value })} className={inputCls} />
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className={inputCls}>
-            {TYPES.map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
-          <input required type="number" step="0.01" placeholder="Amount (£)" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className={inputCls} />
-          <input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className={inputCls} />
-          <input placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={inputCls} />
-          <button type="submit" className="h-10 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-700">
-            Add deduction
+      {/* Tab bar */}
+      <div className="mb-6 flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+        {(
+          [
+            { id: "standing", label: "Standing Deductions" },
+            { id: "accidents", label: "Accident Deductions" },
+          ] as { id: Tab; label: string }[]
+        ).map(({ id, label }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+              tab === id
+                ? "bg-white text-[#1C1A16] shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {label}
           </button>
-        </form>
-      )}
-
-      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-        <table className="w-full">
-          <thead>
-            <tr>
-              <th className={th}>Valeter</th>
-              <th className={th}>Type</th>
-              <th className={th}>Amount</th>
-              <th className={th}>Applied Date</th>
-              <th className={th}>Status</th>
-              <th className={th}>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="hover:bg-slate-50/50">
-                <td className={`${td} font-medium text-slate-900`}>{r.valeter}</td>
-                <td className={td}>{r.type}</td>
-                <td className={td}>£{r.amount.toFixed(2)}</td>
-                <td className={td}>{r.date}</td>
-                <td className={td}>
-                  <span
-                    className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                      r.status === "Applied"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
-                    }`}
-                  >
-                    {r.status}
-                  </span>
-                </td>
-                <td className={`${td} text-slate-500`}>{r.notes}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        ))}
       </div>
+
+      {tab === "standing" && <StandingDeductionsTab />}
+      {tab === "accidents" && <AccidentDeductionsTab />}
     </div>
   );
 }

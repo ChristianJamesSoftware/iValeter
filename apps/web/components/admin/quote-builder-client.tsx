@@ -26,6 +26,33 @@ export function QuoteBuilderClient() {
   const [items, setItems] = useState<LineItem[]>([
     { id: "1", service: "Full Valet", qty: 10, unitPrice: 35, duration: "1h" },
   ]);
+  const [generating, setGenerating] = useState(false);
+
+  async function generatePdf() {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/quote/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meta, items, terms }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = /filename="([^"]+)"/.exec(cd);
+      a.download = match?.[1] ?? "ivaleter-quote.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert("PDF generation failed — please try again.");
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   const subtotal = items.reduce((s, i) => s + i.qty * i.unitPrice, 0);
   const vat = subtotal * 0.2;
@@ -52,11 +79,12 @@ export function QuoteBuilderClient() {
         action={
           <div className="flex gap-2">
             <button
-              onClick={() => console.log("Generate PDF", { meta, items, terms, total })}
-              className="flex h-10 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-700"
+              onClick={() => void generatePdf()}
+              disabled={generating}
+              className="flex h-10 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-60"
             >
               <FileDown className="h-4 w-4" />
-              Generate PDF
+              {generating ? "Generating…" : "Generate PDF"}
             </button>
             <button
               onClick={() => navigator.clipboard?.writeText(window.location.href)}
