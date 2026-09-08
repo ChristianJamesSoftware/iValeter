@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
+import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure, managementProcedure } from "../trpc";
 
 export const dealershipsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -186,7 +186,7 @@ export const dealershipsRouter = router({
     }),
 
   /** Super-admin: list ALL dealerships across all head offices */
-  listAll: superAdminProcedure
+  listAll: managementProcedure
     .input(z.object({ showInactive: z.boolean().default(false) }).optional())
     .query(async ({ ctx, input }) => {
       return ctx.prisma.dealership.findMany({
@@ -269,7 +269,7 @@ export const dealershipsRouter = router({
    * Super admin: list all active dealerships with their site users,
    * so we can pick a user to impersonate for the "Preview Dealer View" flow.
    */
-  listAllWithUsers: superAdminProcedure.query(async ({ ctx }) => {
+  listAllWithUsers: managementProcedure.query(async ({ ctx }) => {
     const dealerships = await ctx.prisma.dealership.findMany({
       where: { isActive: true },
       include: {
@@ -327,7 +327,7 @@ export const dealershipsRouter = router({
   // ─── Contact Log (Notes) ────────────────────────────────────────────────────
 
   /** List all contact log notes for a dealership — SA and management only */
-  listNotes: superAdminProcedure
+  listNotes: managementProcedure
     .input(z.object({ dealershipId: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.prisma.dealershipNote.findMany({
@@ -340,7 +340,7 @@ export const dealershipsRouter = router({
     }),
 
   /** Add a new contact log note */
-  addNote: superAdminProcedure
+  addNote: managementProcedure
     .input(
       z.object({
         dealershipId: z.string(),
@@ -370,7 +370,7 @@ export const dealershipsRouter = router({
     }),
 
   /** Update an existing note */
-  updateNote: superAdminProcedure
+  updateNote: managementProcedure
     .input(
       z.object({
         id: z.string(),
@@ -397,7 +397,7 @@ export const dealershipsRouter = router({
     }),
 
   /** Delete a note */
-  deleteNote: superAdminProcedure
+  deleteNote: managementProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.dealershipNote.delete({ where: { id: input.id } });

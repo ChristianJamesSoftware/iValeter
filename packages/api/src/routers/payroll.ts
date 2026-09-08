@@ -17,7 +17,7 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, superAdminProcedure } from "../trpc";
+import { router, managementProcedure, superAdminProcedure } from "../trpc";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -324,7 +324,7 @@ export const payrollRouter = router({
     }),
 
   /** List all PayRuns for the org — used by payroll history view. */
-  listPayRuns: superAdminProcedure.query(async ({ ctx }) => {
+  listPayRuns: managementProcedure.query(async ({ ctx }) => {
     return ctx.prisma.payRun.findMany({
       where: { organisationId: ctx.session.organisationId },
       include: {

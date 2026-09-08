@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, orgAdminProcedure, superAdminProcedure, protectedProcedure } from "../trpc";
+import { router, managementProcedure, orgAdminProcedure, superAdminProcedure, protectedProcedure } from "../trpc";
 import type { Role } from "@ivaleter/db";
 import { pushExpensesToXero } from "../lib/xero";
 
@@ -676,7 +676,7 @@ export const hqRouter = router({
     }),
 
   /** List feedback replies (SA only) */
-  listFeedbackReplies: superAdminProcedure
+  listFeedbackReplies: managementProcedure
     .input(
       z.object({
         siteId: z.string().optional(),

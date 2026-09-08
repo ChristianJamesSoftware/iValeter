@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, superAdminProcedure, orgAdminProcedure } from "../trpc";
+import { router, managementProcedure, superAdminProcedure, orgAdminProcedure } from "../trpc";
 
 /**
  * Valeter Deductions router
@@ -33,7 +33,7 @@ export const valeterDeductionsRouter = router({
   }),
 
   /** List all deductions for a valeter */
-  listForValeter: superAdminProcedure
+  listForValeter: managementProcedure
     .input(z.object({ valeterId: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.prisma.valeterDeduction.findMany({

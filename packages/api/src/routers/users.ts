@@ -2,7 +2,7 @@ import { z } from "zod";
 import { Prisma } from "@ivaleter/db";
 import { TRPCError } from "@trpc/server";
 import { Role } from "@ivaleter/db";
-import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure, dealershipProcedure } from "../trpc";
+import { router, managementProcedure, protectedProcedure, orgAdminProcedure, superAdminProcedure, dealershipProcedure } from "../trpc";
 import { hashPassword } from "../auth";
 
 function startOfToday(): Date {
@@ -370,7 +370,7 @@ export const usersRouter = router({
     }),
 
   /** Super admin: list ALL valeters across every org */
-  listAllValeters: superAdminProcedure
+  listAllValeters: managementProcedure
     .input(z.object({ showInactive: z.boolean().default(false) }).optional())
     .query(async ({ ctx, input }) => {
       return ctx.prisma.user.findMany({
@@ -387,7 +387,7 @@ export const usersRouter = router({
     }),
 
   /** Super admin: get a single valeter's full profile */
-  getValeterById: superAdminProcedure
+  getValeterById: managementProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const user = await ctx.prisma.user.findFirst({
@@ -523,7 +523,7 @@ export const usersRouter = router({
     }),
 
   /** Super admin: list all management team members */
-  listManagementTeam: superAdminProcedure
+  listManagementTeam: managementProcedure
     .query(async ({ ctx }) => {
       return ctx.prisma.user.findMany({
         where: { role: "management", isActive: true },
@@ -615,7 +615,7 @@ export const usersRouter = router({
 
   /** Dealership: list users on their own site (for customer-side user management) */
   /** Super admin: list ALL dealership_user accounts across every org */
-  listAllDealershipUsers: superAdminProcedure
+  listAllDealershipUsers: managementProcedure
     .input(z.object({ showInactive: z.boolean().default(false) }).optional())
     .query(async ({ ctx, input }) => {
       return ctx.prisma.user.findMany({
@@ -783,7 +783,7 @@ export const usersRouter = router({
 
 
   /** Super admin: list all accidents for a valeter */
-  listAccidents: superAdminProcedure
+  listAccidents: managementProcedure
     .input(z.object({ valeterId: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.prisma.valeterAccident.findMany({

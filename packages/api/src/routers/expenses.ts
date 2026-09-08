@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
+import { router, managementProcedure, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 
 function currentWeekStart() {
@@ -167,7 +167,7 @@ export const expensesRouter = router({
   /**
    * SA: list expense nominal codes for the platform org.
    */
-  listNominalCodes: superAdminProcedure
+  listNominalCodes: managementProcedure
     .input(z.object({ organisationId: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.prisma.xeroExpenseNominalCode.findMany({

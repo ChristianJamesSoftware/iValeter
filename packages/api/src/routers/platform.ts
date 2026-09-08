@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, superAdminProcedure } from "../trpc";
+import { router, managementProcedure, superAdminProcedure } from "../trpc";
 
 interface ConfigEntry {
   key: string;
@@ -10,7 +10,7 @@ interface ConfigEntry {
 
 export const platformRouter = router({
   /** All platform config. Secret values are masked — only `isSet` is exposed. */
-  get: superAdminProcedure.query(async ({ ctx }) => {
+  get: managementProcedure.query(async ({ ctx }) => {
     const rows = await ctx.prisma.platformConfig.findMany({
       orderBy: { key: "asc" },
     });

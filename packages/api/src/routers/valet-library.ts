@@ -6,7 +6,7 @@
  *  - RateTemplate       — master rate templates (with per-service-type lines) SA configures; dealerships apply one
  */
 import { z } from "zod";
-import { router, superAdminProcedure, protectedProcedure } from "../trpc";
+import { router, managementProcedure, superAdminProcedure, protectedProcedure } from "../trpc";
 
 const SERVICE_CATEGORIES = ["VALET", "PAINT", "CLEANING", "OTHER"] as const;
 const DEPARTMENT_TYPES = ["SALES", "SERVICE", "BODYSHOP", "HIRE", "ALL"] as const;
@@ -21,7 +21,7 @@ export const valetLibraryRouter = router({
     });
   }),
 
-  listAllValetTypes: superAdminProcedure.query(async ({ ctx }) => {
+  listAllValetTypes: managementProcedure.query(async ({ ctx }) => {
     return ctx.prisma.valetTypeTemplate.findMany({
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     });
@@ -84,7 +84,7 @@ export const valetLibraryRouter = router({
     });
   }),
 
-  listAllRateTemplates: superAdminProcedure.query(async ({ ctx }) => {
+  listAllRateTemplates: managementProcedure.query(async ({ ctx }) => {
     return ctx.prisma.rateTemplate.findMany({
       include: { lines: { orderBy: { serviceTypeName: "asc" } } },
       orderBy: { name: "asc" },

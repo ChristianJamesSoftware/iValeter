@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
+import { router, managementProcedure, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
 
 export const sitesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -280,7 +280,7 @@ export const sitesRouter = router({
     }),
 
   /** Super admin: list all sites for a given organisation (for dropdowns). */
-  listByOrg: superAdminProcedure
+  listByOrg: managementProcedure
     .input(z.object({ organisationId: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.prisma.site.findMany({
@@ -291,7 +291,7 @@ export const sitesRouter = router({
     }),
 
   /** Super admin: flat list of ALL active sites across every org, with departments. */
-  listAllFlat: superAdminProcedure.query(async ({ ctx }) => {
+  listAllFlat: managementProcedure.query(async ({ ctx }) => {
     return ctx.prisma.site.findMany({
       where: { isActive: true },
       select: {

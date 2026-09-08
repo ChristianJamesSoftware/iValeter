@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, superAdminProcedure, protectedProcedure } from "../trpc";
+import { router, managementProcedure, superAdminProcedure, protectedProcedure } from "../trpc";
 
 export const paintProtectionRouter = router({
   /** All active products — used by the customer booking form */
@@ -11,7 +11,7 @@ export const paintProtectionRouter = router({
   }),
 
   /** All products including inactive — used by ops settings */
-  listAll: superAdminProcedure.query(async ({ ctx }) => {
+  listAll: managementProcedure.query(async ({ ctx }) => {
     return ctx.prisma.paintProtectionProduct.findMany({
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     });

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
+import { router, managementProcedure, protectedProcedure, orgAdminProcedure, superAdminProcedure } from "../trpc";
 
 export const dealershipRequestsRouter = router({
   /** List all requests for this org (manager + ops admin) */
@@ -16,7 +16,7 @@ export const dealershipRequestsRouter = router({
   }),
 
   /** List all PENDING requests across all orgs — for super_admin ops review */
-  listAllPending: superAdminProcedure.query(async ({ ctx }) => {
+  listAllPending: managementProcedure.query(async ({ ctx }) => {
     return ctx.prisma.dealershipRequest.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },

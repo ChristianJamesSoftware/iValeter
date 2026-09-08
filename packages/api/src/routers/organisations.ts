@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Role } from "@ivaleter/db";
-import { router, superAdminProcedure } from "../trpc";
+import { router, superAdminProcedure, managementProcedure } from "../trpc";
 import { hashPassword } from "../auth";
 import { PLANS, planFeatures, type PlanKey } from "../lib/plans";
 
@@ -14,7 +14,7 @@ const featureInput = z.object({
 });
 
 export const organisationsRouter = router({
-  list: superAdminProcedure
+  list: managementProcedure
     .input(z.object({ showInactive: z.boolean().default(false) }).optional())
     .query(async ({ ctx, input }) => {
     const orgs = await ctx.prisma.organisation.findMany({
@@ -35,7 +35,7 @@ export const organisationsRouter = router({
     }));
   }),
 
-  getById: superAdminProcedure
+  getById: managementProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const org = await ctx.prisma.organisation.findUnique({
@@ -163,12 +163,12 @@ export const organisationsRouter = router({
     }),
 
   /** Plan catalogue for the onboarding UI. */
-  plans: superAdminProcedure.query(() => {
+  plans: managementProcedure.query(() => {
     return (Object.keys(PLANS) as PlanKey[]).map((k) => PLANS[k]);
   }),
 
   /** Simple list of all head offices for dropdowns (super admin) */
-  listAll: superAdminProcedure.query(async ({ ctx }) => {
+  listAll: managementProcedure.query(async ({ ctx }) => {
     return ctx.prisma.organisation.findMany({
       where: { isActive: true },
       select: { id: true, name: true, isActive: true },
@@ -234,7 +234,7 @@ export const organisationsRouter = router({
     }),
 
   /** List all dealerships under a head office */
-  getDealerships: superAdminProcedure
+  getDealerships: managementProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.prisma.dealership.findMany({
