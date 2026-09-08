@@ -34,12 +34,17 @@ export const hqRouter = router({
       // 1. Valeters not clocked in after 8:15am today
       const cutoff = new Date(today);
       cutoff.setHours(8, 15, 0, 0);
-      if (now > cutoff) {
+      // Only fire on weekdays (Mon=1 — Fri=5)
+      const dayOfWeek = now.getDay();
+      const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+      if (now > cutoff && isWeekday) {
         const allValeters = await ctx.prisma.user.findMany({
           where: {
             organisationId: ctx.session.organisationId,
             role: "valeter",
             isActive: true,
+            // Only valeters at active sites
+            site: { isActive: true },
           },
           select: { id: true, firstName: true, lastName: true, siteId: true, site: { select: { name: true } } },
         });

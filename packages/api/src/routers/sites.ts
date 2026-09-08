@@ -16,6 +16,28 @@ export const sitesRouter = router({
     });
   }),
 
+  /** List ALL sites (active + inactive) with valeter counts — for admin management */
+  listAllAdmin: orgAdminProcedure
+    .input(z.object({ showInactive: z.boolean().default(true) }))
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.site.findMany({
+        where: {
+          organisationId: ctx.session.organisationId,
+          ...(input.showInactive ? {} : { isActive: true }),
+        },
+        include: {
+          dealership: { select: { name: true } },
+          _count: {
+            select: {
+              users: true,
+              bookings: true,
+            },
+          },
+        },
+        orderBy: [{ isActive: "desc" }, { name: "asc" }],
+      });
+    }),
+
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -131,10 +153,35 @@ export const sitesRouter = router({
       if (!site) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
       }
+      // Also toggle valeters at this site
+      await ctx.prisma.user.updateMany({
+        where: { siteId: site.id, role: "valeter" },
+        data: { isActive: input.isActive },
+      });
       return ctx.prisma.site.update({
         where: { id: site.id },
         data: { isActive: input.isActive },
       });
+    }),
+
+  /** Bulk activate or pause all sites (+ their valeters) for the org */
+  bulkSetActive: superAdminProcedure
+    .input(z.object({ isActive: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const [sites, users] = await Promise.all([
+        ctx.prisma.site.updateMany({
+          where: { organisationId: ctx.session.organisationId },
+          data: { isActive: input.isActive },
+        }),
+        ctx.prisma.user.updateMany({
+          where: {
+            organisationId: ctx.session.organisationId,
+            role: "valeter",
+          },
+          data: { isActive: input.isActive },
+        }),
+      ]);
+      return { sitesUpdated: sites.count, valetersUpdated: users.count };
     }),
 
   addDepartment: orgAdminProcedure

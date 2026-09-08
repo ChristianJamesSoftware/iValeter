@@ -252,6 +252,144 @@ function DealershipsTab() {
   );
 }
 
+// ── Tab: Sites ──────────────────────────────────────────────────────────────
+function SitesTab() {
+  const utils = trpc.useUtils();
+  const [search, setSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(true);
+  const [confirmBulk, setConfirmBulk] = useState<"pause" | "activate" | null>(null);
+
+  const query = trpc.sites.listAllAdmin.useQuery({ showInactive });
+  const toggleActive = trpc.sites.setActive.useMutation({
+    onSuccess: () => void query.refetch(),
+  });
+  const bulkSetActive = trpc.sites.bulkSetActive.useMutation({
+    onSuccess: () => { setConfirmBulk(null); void query.refetch(); },
+  });
+
+  if (query.isLoading) return <Skeleton />;
+
+  const sites = query.data ?? [];
+  const filtered = search.trim()
+    ? sites.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()) ||
+        (s.dealership?.name ?? "").toLowerCase().includes(search.toLowerCase()))
+    : sites;
+
+  const activeCount = sites.filter((s) => s.isActive).length;
+
+  return (
+    <div className="space-y-4">
+      <Toolbar
+        search={search}
+        onSearch={setSearch}
+        placeholder="Search sites…"
+        showInactive={showInactive}
+        onToggleInactive={setShowInactive}
+        count={filtered.length}
+        action={
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmBulk("activate")}
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition"
+            >
+              <Power className="h-3.5 w-3.5" /> Activate all
+            </button>
+            <button
+              onClick={() => setConfirmBulk("pause")}
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+            >
+              <Power className="h-3.5 w-3.5" /> Pause all
+            </button>
+          </div>
+        }
+      />
+
+      {/* Active count pill */}
+      <p className="text-xs text-slate-500">
+        <span className="font-semibold text-emerald-700">{activeCount} active</span> of {sites.length} sites
+      </p>
+
+      {/* Bulk confirm banner */}
+      {confirmBulk && (
+        <div className={`flex items-center justify-between rounded-xl border px-5 py-3 ${
+          confirmBulk === "pause" ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"
+        }`}>
+          <span className="text-sm font-medium">
+            {confirmBulk === "pause"
+              ? `Pause all ${sites.length} sites and their valeters?`
+              : `Activate all ${sites.length} sites and their valeters?`}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => bulkSetActive.mutate({ isActive: confirmBulk === "activate" })}
+              disabled={bulkSetActive.isPending}
+              className={`rounded-lg px-4 py-1.5 text-xs font-semibold text-white transition ${
+                confirmBulk === "pause" ? "bg-amber-500 hover:bg-amber-600" : "bg-emerald-600 hover:bg-emerald-700"
+              } disabled:opacity-60`}
+            >
+              {bulkSetActive.isPending ? "Updating…" : "Confirm"}
+            </button>
+            <button
+              onClick={() => setConfirmBulk(null)}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        {filtered.length === 0 ? (
+          <Empty search={search} noun="sites" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className={TH}>Site</th>
+                  <th className={TH}>Dealership</th>
+                  <th className={TH}>Valeters</th>
+                  <th className={TH}>Status</th>
+                  <th className={TH} />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filtered.map((s) => (
+                  <tr key={s.id} className={cn("transition hover:bg-slate-50", !s.isActive && "opacity-50")}>
+                    <td className="px-5 py-3.5 font-medium text-slate-900">{s.name}</td>
+                    <td className="px-5 py-3.5 text-slate-500">{s.dealership?.name ?? "—"}</td>
+                    <td className="px-5 py-3.5 text-slate-500">{s._count.users}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={s.isActive ? BADGE_ACTIVE : BADGE_INACTIVE}>
+                        {s.isActive ? "Active" : "Paused"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <button
+                        onClick={() => toggleActive.mutate({ id: s.id, isActive: !s.isActive })}
+                        title={s.isActive ? "Pause site + valeters" : "Activate site + valeters"}
+                        className={cn(
+                          "rounded-lg p-1.5 transition",
+                          s.isActive
+                            ? "text-red-400 hover:text-red-600 hover:bg-red-50"
+                            : "text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50",
+                        )}
+                      >
+                        <Power className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Shared sub-components ───────────────────────────────────────────────────
 function Toolbar({
   search,
@@ -447,6 +585,7 @@ function CustomerRequestsTab() {
 const TABS = [
   { key: "head-offices",      label: "Head Offices"      },
   { key: "dealerships",       label: "Dealerships"       },
+  { key: "sites",             label: "Sites"             },
   { key: "customer-requests", label: "Customer Requests" },
 ] as const;
 type TabKey = typeof TABS[number]["key"];
@@ -479,6 +618,7 @@ export function NetworkClient() {
       {/* Tab content */}
       {tab === "head-offices"      && <HeadOfficesTab />}
       {tab === "dealerships"       && <DealershipsTab />}
+      {tab === "sites"             && <SitesTab />}
       {tab === "customer-requests" && <CustomerRequestsTab />}
     </div>
   );
