@@ -5,6 +5,7 @@ import { AppSidebar, type NavItem } from "./app-sidebar";
 import { MobileNav } from "./mobile-nav";
 import { TopBar } from "./top-bar";
 import { ImpersonationBanner } from "./impersonation-banner";
+import { UpdateBanner } from "./update-banner";
 
 /**
  * Server shell for desktop dashboards (admin / org / dealership).
@@ -36,6 +37,7 @@ export async function DashboardShell({
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
         <ImpersonationBanner />
+        <UpdateBanner />
         <MobileNav items={items} user={user} />
         <TopBar items={items} user={user} />
         <main className="flex-1 overflow-y-auto px-4 py-6 md:px-6">
