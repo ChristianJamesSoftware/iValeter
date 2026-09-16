@@ -118,7 +118,7 @@ export const usersRouter = router({
       });
     }),
 
-  create: orgAdminProcedure
+  create: managementProcedure
     .input(
       z.object({
         email: z.string().email(),
@@ -468,7 +468,7 @@ export const usersRouter = router({
     }),
 
   /** Super admin: create a user on any site/org (for adding site team members from dealership card) */
-  superAdminCreate: superAdminProcedure
+  superAdminCreate: managementProcedure
     .input(
       z.object({
         email: z.string().email(),

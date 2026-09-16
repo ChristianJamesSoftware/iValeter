@@ -200,7 +200,7 @@ export const dealershipsRouter = router({
     }),
 
   /** Super-admin: create a dealership under a specific head office */
-  createForHeadOffice: superAdminProcedure
+  createForHeadOffice: managementProcedure
     .input(
       z.object({
         organisationId: z.string(),

@@ -298,7 +298,7 @@ export const prospectsRouter = router({
     }),
 
   /** List broadcast history */
-  listBroadcasts: orgAdminProcedure.query(async ({ ctx }) => {
+  listBroadcasts: managementProcedure.query(async ({ ctx }) => {
     return ctx.prisma.prospectBroadcast.findMany({
       where: { organisationId: ctx.session.organisationId },
       include: {

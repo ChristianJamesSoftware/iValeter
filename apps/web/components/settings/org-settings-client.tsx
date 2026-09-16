@@ -42,7 +42,7 @@ export function OrgSettingsClient() {
 // ─── Vehicle Rates Tab ──────────────────────────────────────────────────────
 
 function VehicleRatesTab() {
-  const sitesQuery = trpc.sites.list.useQuery();
+  const sitesQuery = trpc.sites.listAllAdmin.useQuery({ showInactive: true });
   const sites = sitesQuery.data ?? [];
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
 
@@ -95,14 +95,14 @@ function VehicleRatesTab() {
 
 function SitesTab() {
   const utils = trpc.useUtils();
-  const query = trpc.sites.list.useQuery();
+  const query = trpc.sites.listAllAdmin.useQuery({ showInactive: true });
   const [showRequest, setShowRequest] = useState(false);
   const [siteName, setSiteName] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const toggleSite = trpc.sites.setActive.useMutation({
-    onSuccess: () => utils.sites.list.invalidate(),
+    onSuccess: () => utils.sites.listAllAdmin.invalidate(),
   });
 
   if (query.isLoading) return <LoadingSpinner />;
@@ -198,7 +198,7 @@ function SitesTab() {
 // ─── Add Valeter Tab ──────────────────────────────────────────────────────────
 
 function AddValeterTab() {
-  const sitesQuery = trpc.sites.list.useQuery();
+  const sitesQuery = trpc.sites.listAllAdmin.useQuery({ showInactive: true });
   const createUser = trpc.users.create.useMutation();
   const [submitted, setSubmitted] = useState(false);
 
@@ -277,7 +277,7 @@ function AddValeterTab() {
 // ─── Add Customer Tab ─────────────────────────────────────────────────────────
 
 function AddCustomerTab() {
-  const sitesQuery = trpc.sites.list.useQuery();
+  const sitesQuery = trpc.sites.listAllAdmin.useQuery({ showInactive: true });
   const createUser = trpc.users.create.useMutation();
   const [submitted, setSubmitted] = useState(false);
 

@@ -177,7 +177,7 @@ export const organisationsRouter = router({
   }),
 
   /** Create a head office — simple client record, no SaaS plumbing */
-  createHeadOffice: superAdminProcedure
+  createHeadOffice: managementProcedure
     .input(
       z.object({
         name: z.string().min(1),
