@@ -17,7 +17,7 @@ export const sitesRouter = router({
   }),
 
   /** List ALL sites (active + inactive) with valeter counts — for admin management */
-  listAllAdmin: orgAdminProcedure
+  listAllAdmin: managementProcedure
     .input(z.object({ showInactive: z.boolean().default(true) }))
     .query(async ({ ctx, input }) => {
       return ctx.prisma.site.findMany({

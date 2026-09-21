@@ -57,7 +57,7 @@ export const organisationsRouter = router({
       return org;
     }),
 
-  setActive: superAdminProcedure
+  setActive: managementProcedure
     .input(z.object({ id: z.string(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.organisation.update({

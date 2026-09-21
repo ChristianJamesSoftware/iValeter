@@ -428,7 +428,7 @@ export const dealershipsRouter = router({
   }),
 
   /** Super-admin: move an existing dealership to a different head office */
-  reassignToHeadOffice: superAdminProcedure
+  reassignToHeadOffice: managementProcedure
     .input(z.object({
       dealershipId:     z.string(),
       headOfficeId:     z.string(),
