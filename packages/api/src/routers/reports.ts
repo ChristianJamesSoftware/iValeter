@@ -110,7 +110,7 @@ export const reportsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const isOrgAdmin =
-        ctx.session.role === "super_admin" || ctx.session.role === "org_admin";
+        ctx.session.role === "super_admin" || ctx.session.role === "org_admin" || ctx.session.role === "management";
 
       const siteIdFilter: string | undefined = isOrgAdmin
         ? input.siteId

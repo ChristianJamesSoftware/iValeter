@@ -52,7 +52,7 @@ export const dealershipsRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const isSuperAdmin = ctx.session.role === "super_admin";
+      const isSuperAdmin = ctx.session.role === "super_admin" || ctx.session.role === "management";
       const d = await ctx.prisma.dealership.findFirst({
         where: {
           id: input.id,
@@ -115,7 +115,7 @@ export const dealershipsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const isSuperAdmin = ctx.session.role === "super_admin";
+      const isSuperAdmin = ctx.session.role === "super_admin" || ctx.session.role === "management";
       const d = await ctx.prisma.dealership.findFirst({
         where: {
           id: input.id,
