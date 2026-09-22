@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Power } from "lucide-react";
+import { Power, PlusCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 import { ValeterCardModal } from "./valeter-card-modal";
+import { AddValeterModal } from "./add-valeter-modal";
 
 function fmtDate(d: string | Date | null): string {
   if (!d) return "\u2014";
@@ -16,6 +17,7 @@ function fmtDate(d: string | Date | null): string {
 export function AdminTeamList() {
   const [showInactive, setShowInactive] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
   const utils = trpc.useUtils();
 
   const query = trpc.users.listAllValeters.useQuery({ showInactive });
@@ -35,6 +37,8 @@ export function AdminTeamList() {
         />
       )}
 
+      {showAdd && <AddValeterModal onClose={() => setShowAdd(false)} />}
+
       <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-base font-bold text-slate-900">
@@ -44,28 +48,45 @@ export function AdminTeamList() {
             </span>
           </h2>
 
-          {/* Active / All toggle */}
-          <div className="flex items-center rounded-lg border border-slate-200 p-0.5 text-xs font-semibold">
+          <div className="flex items-center gap-3">
+            {/* Active / All toggle */}
+            <div className="flex items-center rounded-lg border border-slate-200 p-0.5 text-xs font-semibold">
+              <button
+                onClick={() => setShowInactive(false)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 transition",
+                  !showInactive ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-700",
+                )}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => setShowInactive(true)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 transition",
+                  showInactive ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-700",
+                )}
+              >
+                All
+              </button>
+            </div>
+
             <button
-              onClick={() => setShowInactive(false)}
-              className={cn(
-                "rounded-md px-3 py-1.5 transition",
-                !showInactive ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-700",
-              )}
+              onClick={() => setShowAdd(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-700"
             >
-              Active
-            </button>
-            <button
-              onClick={() => setShowInactive(true)}
-              className={cn(
-                "rounded-md px-3 py-1.5 transition",
-                showInactive ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-700",
-              )}
-            >
-              All
+              <PlusCircle className="h-3.5 w-3.5" /> Add valeter
             </button>
           </div>
         </div>
+
+        {toggleActive.error && (
+          <p className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm font-medium text-red-700">
+            {/FORBIDDEN|UNAUTHORIZED|permission/i.test(toggleActive.error.message)
+              ? "You do not have permission to change a valeter's status. If you have recently been given access, log out and back in, then try again."
+              : toggleActive.error.message}
+          </p>
+        )}
 
         {valeters.length === 0 ? (
           <p className="px-5 py-16 text-center text-sm text-slate-400">No valeters found.</p>
@@ -75,6 +96,7 @@ export function AdminTeamList() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className={TH}>Name</th>
+                  <th className={TH}>Town / Area</th>
                   <th className={TH}>Site</th>
                   <th className={TH}>Organisation</th>
                   <th className={TH}>Pay ID</th>
@@ -97,6 +119,7 @@ export function AdminTeamList() {
                       {v.firstName} {v.lastName}
                       <span className="block text-xs font-normal text-slate-400">{v.email}</span>
                     </td>
+                    <td className="px-5 py-3.5 text-slate-600">{v.town ?? "\u2014"}</td>
                     <td className="px-5 py-3.5 text-slate-600">{v.site?.name ?? "\u2014"}</td>
                     <td className="px-5 py-3.5 text-slate-600">{v.organisation.name}</td>
                     <td className="px-5 py-3.5 font-mono text-xs text-slate-500">{v.payId ?? "\u2014"}</td>

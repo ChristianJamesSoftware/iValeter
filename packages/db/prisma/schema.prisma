@@ -220,6 +220,7 @@ model User {
 
   // Valeting team fields
   mobile           String?
+  town             String? // town or area the valeter is based in (not tied to a site)
   payId            String? // auto-generated: XXXX.XXXX format
   dailyRate        Float?
   dailyDeductions  Float?

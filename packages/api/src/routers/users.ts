@@ -129,6 +129,7 @@ export const usersRouter = router({
         siteId: z.string().optional(),
         skills: z.array(z.string()).default([]),
         mobile: z.string().optional(),
+        town: z.string().optional(),
         payId: z.string().optional(),
         dailyRate: z.number().optional(),
         dailyDeductions: z.number().optional(),
@@ -189,6 +190,7 @@ export const usersRouter = router({
           siteId: input.siteId ?? null,
           skills: input.skills,
           mobile: input.mobile ?? null,
+          town: input.town?.trim() || null,
           payId:
             input.payId?.trim() ||
             generatePayId(input.firstName, input.lastName),
@@ -202,7 +204,7 @@ export const usersRouter = router({
       });
     }),
 
-  update: orgAdminProcedure
+  update: managementProcedure
     .input(
       z.object({
         id: z.string(),
@@ -212,6 +214,7 @@ export const usersRouter = router({
         skills: z.array(z.string()).optional(),
         isActive: z.boolean().optional(),
         mobile: z.string().optional(),
+        town: z.string().nullable().optional(),
         payId: z.string().optional(),
         dailyRate: z.number().optional(),
         dailyDeductions: z.number().optional(),
@@ -221,8 +224,13 @@ export const usersRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const isInternal =
+        ctx.session.role === "super_admin" || ctx.session.role === "management";
       const user = await ctx.prisma.user.findFirst({
-        where: { id: input.id, organisationId: ctx.session.organisationId },
+        where: {
+          id: input.id,
+          ...(isInternal ? {} : { organisationId: ctx.session.organisationId }),
+        },
       });
       if (!user) {
         throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
