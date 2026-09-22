@@ -176,7 +176,7 @@ export const dealershipsRouter = router({
     }),
 
   /** Super-admin: toggle active state on any dealership */
-  setActive: superAdminProcedure
+  setActive: managementProcedure
     .input(z.object({ id: z.string(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.dealership.update({
@@ -228,7 +228,7 @@ export const dealershipsRouter = router({
    * Super admin: add a valet type (service type) to every department
    * across all sites belonging to a dealership.
    */
-  addServiceType: superAdminProcedure
+  addServiceType: managementProcedure
     .input(
       z.object({
         dealershipId: z.string(),

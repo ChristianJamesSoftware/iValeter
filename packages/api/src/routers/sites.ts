@@ -55,7 +55,7 @@ export const sitesRouter = router({
       return site;
     }),
 
-  create: orgAdminProcedure
+  create: managementProcedure
     .input(
       z.object({
         name: z.string().min(1),
@@ -79,7 +79,7 @@ export const sitesRouter = router({
       });
     }),
 
-  update: orgAdminProcedure
+  update: managementProcedure
     .input(
       z.object({
         id: z.string(),
@@ -103,7 +103,7 @@ export const sitesRouter = router({
       });
     }),
 
-  setGeofence: orgAdminProcedure
+  setGeofence: managementProcedure
     .input(
       z.object({
         id: z.string(),
@@ -129,7 +129,7 @@ export const sitesRouter = router({
       });
     }),
 
-  clearGeofence: orgAdminProcedure
+  clearGeofence: managementProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const site = await ctx.prisma.site.findFirst({
@@ -144,7 +144,7 @@ export const sitesRouter = router({
       });
     }),
 
-  setActive: orgAdminProcedure
+  setActive: managementProcedure
     .input(z.object({ id: z.string(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const site = await ctx.prisma.site.findFirst({
@@ -165,7 +165,7 @@ export const sitesRouter = router({
     }),
 
   /** Bulk activate or pause all sites (+ their valeters) for the org */
-  bulkSetActive: superAdminProcedure
+  bulkSetActive: managementProcedure
     .input(z.object({ isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const [sites, users] = await Promise.all([
@@ -184,7 +184,7 @@ export const sitesRouter = router({
       return { sitesUpdated: sites.count, valetersUpdated: users.count };
     }),
 
-  addDepartment: orgAdminProcedure
+  addDepartment: managementProcedure
     .input(z.object({ siteId: z.string(), name: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const site = await ctx.prisma.site.findFirst({
@@ -198,7 +198,7 @@ export const sitesRouter = router({
       });
     }),
 
-  deleteDepartment: orgAdminProcedure
+  deleteDepartment: managementProcedure
     .input(z.object({ departmentId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // Verify the department belongs to this org
@@ -215,7 +215,7 @@ export const sitesRouter = router({
       return ctx.prisma.department.delete({ where: { id: input.departmentId } });
     }),
 
-  renameDepartment: orgAdminProcedure
+  renameDepartment: managementProcedure
     .input(z.object({ departmentId: z.string(), name: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const dept = await ctx.prisma.department.findFirst({
@@ -235,7 +235,7 @@ export const sitesRouter = router({
    * If the service type row doesn't exist yet (never synced), creates it first.
    * Used by the department tag UI — blue = active, grey = excluded.
    */
-  toggleServiceType: orgAdminProcedure
+  toggleServiceType: managementProcedure
     .input(
       z.object({
         departmentId:   z.string(),

@@ -670,7 +670,14 @@ function SiteRow({ s, onRefresh }: { s: DealershipData["sites"][number]; onRefre
                 </button>
               )}
               {(deleteDept.error ?? addDept.error ?? renameDept.error) && (
-                <p className="text-xs text-red-500">{(deleteDept.error ?? addDept.error ?? renameDept.error)?.message}</p>
+                <p className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                  {(() => {
+                    const msg = (deleteDept.error ?? addDept.error ?? renameDept.error)?.message ?? "";
+                    return /FORBIDDEN|UNAUTHORIZED|permission/i.test(msg)
+                      ? "You do not have permission to change departments. If you have recently been given access, log out and back in, then try again."
+                      : msg;
+                  })()}
+                </p>
               )}
             </div>
           </td>
